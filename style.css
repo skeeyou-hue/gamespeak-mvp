@@ -14,7 +14,7 @@
   --line:       #dfe6e1;
   --good:       #1f8f4d;
   --bad:        #c8362f;
-  --ball:       #4a90d9;
+  --walk:       #4a90d9;
   --single:     #2f9e5f;
   --double:     #d98324;
 }
@@ -140,7 +140,7 @@ body {
   background: var(--muted);
 }
 
-.tag-ball   { background: var(--ball);   }
+.tag-walk   { background: var(--walk);   }
 .tag-single { background: var(--single); }
 .tag-double { background: var(--double); }
 

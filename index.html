@@ -20,13 +20,13 @@
 
     <!-- ============================================================
          SCOREBOARD: always visible. JavaScript fills in the numbers.
-         Hits are broken out by difficulty tag (BALL / SINGLE / DOUBLE),
+         Hits are broken out by difficulty tag (WALK / SINGLE / DOUBLE),
          and outs are shown as three dots that fill in as you miss.
          ============================================================ -->
     <section class="scoreboard" aria-label="Scoreboard">
       <div class="score-cell">
-        <span class="score-label">Balls</span>
-        <span class="score-value" id="score-ball">0</span>
+        <span class="score-label">Walks</span>
+        <span class="score-value" id="score-walk">0</span>
       </div>
       <div class="score-cell">
         <span class="score-label">Singles</span>
@@ -53,8 +53,8 @@
     <section class="card" id="quiz-screen">
       <p class="at-bat" id="at-bat">At-bat 1</p>
 
-      <!-- Difficulty tag for the current word (BALL / SINGLE / DOUBLE) -->
-      <p class="tag" id="word-tag">BALL</p>
+      <!-- Difficulty tag for the current word (WALK / SINGLE / DOUBLE) -->
+      <p class="tag" id="word-tag">WALK</p>
 
       <!-- The Spanish word being asked -->
       <h2 class="word" id="word">—</h2>
@@ -75,7 +75,7 @@
       <p class="summary-sub" id="summary-sub">Three outs.</p>
 
       <ul class="summary-list">
-        <li><span>Balls</span>       <strong id="sum-ball">0</strong></li>
+        <li><span>Walks</span>       <strong id="sum-walk">0</strong></li>
         <li><span>Singles</span>     <strong id="sum-single">0</strong></li>
         <li><span>Doubles</span>     <strong id="sum-double">0</strong></li>
         <li><span>Total hits</span>  <strong id="sum-hits">0</strong></li>
