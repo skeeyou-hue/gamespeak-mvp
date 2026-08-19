@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>GameSpeak — Spanish Baseball Vocabulary</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- ============================================================
+       HEADER: app title
+       ============================================================ -->
+  <header class="header">
+    <h1 class="logo">GameSpeak <span class="ball">⚾</span></h1>
+    <p class="tagline">Spanish vocabulary, scored like baseball.</p>
+  </header>
+
+  <main class="field">
+
+    <!-- ============================================================
+         SCOREBOARD: always visible. JavaScript fills in the numbers.
+         Hits are broken out by difficulty tag (BALL / SINGLE / DOUBLE),
+         and outs are shown as three dots that fill in as you miss.
+         ============================================================ -->
+    <section class="scoreboard" aria-label="Scoreboard">
+      <div class="score-cell">
+        <span class="score-label">Balls</span>
+        <span class="score-value" id="score-ball">0</span>
+      </div>
+      <div class="score-cell">
+        <span class="score-label">Singles</span>
+        <span class="score-value" id="score-single">0</span>
+      </div>
+      <div class="score-cell">
+        <span class="score-label">Doubles</span>
+        <span class="score-value" id="score-double">0</span>
+      </div>
+      <div class="score-cell outs-cell">
+        <span class="score-label">Outs</span>
+        <!-- Three dots: filled = an out has been recorded -->
+        <span class="outs" id="outs-display" aria-live="polite">
+          <span class="out-dot"></span>
+          <span class="out-dot"></span>
+          <span class="out-dot"></span>
+        </span>
+      </div>
+    </section>
+
+    <!-- ============================================================
+         QUIZ SCREEN: one Spanish word, four English choices.
+         ============================================================ -->
+    <section class="card" id="quiz-screen">
+      <p class="at-bat" id="at-bat">At-bat 1</p>
+
+      <!-- Difficulty tag for the current word (BALL / SINGLE / DOUBLE) -->
+      <p class="tag" id="word-tag">BALL</p>
+
+      <!-- The Spanish word being asked -->
+      <h2 class="word" id="word">—</h2>
+
+      <!-- Four answer buttons get created here by app.js -->
+      <div class="choices" id="choices"></div>
+
+      <!-- "Base hit!" / "Strike three-ish" message after each answer -->
+      <p class="feedback" id="feedback">&nbsp;</p>
+    </section>
+
+    <!-- ============================================================
+         SUMMARY SCREEN: shown when the inning is over (3 outs, or
+         you get through all 20 words). Hidden until then.
+         ============================================================ -->
+    <section class="card hidden" id="summary-screen">
+      <h2 class="summary-title" id="summary-title">Inning over</h2>
+      <p class="summary-sub" id="summary-sub">Three outs.</p>
+
+      <ul class="summary-list">
+        <li><span>Balls</span>       <strong id="sum-ball">0</strong></li>
+        <li><span>Singles</span>     <strong id="sum-single">0</strong></li>
+        <li><span>Doubles</span>     <strong id="sum-double">0</strong></li>
+        <li><span>Total hits</span>  <strong id="sum-hits">0</strong></li>
+        <li><span>Total bases</span> <strong id="sum-bases">0</strong></li>
+        <li><span>Batting average</span> <strong id="sum-avg">.000</strong></li>
+      </ul>
+
+      <!-- Words you missed, so you know what to study -->
+      <div class="missed" id="missed-block">
+        <h3>Words that got you out</h3>
+        <ul id="missed-list"></ul>
+      </div>
+
+      <button class="play-again" id="play-again">Play another inning</button>
+    </section>
+
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>
