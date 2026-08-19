@@ -14,7 +14,7 @@ Open `index.html` in a browser. That's it.
 
 - You see one Spanish word and four English choices.
 - **Right answer** → a *hit*, credited to that word's difficulty tier:
-  `BALL` (easiest), `SINGLE`, or `DOUBLE` (hardest).
+  `WALK` (easiest), `SINGLE`, or `DOUBLE` (hardest).
 - **Wrong answer** → an *out*.
 - **Three outs** → the inning ends and you get a summary with your hits,
   total bases, batting average, and the words you missed.

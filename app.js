@@ -4,14 +4,14 @@
 
    HOW IT WORKS
    1. You see one Spanish word and four English choices.
-   2. Right answer  -> a "hit", worth BALL, SINGLE, or DOUBLE depending on
+   2. Right answer  -> a "hit", worth WALK, SINGLE, or DOUBLE depending on
                        how hard that word is.
    3. Wrong answer  -> an "out".
    4. Three outs    -> the inning is over and you get a summary.
 
-   Note on naming: in real baseball a "ball" isn't a hit, but here BALL is
-   just the easiest difficulty tier. Change the labels in DIFFICULTY below
-   if you'd rather call them EASY / MEDIUM / HARD.
+   Note on naming: WALK / SINGLE / DOUBLE are difficulty tiers, not literal
+   play outcomes — WALK is the easiest tier. Change the labels in DIFFICULTY
+   below if you'd rather call them EASY / MEDIUM / HARD.
    ========================================================================= */
 
 
@@ -20,7 +20,7 @@
    Each tier has a label, how many bases it's worth, and a message.
    ------------------------------------------------------------------------- */
 const DIFFICULTY = {
-  BALL:   { label: 'BALL',   bases: 1, praise: 'Ball put in play!' },
+  WALK:   { label: 'WALK',   bases: 1, praise: 'Walk! Take your base.' },
   SINGLE: { label: 'SINGLE', bases: 1, praise: 'Base hit!' },
   DOUBLE: { label: 'DOUBLE', bases: 2, praise: 'Double into the gap!' }
 };
@@ -31,18 +31,18 @@ const DIFFICULTY = {
    20 baseball-related Spanish words. Each entry is:
      es   - the Spanish word (shown to the player)
      en   - the correct English meaning
-     tag  - difficulty: 'BALL' (easiest), 'SINGLE', or 'DOUBLE' (hardest)
+     tag  - difficulty: 'WALK' (easiest), 'SINGLE', or 'DOUBLE' (hardest)
    Add or edit entries here — everything else adapts automatically.
    ------------------------------------------------------------------------- */
 const VOCAB = [
-  // --- BALL: everyday words, close cognates, high frequency (7) ---
-  { es: 'el béisbol',     en: 'baseball',        tag: 'BALL'   },
-  { es: 'la pelota',      en: 'the ball',        tag: 'BALL'   },
-  { es: 'el bate',        en: 'the bat',         tag: 'BALL'   },
-  { es: 'el guante',      en: 'the glove',       tag: 'BALL'   },
-  { es: 'el equipo',      en: 'the team',        tag: 'BALL'   },
-  { es: 'el jugador',     en: 'the player',      tag: 'BALL'   },
-  { es: 'correr',         en: 'to run',          tag: 'BALL'   },
+  // --- WALK: everyday words, close cognates, high frequency (7) ---
+  { es: 'el béisbol',     en: 'baseball',        tag: 'WALK'   },
+  { es: 'la pelota',      en: 'the ball',        tag: 'WALK'   },
+  { es: 'el bate',        en: 'the bat',         tag: 'WALK'   },
+  { es: 'el guante',      en: 'the glove',       tag: 'WALK'   },
+  { es: 'el equipo',      en: 'the team',        tag: 'WALK'   },
+  { es: 'el jugador',     en: 'the player',      tag: 'WALK'   },
+  { es: 'correr',         en: 'to run',          tag: 'WALK'   },
 
   // --- SINGLE: common baseball terms, some verbs (7) ---
   { es: 'el lanzador',    en: 'the pitcher',     tag: 'SINGLE' },
@@ -77,7 +77,7 @@ function newState() {
     deck: shuffle(VOCAB),  // the 20 words in random order
     index: 0,              // which word we're on (0-19)
     outs: 0,               // wrong answers so far
-    hits: { BALL: 0, SINGLE: 0, DOUBLE: 0 }, // right answers by difficulty
+    hits: { WALK: 0, SINGLE: 0, DOUBLE: 0 }, // right answers by difficulty
     missed: [],            // words the player got wrong, for the summary
     locked: false          // true while feedback is showing, blocks double-clicks
   };
@@ -95,7 +95,7 @@ const el = {
   choices:     document.getElementById('choices'),
   feedback:    document.getElementById('feedback'),
 
-  scoreBall:   document.getElementById('score-ball'),
+  scoreWalk:   document.getElementById('score-walk'),
   scoreSingle: document.getElementById('score-single'),
   scoreDouble: document.getElementById('score-double'),
   outsDisplay: document.getElementById('outs-display'),
@@ -103,7 +103,7 @@ const el = {
   summary:     document.getElementById('summary-screen'),
   summaryTitle:document.getElementById('summary-title'),
   summarySub:  document.getElementById('summary-sub'),
-  sumBall:     document.getElementById('sum-ball'),
+  sumWalk:     document.getElementById('sum-walk'),
   sumSingle:   document.getElementById('sum-single'),
   sumDouble:   document.getElementById('sum-double'),
   sumHits:     document.getElementById('sum-hits'),
@@ -147,7 +147,7 @@ function buildChoices(correctWord) {
 
 // Update the scoreboard numbers and the three out-dots.
 function renderScoreboard() {
-  el.scoreBall.textContent   = state.hits.BALL;
+  el.scoreWalk.textContent   = state.hits.WALK;
   el.scoreSingle.textContent = state.hits.SINGLE;
   el.scoreDouble.textContent = state.hits.DOUBLE;
 
@@ -233,9 +233,9 @@ function nextTurn() {
    8. END OF INNING SUMMARY
    ------------------------------------------------------------------------- */
 function endInning(title, subtitle) {
-  const totalHits = state.hits.BALL + state.hits.SINGLE + state.hits.DOUBLE;
+  const totalHits = state.hits.WALK + state.hits.SINGLE + state.hits.DOUBLE;
   const totalBases =
-      state.hits.BALL   * DIFFICULTY.BALL.bases +
+      state.hits.WALK   * DIFFICULTY.WALK.bases +
       state.hits.SINGLE * DIFFICULTY.SINGLE.bases +
       state.hits.DOUBLE * DIFFICULTY.DOUBLE.bases;
 
@@ -245,7 +245,7 @@ function endInning(title, subtitle) {
 
   el.summaryTitle.textContent = title;
   el.summarySub.textContent   = subtitle;
-  el.sumBall.textContent      = state.hits.BALL;
+  el.sumWalk.textContent      = state.hits.WALK;
   el.sumSingle.textContent    = state.hits.SINGLE;
   el.sumDouble.textContent    = state.hits.DOUBLE;
   el.sumHits.textContent      = totalHits;
