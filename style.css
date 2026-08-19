@@ -1,0 +1,248 @@
+/* =========================================================================
+   GameSpeak stylesheet
+   A centered column on a ballpark-green background. Colors and other
+   repeated values live in :root so you can restyle the whole app quickly.
+   ========================================================================= */
+
+:root {
+  --grass:      #1d6b3c;
+  --grass-dark: #14502c;
+  --dirt:       #b5713f;
+  --card:       #ffffff;
+  --ink:        #17251c;
+  --muted:      #61756a;
+  --line:       #dfe6e1;
+  --good:       #1f8f4d;
+  --bad:        #c8362f;
+  --ball:       #4a90d9;
+  --single:     #2f9e5f;
+  --double:     #d98324;
+}
+
+/* --- Base page --- */
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  padding: 24px 16px 56px;
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  color: var(--ink);
+  background: var(--grass);
+  background-image: linear-gradient(var(--grass), var(--grass-dark));
+  min-height: 100vh;
+}
+
+/* --- Header --- */
+.header { text-align: center; color: #fff; margin-bottom: 20px; }
+
+.logo {
+  margin: 0;
+  font-size: 2rem;
+  letter-spacing: 0.5px;
+}
+
+.ball { font-size: 1.6rem; }
+
+.tagline {
+  margin: 6px 0 0;
+  font-size: 0.95rem;
+  opacity: 0.85;
+}
+
+/* --- The centered column that holds everything --- */
+.field {
+  max-width: 540px;
+  margin: 0 auto;
+}
+
+/* --- Scoreboard: four cells in a row --- */
+.scoreboard {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 2px;
+  background: #0f3b21;
+  border: 2px solid #0f3b21;
+  border-radius: 10px;
+  overflow: hidden;
+  margin-bottom: 18px;
+}
+
+.score-cell {
+  background: #143f26;
+  color: #fff;
+  padding: 10px 6px;
+  text-align: center;
+}
+
+.score-label {
+  display: block;
+  font-size: 0.7rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  opacity: 0.75;
+}
+
+.score-value {
+  display: block;
+  font-size: 1.6rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Three out-dots; .filled is added by JavaScript as outs pile up */
+.outs {
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.out-dot {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.55);
+}
+
+.out-dot.filled {
+  background: var(--bad);
+  border-color: var(--bad);
+}
+
+/* --- Cards (the quiz screen and the summary screen) --- */
+.card {
+  background: var(--card);
+  border-radius: 14px;
+  padding: 22px 20px 24px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.22);
+}
+
+.hidden { display: none; }   /* used to swap between screens */
+
+.at-bat {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+/* --- Difficulty tag; the color class is set by JavaScript --- */
+.tag {
+  display: inline-block;
+  margin: 12px 0 0;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: #fff;
+  background: var(--muted);
+}
+
+.tag-ball   { background: var(--ball);   }
+.tag-single { background: var(--single); }
+.tag-double { background: var(--double); }
+
+/* --- The Spanish word --- */
+.word {
+  margin: 10px 0 20px;
+  font-size: 2.1rem;
+  line-height: 1.15;
+}
+
+/* --- Answer buttons, stacked --- */
+.choices {
+  display: grid;
+  gap: 10px;
+}
+
+.choice {
+  font: inherit;
+  text-align: left;
+  padding: 13px 15px;
+  border: 2px solid var(--line);
+  border-radius: 10px;
+  background: #fff;
+  color: var(--ink);
+  cursor: pointer;
+}
+
+.choice:hover:not(:disabled) { border-color: var(--grass); }
+.choice:disabled             { cursor: default; }
+
+/* Set after an answer: green marks the right choice, red the wrong pick */
+.choice.correct {
+  border-color: var(--good);
+  background: #e8f7ee;
+  font-weight: 600;
+}
+
+.choice.wrong {
+  border-color: var(--bad);
+  background: #fdeceb;
+}
+
+/* --- Feedback line under the choices --- */
+.feedback {
+  margin: 16px 0 0;
+  min-height: 1.3em;
+  font-weight: 600;
+}
+
+.feedback.good { color: var(--good); }
+.feedback.bad  { color: var(--bad);  }
+
+/* --- Summary screen --- */
+.summary-title { margin: 0 0 4px; font-size: 1.7rem; }
+.summary-sub   { margin: 0 0 18px; color: var(--muted); }
+
+.summary-list {
+  list-style: none;
+  margin: 0 0 20px;
+  padding: 0;
+  border-top: 1px solid var(--line);
+}
+
+.summary-list li {
+  display: flex;
+  justify-content: space-between;
+  padding: 9px 2px;
+  border-bottom: 1px solid var(--line);
+}
+
+.summary-list strong { font-variant-numeric: tabular-nums; }
+
+.missed h3 {
+  margin: 0 0 8px;
+  font-size: 0.95rem;
+}
+
+.missed ul {
+  margin: 0 0 20px;
+  padding-left: 18px;
+  color: var(--muted);
+  line-height: 1.7;
+}
+
+.missed strong { color: var(--ink); }
+
+.play-again {
+  font: inherit;
+  font-weight: 600;
+  width: 100%;
+  padding: 13px;
+  border: none;
+  border-radius: 10px;
+  background: var(--dirt);
+  color: #fff;
+  cursor: pointer;
+}
+
+.play-again:hover { background: #a2632f; }
+
+/* --- Narrow screens --- */
+@media (max-width: 420px) {
+  .word { font-size: 1.7rem; }
+  .score-value { font-size: 1.3rem; }
+}
