@@ -81,6 +81,39 @@ const show = state => state.map((on, i) => on ? ['1B', '2B', '3B'][i] : null)
   assert(new Set(await page.evaluate(() => VOCAB.map(w => w.en))).size === vocabCount,
          'every English meaning is unique, so choices can never duplicate');
 
+  section('HUD');
+
+  assert((await page.locator('.tally').count()) === 0,
+         'the per-hit-type tally row is gone from the HUD');
+  assert((await page.locator('.scoreboard').count()) === 0,
+         'the full-width scoreboard bar is gone');
+  assert((await page.locator('#score-runs').count()) === 1 &&
+         (await page.locator('#outs-display').count()) === 1,
+         'runs and outs still on screen');
+  assert((await page.locator('#diamond .pip').count()) === 3,
+         'diamond draws three bases');
+  assert((await page.locator('#diamond .home-plate').count()) === 1,
+         'diamond draws home plate too');
+  // The four marks must not overlap each other, which is what broke the
+  // old CSS version.
+  const marks = await page.evaluate(() =>
+    ['pip-third', 'pip-second', 'pip-first'].map(id => {
+      const r = document.getElementById(id).getBoundingClientRect();
+      return { x: r.x, y: r.y, w: r.width, h: r.height };
+    }).concat([(() => {
+      const r = document.querySelector('.home-plate').getBoundingClientRect();
+      return { x: r.x, y: r.y, w: r.width, h: r.height };
+    })()]));
+  const overlaps = (a, b) => a.x < b.x + b.w && b.x < a.x + a.w &&
+                             a.y < b.y + b.h && b.y < a.y + a.h;
+  let collisions = 0;
+  for (let i = 0; i < marks.length; i++)
+    for (let j = i + 1; j < marks.length; j++)
+      if (overlaps(marks[i], marks[j])) collisions++;
+  assert(collisions === 0, 'all four diamond marks are visually separate');
+
+  section('Structure and vocabulary, continued');
+
   const shown = await page.evaluate(() => document.getElementById('word').textContent);
   const choices = await page.locator('.choice').allTextContents();
   const correct = await page.evaluate(w => VOCAB.find(v => v.es === w).en, shown);
@@ -216,7 +249,9 @@ const show = state => state.map((on, i) => on ? ['1B', '2B', '3B'][i] : null)
   await page.click('#play-again');
   assert(await page.locator('#quiz-screen').isVisible(), 'play again returns to the quiz');
   assert((await page.locator('.out-dot.filled').count()) === 0, 'outs reset to zero');
-  assert((await page.locator('#score-walk').textContent()) === '0', 'scoreboard reset');
+  assert(JSON.stringify(await page.evaluate(() => state.hits)) ===
+         JSON.stringify({ WALK: 0, SINGLE: 0, DOUBLE: 0, TRIPLE: 0, HOMERUN: 0 }),
+         'hit tally reset');
   assert((await page.locator('#score-runs').textContent()) === '0', 'runs reset to zero');
   assert((await page.locator('.pip.on').count()) === 0, 'bases start empty');
   assert(!(await page.locator('.runner.on').count()), 'no runners on the field at first pitch');

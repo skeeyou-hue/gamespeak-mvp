@@ -162,13 +162,13 @@
 
       <!-- Base cutouts and the mound -->
       <g fill="#C4662F">
-        <ellipse cx="600" cy="500" rx="56" ry="20"/>
+        <ellipse cx="600" cy="590" rx="66" ry="23"/>
         <ellipse cx="600" cy="420" rx="35" ry="13"/>
         <ellipse cx="330" cy="520" rx="40" ry="15"/>
         <ellipse cx="870" cy="520" rx="40" ry="15"/>
       </g>
       <g fill="#FBF6EA">
-        <rect x="593" y="494" width="15" height="4" rx="1"/>
+        <rect x="592" y="584" width="17" height="5" rx="1"/>
         <rect x="593" y="415" width="14" height="7" rx="1"/>
         <rect x="323" y="515" width="15" height="8" rx="1"/>
         <rect x="863" y="515" width="15" height="8" rx="1"/>
@@ -250,63 +250,42 @@
     <p class="tagline">Spanish vocabulary, scored like baseball.</p>
   </header>
 
+  <!-- ============================================================
+       HUD: two small clusters in the top corners rather than a
+       full-width bar, so the space goes to the field instead.
+       Runs and outs on the left, the base diamond on the right.
+       The hit-type breakdown lives in the box score at the end of
+       the inning — during play, the run total is what matters.
+       ============================================================ -->
+  <section class="hud" aria-label="Scoreboard">
+    <div class="hud-chip">
+      <span class="hud-label">R</span>
+      <span class="hud-runs" id="score-runs">0</span>
+      <span class="hud-rule"></span>
+      <span class="hud-label">O</span>
+      <!-- Three dots: filled = an out has been recorded -->
+      <span class="outs" id="outs-display" aria-live="polite">
+        <span class="out-dot"></span>
+        <span class="out-dot"></span>
+        <span class="out-dot"></span>
+      </span>
+    </div>
+
+    <div class="hud-chip hud-bases">
+      <!-- Second at the top, third on the left, first on the right,
+           home at the bottom — the diamond as seen from behind the
+           plate. Home is always drawn: it's the target you're trying
+           to reach, not a base a runner stands on. -->
+      <svg class="diamond" id="diamond" viewBox="0 0 60 60" aria-hidden="true">
+        <rect class="pip" id="pip-second" x="25" y="5"  width="10" height="10" transform="rotate(45 30 10)"/>
+        <rect class="pip" id="pip-third"  x="4"  y="25" width="10" height="10" transform="rotate(45 9 30)"/>
+        <rect class="pip" id="pip-first"  x="46" y="25" width="10" height="10" transform="rotate(45 51 30)"/>
+        <polygon class="home-plate" points="24,41 36,41 36,46 30,52 24,46"/>
+      </svg>
+    </div>
+  </section>
+
   <main class="field">
-
-    <!-- ============================================================
-         SCOREBOARD: always visible. JavaScript fills in the numbers.
-         The main line is the ballpark line — runs, outs, and who's on
-         base. The tally below it breaks the hits down by type.
-         ============================================================ -->
-    <section class="scoreboard" aria-label="Scoreboard">
-      <div class="score-cell">
-        <span class="score-label">Runs</span>
-        <span class="score-value" id="score-runs">0</span>
-      </div>
-      <div class="score-cell">
-        <span class="score-label">Outs</span>
-        <!-- Three dots: filled = an out has been recorded -->
-        <span class="outs" id="outs-display" aria-live="polite">
-          <span class="out-dot"></span>
-          <span class="out-dot"></span>
-          <span class="out-dot"></span>
-        </span>
-      </div>
-      <div class="score-cell">
-        <span class="score-label">On base</span>
-        <!-- Mini diamond, mirroring the runners out on the field. The field
-             version is the real one, but it sits behind the quiz card on a
-             phone, so the base state is repeated here where it's always
-             visible. -->
-        <span class="diamond" id="diamond" aria-hidden="true">
-          <span class="pip pip-second" id="pip-second"></span>
-          <span class="pip pip-third"  id="pip-third"></span>
-          <span class="pip pip-first"  id="pip-first"></span>
-        </span>
-      </div>
-    </section>
-
-    <section class="tally" aria-label="Hits by type">
-      <div class="tally-cell">
-        <span class="tally-label">W</span>
-        <span class="tally-value" id="score-walk">0</span>
-      </div>
-      <div class="tally-cell">
-        <span class="tally-label">1B</span>
-        <span class="tally-value" id="score-single">0</span>
-      </div>
-      <div class="tally-cell">
-        <span class="tally-label">2B</span>
-        <span class="tally-value" id="score-double">0</span>
-      </div>
-      <div class="tally-cell">
-        <span class="tally-label">3B</span>
-        <span class="tally-value" id="score-triple">0</span>
-      </div>
-      <div class="tally-cell">
-        <span class="tally-label">HR</span>
-        <span class="tally-value" id="score-homerun">0</span>
-      </div>
-    </section>
 
     <!-- ============================================================
          QUIZ SCREEN: one Spanish word, four English choices.

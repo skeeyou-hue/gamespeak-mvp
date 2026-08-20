@@ -31,7 +31,7 @@
 
 body {
   margin: 0;
-  padding: 24px 16px 56px;
+  padding: 16px 16px 40px;
   font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   color: var(--ink);
   background: var(--sky);   /* shows through only before the SVG paints */
@@ -78,23 +78,23 @@ body {
   /* Negative margins let the scrim below run edge to edge past the
      body padding, so the title stays readable wherever the scene's
      bright spots (sun, light towers) happen to land behind it. */
-  margin: -24px -16px 4px;
-  padding: 24px 16px 16px;
+  margin: -16px -16px 2px;
+  padding: 14px 16px 12px;
   background: linear-gradient(rgba(8, 52, 68, 0.42), rgba(8, 52, 68, 0));
 }
 
 .logo {
   margin: 0;
-  font-size: 2rem;
+  font-size: 1.45rem;
   letter-spacing: 0.5px;
 }
 
-.ball { font-size: 1.6rem; }
+.ball { font-size: 1.2rem; }
 
 .tagline {
-  margin: 6px 0 0;
-  font-size: 0.95rem;
-  opacity: 0.85;
+  margin: 3px 0 0;
+  font-size: 0.78rem;
+  opacity: 0.82;
 }
 
 /* --- The centered column that holds everything --- */
@@ -105,112 +105,60 @@ body {
   margin: 0 auto;
 }
 
-/* --- Scoreboard: four cells in a row --- */
-.scoreboard {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 2px;
-  background: #0f3b21;
-  border: 2px solid #0f3b21;
-  border-radius: 10px 10px 0 0;
-  overflow: hidden;
+/* --- HUD: two chips in the top corners, not a full-width bar. Kept as
+   small as it can be while staying readable — the point is to give the
+   vertical space back to the field. --------------------------------- */
+.hud {
+  position: relative;   /* sits above the fixed scene */
+  z-index: 1;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 10px;
 }
 
-/* --- Base diamond: second at the top, third left, first right, which is
-   how it looks from behind home plate --------------------------------- */
-.diamond {
-  position: relative;
-  display: block;
-  width: 58px;
-  height: 38px;
-  margin: 7px auto 0;
-}
-
-.pip {
-  position: absolute;
-  width: 10px;
-  height: 10px;
-  border: 2px solid rgba(255, 255, 255, 0.5);
-  transform: rotate(45deg);
-  transition: background-color 0.2s ease, border-color 0.2s ease;
-}
-
-.pip-second { left: 24px; top: 0;    }
-.pip-third  { left: 4px;  top: 18px; }
-.pip-first  { left: 44px; top: 18px; }
-
-.pip.on {
-  background: var(--onbase);
-  border-color: var(--onbase);
-}
-
-/* --- Hit tally: the five ways to reach base ---------------------------- */
-.tally {
-  display: grid;
-  grid-template-columns: repeat(5, 1fr);
-  gap: 2px;
-  background: #0f3b21;
-  border: 2px solid #0f3b21;
-  border-top: none;
-  border-radius: 0 0 10px 10px;
-  overflow: hidden;
-  margin-bottom: 18px;
-}
-
-.tally-cell {
-  background: #10331e;
+.hud-chip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border-radius: 9px;
+  background: rgba(11, 46, 26, 0.82);
+  border: 1px solid rgba(255, 255, 255, 0.15);
   color: #fff;
-  padding: 7px 4px;
-  text-align: center;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.28);
 }
 
-.tally-label {
-  display: block;
-  font-size: 0.66rem;
-  letter-spacing: 0.08em;
-  opacity: 0.7;
-}
-
-.tally-value {
-  display: block;
-  font-size: 1.05rem;
+.hud-label {
+  font-size: 0.62rem;
   font-weight: 700;
+  letter-spacing: 0.1em;
+  opacity: 0.65;
+}
+
+.hud-runs {
+  font-size: 1.35rem;
+  font-weight: 800;
+  line-height: 1;
   font-variant-numeric: tabular-nums;
 }
 
-.score-cell {
-  background: #143f26;
-  color: #fff;
-  padding: 10px 6px;
-  text-align: center;
-}
-
-.score-label {
-  display: block;
-  font-size: 0.7rem;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  opacity: 0.75;
-}
-
-.score-value {
-  display: block;
-  font-size: 1.6rem;
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
+.hud-rule {
+  width: 1px;
+  height: 18px;
+  background: rgba(255, 255, 255, 0.2);
 }
 
 /* Three out-dots; .filled is added by JavaScript as outs pile up */
 .outs {
   display: flex;
-  justify-content: center;
-  gap: 6px;
-  margin-top: 10px;
+  gap: 5px;
 }
 
 .out-dot {
-  width: 14px;
-  height: 14px;
+  width: 11px;
+  height: 11px;
   border-radius: 50%;
   border: 2px solid rgba(255, 255, 255, 0.55);
 }
@@ -218,6 +166,34 @@ body {
 .out-dot.filled {
   background: var(--bad);
   border-color: var(--bad);
+}
+
+/* --- Base diamond: second top, third left, first right, home at the
+   bottom. Drawn as SVG so the four marks can't collide. ------------- */
+.hud-bases { padding: 4px 8px; }
+
+.diamond {
+  display: block;
+  width: 40px;
+  height: 40px;
+}
+
+.pip {
+  fill: none;
+  stroke: rgba(255, 255, 255, 0.5);
+  stroke-width: 2.5;
+  transition: fill 0.2s ease, stroke 0.2s ease;
+}
+
+.pip.on {
+  fill: var(--onbase);
+  stroke: var(--onbase);
+}
+
+/* Home plate is always shown — it's the target, not a base to stand on */
+.home-plate {
+  fill: #fbf6ea;
+  opacity: 0.85;
 }
 
 /* --- Cards (the quiz screen and the summary screen) --- */
@@ -375,5 +351,5 @@ body {
 /* --- Narrow screens --- */
 @media (max-width: 420px) {
   .word { font-size: 1.7rem; }
-  .score-value { font-size: 1.3rem; }
+  .hud-runs { font-size: 1.2rem; }
 }
