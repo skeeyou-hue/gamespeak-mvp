@@ -68,6 +68,13 @@ body {
   .runner, .pip { transition: none; }
 }
 
+/* The scene crops from the sides as the window narrows. Below this width
+   the wall signage and video board would be sliced by the screen edge, so
+   hide them outright — a bare wall beats a half-cut sign. */
+@media (max-width: 899px) {
+  #video-board, #wall-sign { display: none; }
+}
+
 /* --- Header --- */
 .header {
   position: relative;   /* stacks above the fixed scene */
