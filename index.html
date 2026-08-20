@@ -9,6 +9,213 @@
 <body>
 
   <!-- ============================================================
+       THE SCENE: a static, decorative stadium behind the whole app.
+       The view is from behind home plate, the way a batter sees the
+       field. Everything here is presentational, so it's hidden from
+       screen readers and ignores clicks (see .scene in style.css).
+
+       Styled after Caribbean winter-league ball — an open-air park,
+       an artificial turf field with clay cutouts only at the bases,
+       and a warm tropical palette instead of corporate navy/gray.
+
+       The viewBox is a panoramic 1200x800 and anchors to the BOTTOM
+       ("xMidYMax slice"). That combination matters: the full height
+       always fits, so sky-to-home-plate survives on any screen, and
+       only the far edges of the field crop away on narrow phones.
+       ============================================================ -->
+  <div class="scene" aria-hidden="true">
+    <svg viewBox="0 0 1200 800" preserveAspectRatio="xMidYMax slice"
+         xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <!-- Late-afternoon tropical sky: turquoise overhead, warm at the rim -->
+        <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0"    stop-color="#1494BE"/>
+          <stop offset="0.55" stop-color="#5FC6D2"/>
+          <stop offset="1"    stop-color="#FFD08A"/>
+        </linearGradient>
+
+        <!-- Low sun off the third-base side -->
+        <radialGradient id="sun" cx="0.5" cy="0.5" r="0.5">
+          <stop offset="0" stop-color="#FFE9B0" stop-opacity="0.95"/>
+          <stop offset="1" stop-color="#FFD08A" stop-opacity="0"/>
+        </radialGradient>
+
+        <!-- Warm light washing across the whole scene -->
+        <radialGradient id="warmth" cx="0.72" cy="0.42" r="0.72">
+          <stop offset="0" stop-color="#FFC46B" stop-opacity="0.32"/>
+          <stop offset="1" stop-color="#FF8A3C" stop-opacity="0"/>
+        </radialGradient>
+
+        <!-- Seat blocks: upper deck aqua, lower deck coral -->
+        <pattern id="seatsUpper" width="13" height="9" patternUnits="userSpaceOnUse">
+          <rect width="13" height="9" fill="#17789A"/>
+          <rect x="1" y="1" width="10" height="6" rx="1.5" fill="#2FB0C4"/>
+        </pattern>
+        <pattern id="seatsLower" width="13" height="9" patternUnits="userSpaceOnUse">
+          <rect width="13" height="9" fill="#B8401F"/>
+          <rect x="1" y="1" width="10" height="6" rx="1.5" fill="#F2683C"/>
+        </pattern>
+        <!-- Scattered dots read as a crowd without drawing people -->
+        <pattern id="crowd" width="17" height="11" patternUnits="userSpaceOnUse">
+          <circle cx="3"  cy="3" r="1.7" fill="#FBE9CF" opacity="0.55"/>
+          <circle cx="11" cy="7" r="1.7" fill="#FFD08A" opacity="0.5"/>
+          <circle cx="15" cy="2" r="1.5" fill="#F7A072" opacity="0.45"/>
+        </pattern>
+
+        <!-- One palm, reused across the stadium rim at different sizes -->
+        <g id="palm">
+          <path d="M0,0 C-3,-24 -5,-44 -2,-64 L4,-64 C5,-44 4,-24 6,0 Z"/>
+          <g transform="translate(1,-64)">
+            <ellipse rx="24" ry="6" transform="rotate(-15) translate(-20,-2)"/>
+            <ellipse rx="24" ry="6" transform="rotate(19)  translate(20,-2)"/>
+            <ellipse rx="20" ry="6" transform="rotate(-54) translate(-15,-4)"/>
+            <ellipse rx="20" ry="6" transform="rotate(57)  translate(15,-4)"/>
+            <ellipse rx="8"  ry="10" cy="-6"/>
+          </g>
+        </g>
+      </defs>
+
+      <!-- ---------- SKY ---------- -->
+      <rect width="1200" height="372" fill="url(#sky)"/>
+      <circle cx="300" cy="280" r="170" fill="url(#sun)"/>
+
+      <!-- ---------- LIGHT TOWERS ---------- -->
+      <g fill="#E8A33A">
+        <rect x="118" y="118" width="5" height="142"/>
+        <rect x="398" y="100" width="5" height="160"/>
+        <rect x="798" y="100" width="5" height="160"/>
+        <rect x="1078" y="118" width="5" height="142"/>
+      </g>
+      <g fill="#F5C14E">
+        <rect x="98"   y="104" width="45" height="20" rx="3"/>
+        <rect x="378"  y="86"  width="45" height="20" rx="3"/>
+        <rect x="778"  y="86"  width="45" height="20" rx="3"/>
+        <rect x="1058" y="104" width="45" height="20" rx="3"/>
+      </g>
+      <g fill="#FFF6DF" opacity="0.9">
+        <circle cx="109" cy="114" r="3"/><circle cx="120" cy="114" r="3"/><circle cx="131" cy="114" r="3"/>
+        <circle cx="389" cy="96"  r="3"/><circle cx="400" cy="96"  r="3"/><circle cx="411" cy="96"  r="3"/>
+        <circle cx="789" cy="96"  r="3"/><circle cx="800" cy="96"  r="3"/><circle cx="811" cy="96"  r="3"/>
+        <circle cx="1069" cy="114" r="3"/><circle cx="1080" cy="114" r="3"/><circle cx="1091" cy="114" r="3"/>
+      </g>
+
+      <!-- ---------- PALMS above the stadium rim ---------- -->
+      <g fill="#14603F">
+        <use href="#palm" transform="translate(40,258)"/>
+        <use href="#palm" transform="translate(196,262) scale(0.82)"/>
+        <use href="#palm" transform="translate(560,256) scale(0.7)"/>
+        <use href="#palm" transform="translate(1006,260) scale(0.9)"/>
+        <use href="#palm" transform="translate(1152,256)"/>
+      </g>
+
+      <!-- ---------- STANDS: two decks, packed ---------- -->
+      <path d="M0,254 Q600,238 1200,254 L1200,296 L0,296 Z" fill="url(#seatsUpper)"/>
+      <path d="M0,254 Q600,238 1200,254 L1200,296 L0,296 Z" fill="url(#crowd)"/>
+      <path d="M0,252 Q600,236 1200,252 L1200,258 L0,258 Z" fill="#0F5F72"/>
+      <path d="M0,298 Q600,284 1200,298 L1200,338 L0,338 Z" fill="url(#seatsLower)"/>
+      <path d="M0,298 Q600,284 1200,298 L1200,338 L0,338 Z" fill="url(#crowd)"/>
+
+      <!-- ---------- OUTFIELD WALL ---------- -->
+      <path d="M0,336 Q600,323 1200,336 L1200,374 L0,374 Z" fill="#DD5630"/>
+      <path d="M0,336 Q600,323 1200,336 L1200,344 L0,344 Z" fill="#F6C445"/>
+      <!-- Wall lettering sits off-center on both sides so the quiz card,
+           which floats down the middle, never covers it. -->
+      <g font-family="system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif"
+         font-size="14" font-weight="700" letter-spacing="7"
+         fill="#FBE9CF" opacity="0.92" text-anchor="middle">
+        <text x="246" y="367">SAN JUAN</text>
+        <text x="1004" y="367">PUERTO RICO</text>
+      </g>
+
+      <!-- ---------- THE FIELD ----------
+           Artificial turf, so the infield is green with clay cutouts
+           only around the bases and the mound. -->
+      <path d="M0,372 Q600,360 1200,372 L1200,800 L0,800 Z" fill="#2E9E5B"/>
+
+      <!-- Warning track hugging the wall -->
+      <path d="M0,372 Q600,360 1200,372 L1200,400 Q600,389 0,400 Z" fill="#C4662F" opacity="0.92"/>
+
+      <!-- Seams between turf panels, converging for depth -->
+      <g stroke="#43B473" stroke-width="1.8" opacity="0.32">
+        <path d="M600,398 L-420,800"/><path d="M600,398 L-40,800"/>
+        <path d="M600,398 L320,800"/> <path d="M600,398 L600,800"/>
+        <path d="M600,398 L880,800"/> <path d="M600,398 L1240,800"/>
+        <path d="M600,398 L1620,800"/>
+      </g>
+
+      <!-- Foul lines running out to the corners -->
+      <g stroke="#F7EFDF" stroke-width="3" opacity="0.85" fill="none">
+        <path d="M600,726 L170,398"/>
+        <path d="M600,726 L1030,398"/>
+      </g>
+
+      <!-- Base cutouts and the mound -->
+      <g fill="#C4662F">
+        <ellipse cx="600" cy="500" rx="56" ry="20"/>
+        <ellipse cx="600" cy="420" rx="35" ry="13"/>
+        <ellipse cx="456" cy="470" rx="35" ry="13"/>
+        <ellipse cx="744" cy="470" rx="35" ry="13"/>
+      </g>
+      <g fill="#FBF6EA">
+        <rect x="593" y="494" width="15" height="4" rx="1"/>
+        <rect x="593" y="415" width="14" height="7" rx="1"/>
+        <rect x="449" y="465" width="14" height="7" rx="1"/>
+        <rect x="737" y="465" width="14" height="7" rx="1"/>
+      </g>
+
+      <!-- ---------- FOREGROUND: the dirt around home plate ---------- -->
+      <ellipse cx="600" cy="730" rx="268" ry="80" fill="#C4662F"/>
+      <ellipse cx="600" cy="730" rx="268" ry="80" fill="#A8521F" opacity="0.22"/>
+      <g stroke="#F7EFDF" stroke-width="2.5" fill="none" opacity="0.7">
+        <path d="M484,700 L576,700 L562,772 L464,772 Z"/>
+        <path d="M624,700 L716,700 L738,772 L642,772 Z"/>
+      </g>
+      <polygon points="588,716 612,716 612,726 600,735 588,726" fill="#FBF6EA"/>
+
+      <!-- ---------- THE BATTER ----------
+           Right-handed, so he stands in the third-base box, on our left.
+           Seen from behind, mid-stance, hands up by his back shoulder. -->
+      <g>
+        <ellipse cx="520" cy="776" rx="46" ry="9" fill="#8E4519" opacity="0.35"/>
+
+        <!-- legs -->
+        <path d="M498,700 L518,700 L514,768 L494,768 Z" fill="#F2E8D5"/>
+        <path d="M524,700 L544,700 L550,768 L530,768 Z" fill="#F2E8D5"/>
+        <path d="M500,700 L505,700 L501,768 L496,768 Z" fill="#E8632C" opacity="0.7"/>
+        <path d="M538,700 L543,700 L547,768 L542,768 Z" fill="#E8632C" opacity="0.7"/>
+        <ellipse cx="502" cy="772" rx="16" ry="7" fill="#243A44"/>
+        <ellipse cx="542" cy="772" rx="16" ry="7" fill="#243A44"/>
+
+        <!-- jersey -->
+        <path d="M489,656 Q520,645 551,656 L557,704 Q520,714 483,704 Z" fill="#E8632C"/>
+        <path d="M489,656 Q520,645 551,656 L552,666 Q520,656 488,666 Z" fill="#F6C445" opacity="0.9"/>
+        <text x="520" y="694" text-anchor="middle"
+              font-family="system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif"
+              font-size="27" font-weight="800" fill="#FBEEDC">21</text>
+
+        <!-- both arms up to the hands -->
+        <g stroke="#E8632C" stroke-width="13" stroke-linecap="round" fill="none">
+          <path d="M497,668 Q530,666 561,650"/>
+          <path d="M544,658 Q556,659 564,651"/>
+        </g>
+        <circle cx="567" cy="648" r="9" fill="#C9822F"/>
+
+        <!-- bat -->
+        <path d="M566,647 L628,556" stroke="#C98A4B" stroke-width="10" stroke-linecap="round"/>
+        <path d="M564,651 L574,636" stroke="#A96F36" stroke-width="12" stroke-linecap="round"/>
+
+        <!-- helmet, seen from behind, ear flap on the near side -->
+        <ellipse cx="520" cy="637" rx="20" ry="18" fill="#10485C"/>
+        <path d="M502,639 Q497,650 505,656 Q513,657 515,648 Z" fill="#10485C"/>
+        <path d="M500,632 Q520,623 540,632 Q520,627 500,632 Z" fill="#F6C445" opacity="0.85"/>
+      </g>
+
+      <!-- ---------- WARM LIGHT OVER EVERYTHING ---------- -->
+      <rect width="1200" height="800" fill="url(#warmth)"/>
+    </svg>
+  </div>
+
+  <!-- ============================================================
        HEADER: app title
        ============================================================ -->
   <header class="header">
