@@ -108,7 +108,7 @@ body {
 .field {
   position: relative;   /* stacks above the fixed scene */
   z-index: 1;
-  max-width: 540px;
+  max-width: 460px;
   margin: 0 auto;
 }
 
@@ -207,7 +207,7 @@ body {
 .card {
   background: var(--card);
   border-radius: 14px;
-  padding: 22px 20px 24px;
+  padding: 13px 16px 14px;
   border: 1px solid rgba(255, 233, 199, 0.7);
   box-shadow: 0 14px 38px rgba(20, 52, 30, 0.38);
 }
@@ -216,7 +216,7 @@ body {
 
 .at-bat {
   margin: 0;
-  font-size: 0.8rem;
+  font-size: 0.68rem;
   color: var(--muted);
   text-transform: uppercase;
   letter-spacing: 0.06em;
@@ -225,10 +225,10 @@ body {
 /* --- Difficulty tag; the color class is set by JavaScript --- */
 .tag {
   display: inline-block;
-  margin: 12px 0 0;
-  padding: 3px 10px;
+  margin: 7px 0 0;
+  padding: 2px 9px;
   border-radius: 999px;
-  font-size: 0.72rem;
+  font-size: 0.64rem;
   font-weight: 700;
   letter-spacing: 0.08em;
   color: #fff;
@@ -243,23 +243,24 @@ body {
 
 /* --- The Spanish word --- */
 .word {
-  margin: 10px 0 20px;
-  font-size: 2.1rem;
-  line-height: 1.15;
+  margin: 6px 0 12px;
+  font-size: 1.6rem;
+  line-height: 1.12;
 }
 
 /* --- Answer buttons, stacked --- */
 .choices {
   display: grid;
-  gap: 10px;
+  gap: 7px;
 }
 
 .choice {
   font: inherit;
+  font-size: 0.95rem;
   text-align: left;
-  padding: 13px 15px;
+  padding: 11px 13px;
   border: 2px solid var(--line);
-  border-radius: 10px;
+  border-radius: 9px;
   background: #fff;
   color: var(--ink);
   cursor: pointer;
@@ -282,8 +283,9 @@ body {
 
 /* --- Feedback line under the choices --- */
 .feedback {
-  margin: 16px 0 0;
-  min-height: 1.3em;
+  margin: 9px 0 0;
+  min-height: 1.15em;
+  font-size: 0.85rem;
   font-weight: 600;
 }
 
@@ -291,8 +293,8 @@ body {
 .feedback.bad  { color: var(--bad);  }
 
 /* --- Summary screen --- */
-.summary-title { margin: 0 0 4px; font-size: 1.7rem; }
-.summary-sub   { margin: 0 0 18px; color: var(--muted); }
+.summary-title { margin: 0 0 3px; font-size: 1.35rem; }
+.summary-sub   { margin: 0 0 12px; font-size: 0.85rem; color: var(--muted); }
 
 .boxscore-eyebrow {
   margin: 0 0 6px;
@@ -313,7 +315,7 @@ body {
 .summary-list li {
   display: flex;
   justify-content: space-between;
-  padding: 9px 2px;
+  padding: 6px 2px;
   border-bottom: 1px solid var(--line);
 }
 
@@ -345,9 +347,9 @@ body {
   font: inherit;
   font-weight: 600;
   width: 100%;
-  padding: 13px;
+  padding: 11px;
   border: none;
-  border-radius: 10px;
+  border-radius: 9px;
   background: var(--dirt);
   color: #fff;
   cursor: pointer;
@@ -357,6 +359,6 @@ body {
 
 /* --- Narrow screens --- */
 @media (max-width: 420px) {
-  .word { font-size: 1.7rem; }
+  .word { font-size: 1.42rem; }
   .hud-runs { font-size: 1.2rem; }
 }
