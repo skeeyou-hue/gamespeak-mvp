@@ -62,6 +62,17 @@
           <circle cx="15" cy="2" r="1.5" fill="#F7A072" opacity="0.45"/>
         </pattern>
 
+        <!-- A runner, reused at each base. Drawn small: these are up the
+             field, well behind the batter in the foreground. -->
+        <g id="runnerFig">
+          <circle cy="-27" r="6" fill="#F2E8D5"/>
+          <path d="M-7,-21 q7,-4 14,0 l1,13 q-8,3 -16,0 Z" fill="#E8632C"/>
+          <g stroke="#F2E8D5" stroke-width="4" stroke-linecap="round" fill="none">
+            <path d="M-4,-8 L-7,1"/>
+            <path d="M4,-8 L8,1"/>
+          </g>
+        </g>
+
         <!-- One palm, reused across the stadium rim at different sizes -->
         <g id="palm">
           <path d="M0,0 C-3,-24 -5,-44 -2,-64 L4,-64 C5,-44 4,-24 6,0 Z"/>
@@ -153,14 +164,30 @@
       <g fill="#C4662F">
         <ellipse cx="600" cy="500" rx="56" ry="20"/>
         <ellipse cx="600" cy="420" rx="35" ry="13"/>
-        <ellipse cx="456" cy="470" rx="35" ry="13"/>
-        <ellipse cx="744" cy="470" rx="35" ry="13"/>
+        <ellipse cx="330" cy="520" rx="40" ry="15"/>
+        <ellipse cx="870" cy="520" rx="40" ry="15"/>
       </g>
       <g fill="#FBF6EA">
         <rect x="593" y="494" width="15" height="4" rx="1"/>
         <rect x="593" y="415" width="14" height="7" rx="1"/>
-        <rect x="449" y="465" width="14" height="7" rx="1"/>
-        <rect x="737" y="465" width="14" height="7" rx="1"/>
+        <rect x="323" y="515" width="15" height="8" rx="1"/>
+        <rect x="863" y="515" width="15" height="8" rx="1"/>
+      </g>
+
+      <!-- Runners. app.js toggles the "on" class on each group as the base
+           state changes; the CSS fades them in. Third base is on our left,
+           first on our right, the way it looks from behind home plate. -->
+      <g class="runner" id="runner-third">
+        <ellipse cx="330" cy="520" rx="34" ry="14" fill="#F6C445" opacity="0.45"/>
+        <use href="#runnerFig" transform="translate(298,523)"/>
+      </g>
+      <g class="runner" id="runner-second">
+        <ellipse cx="600" cy="420" rx="30" ry="12" fill="#F6C445" opacity="0.45"/>
+        <use href="#runnerFig" transform="translate(624,422)"/>
+      </g>
+      <g class="runner" id="runner-first">
+        <ellipse cx="870" cy="520" rx="34" ry="14" fill="#F6C445" opacity="0.45"/>
+        <use href="#runnerFig" transform="translate(902,523)"/>
       </g>
 
       <!-- ---------- FOREGROUND: the dirt around home plate ---------- -->
@@ -227,23 +254,15 @@
 
     <!-- ============================================================
          SCOREBOARD: always visible. JavaScript fills in the numbers.
-         Hits are broken out by difficulty tag (WALK / SINGLE / DOUBLE),
-         and outs are shown as three dots that fill in as you miss.
+         The main line is the ballpark line — runs, outs, and who's on
+         base. The tally below it breaks the hits down by type.
          ============================================================ -->
     <section class="scoreboard" aria-label="Scoreboard">
       <div class="score-cell">
-        <span class="score-label">Walks</span>
-        <span class="score-value" id="score-walk">0</span>
+        <span class="score-label">Runs</span>
+        <span class="score-value" id="score-runs">0</span>
       </div>
       <div class="score-cell">
-        <span class="score-label">Singles</span>
-        <span class="score-value" id="score-single">0</span>
-      </div>
-      <div class="score-cell">
-        <span class="score-label">Doubles</span>
-        <span class="score-value" id="score-double">0</span>
-      </div>
-      <div class="score-cell outs-cell">
         <span class="score-label">Outs</span>
         <!-- Three dots: filled = an out has been recorded -->
         <span class="outs" id="outs-display" aria-live="polite">
@@ -251,6 +270,41 @@
           <span class="out-dot"></span>
           <span class="out-dot"></span>
         </span>
+      </div>
+      <div class="score-cell">
+        <span class="score-label">On base</span>
+        <!-- Mini diamond, mirroring the runners out on the field. The field
+             version is the real one, but it sits behind the quiz card on a
+             phone, so the base state is repeated here where it's always
+             visible. -->
+        <span class="diamond" id="diamond" aria-hidden="true">
+          <span class="pip pip-second" id="pip-second"></span>
+          <span class="pip pip-third"  id="pip-third"></span>
+          <span class="pip pip-first"  id="pip-first"></span>
+        </span>
+      </div>
+    </section>
+
+    <section class="tally" aria-label="Hits by type">
+      <div class="tally-cell">
+        <span class="tally-label">W</span>
+        <span class="tally-value" id="score-walk">0</span>
+      </div>
+      <div class="tally-cell">
+        <span class="tally-label">1B</span>
+        <span class="tally-value" id="score-single">0</span>
+      </div>
+      <div class="tally-cell">
+        <span class="tally-label">2B</span>
+        <span class="tally-value" id="score-double">0</span>
+      </div>
+      <div class="tally-cell">
+        <span class="tally-label">3B</span>
+        <span class="tally-value" id="score-triple">0</span>
+      </div>
+      <div class="tally-cell">
+        <span class="tally-label">HR</span>
+        <span class="tally-value" id="score-homerun">0</span>
       </div>
     </section>
 
@@ -281,12 +335,17 @@
       <h2 class="summary-title" id="summary-title">Inning over</h2>
       <p class="summary-sub" id="summary-sub">Three outs.</p>
 
+      <p class="boxscore-eyebrow">Box score</p>
       <ul class="summary-list">
-        <li><span>Walks</span>       <strong id="sum-walk">0</strong></li>
-        <li><span>Singles</span>     <strong id="sum-single">0</strong></li>
-        <li><span>Doubles</span>     <strong id="sum-double">0</strong></li>
-        <li><span>Total hits</span>  <strong id="sum-hits">0</strong></li>
-        <li><span>Total bases</span> <strong id="sum-bases">0</strong></li>
+        <li class="boxscore-total"><span>Runs</span> <strong id="sum-runs">0</strong></li>
+        <li><span>Walks</span>          <strong id="sum-walk">0</strong></li>
+        <li><span>Singles</span>        <strong id="sum-single">0</strong></li>
+        <li><span>Doubles</span>        <strong id="sum-double">0</strong></li>
+        <li><span>Triples</span>        <strong id="sum-triple">0</strong></li>
+        <li><span>Home runs</span>      <strong id="sum-homerun">0</strong></li>
+        <li><span>Total hits</span>     <strong id="sum-hits">0</strong></li>
+        <li><span>Total bases</span>    <strong id="sum-bases">0</strong></li>
+        <li><span>Left on base</span>   <strong id="sum-lob">0</strong></li>
         <li><span>Batting average</span> <strong id="sum-avg">.000</strong></li>
       </ul>
 
