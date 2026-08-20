@@ -26,10 +26,15 @@ Open `index.html` in a browser. That's it.
 - Get through the whole word list without three outs and you've batted
   through the lineup.
 
-The base state shows up in two places: the diamond on the scoreboard, and
-runners out on the field itself. The scoreboard diamond is the one that's
-always visible — on a narrow screen the quiz card covers the middle of the
-infield.
+During play the HUD is deliberately minimal: runs and outs in one top
+corner, the base diamond in the other, and nothing else. The hit-type
+breakdown belongs to the box score at the end of the inning, not the screen
+during an at-bat.
+
+The base state shows up in two places: the HUD diamond, and runners out on
+the field itself. The HUD diamond is the one that's always visible — on a
+narrow screen the quiz card covers the middle of the infield, and first and
+third sit off the edges.
 
 ## Files
 

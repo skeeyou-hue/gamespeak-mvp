@@ -168,13 +168,8 @@ const el = {
 
   scoreRuns:   document.getElementById('score-runs'),
   outsDisplay: document.getElementById('outs-display'),
-  scoreWalk:   document.getElementById('score-walk'),
-  scoreSingle: document.getElementById('score-single'),
-  scoreDouble: document.getElementById('score-double'),
-  scoreTriple: document.getElementById('score-triple'),
-  scoreHomerun:document.getElementById('score-homerun'),
 
-  // Base state shows up twice: as a small diamond on the scoreboard, and as
+  // Base state shows up twice: as the HUD diamond in the corner, and as
   // runners out on the field itself.
   pips:        [document.getElementById('pip-first'),
                 document.getElementById('pip-second'),
@@ -237,14 +232,11 @@ function runWord(count) {
    7. DRAWING THE SCREEN
    ------------------------------------------------------------------------- */
 
-// Update runs, the hit tally, the out-dots, and the base state.
+// Update runs, the out-dots, and the base state. The per-tier hit counts
+// are still tracked in state — they show up in the box score at the end of
+// the inning, not on the HUD during play.
 function renderScoreboard() {
-  el.scoreRuns.textContent    = state.runs;
-  el.scoreWalk.textContent    = state.hits.WALK;
-  el.scoreSingle.textContent  = state.hits.SINGLE;
-  el.scoreDouble.textContent  = state.hits.DOUBLE;
-  el.scoreTriple.textContent  = state.hits.TRIPLE;
-  el.scoreHomerun.textContent = state.hits.HOMERUN;
+  el.scoreRuns.textContent = state.runs;
 
   // Fill in one dot per out recorded.
   const dots = el.outsDisplay.querySelectorAll('.out-dot');
