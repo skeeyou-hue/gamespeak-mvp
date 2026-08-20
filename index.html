@@ -281,32 +281,6 @@
               letter-spacing="1.6" fill="#0E4C5C">SAN JUAN</text>
       </g>
 
-      <!-- ================= VIDEO BOARD =================
-           Mounted above the wall in left-center, inside the safe band. -->
-      <g id="video-board">
-        <rect x="205" y="205" width="110" height="139" rx="4" fill="#061F29"/>
-        <rect x="209" y="209" width="102" height="131" rx="2" fill="#0B3A48"/>
-        <rect x="209" y="209" width="102" height="22" rx="2" fill="#0E4C5C"/>
-        <text x="260" y="224" text-anchor="middle"
-              font-family="system-ui, sans-serif" font-size="10" font-weight="800"
-              letter-spacing="1" fill="#F2A73B">COTORRAS</text>
-        <g font-family="system-ui, sans-serif" font-size="10" font-weight="700" fill="#F4EDE0">
-          <rect x="215" y="236" width="90" height="20" rx="2" fill="#0E4C5C" opacity="0.55"/>
-          <text x="221" y="250">VIS</text>
-          <text x="299" y="250" text-anchor="end">2</text>
-          <rect x="215" y="260" width="90" height="20" rx="2" fill="#F2A73B" opacity="0.22"/>
-          <text x="221" y="274" fill="#F2A73B">SJU</text>
-          <text x="299" y="274" text-anchor="end" fill="#F2A73B">5</text>
-        </g>
-        <!-- club mark: a cotorra, beak and crest in gold -->
-        <g transform="translate(260,308) scale(0.8)">
-          <ellipse rx="18" ry="16" fill="#8CC63F"/>
-          <path d="M-2,-15 q8,-9 14,-6 q-6,2 -8,8 Z" fill="#F2A73B"/>
-          <path d="M6,-2 q12,3 11,10 q-8,2 -12,-4 Z" fill="#F2A73B"/>
-          <circle cx="2" cy="-3" r="3.2" fill="#0B3A48"/>
-        </g>
-      </g>
-
       <!-- Foul poles where the lines meet the wall -->
       <g fill="#F2C744">
         <rect x="166" y="250" width="7" height="150"/>
@@ -488,6 +462,53 @@
       <!-- ================= LIGHT PASS ================= -->
       <rect width="1200" height="800" fill="url(#warmth)"/>
       <rect width="1200" height="800" fill="url(#vignette)"/>
+
+      <!-- ================= SCOREBUG =================
+           A broadcast-style scoreboard mounted on the outfield wall, driven
+           by real game state: the home line is state.runs, and the inning
+           and out count come straight from state as well. app.js fills the
+           numbers in renderScoreboard().
+
+           The visiting line is a fixed placeholder — there is no opposing
+           side in the game yet. There is no balls/strikes field because the
+           game tracks no count; the field is omitted rather than faked.
+
+           Sits inside the horizontal band that survives cropping on any
+           window >= 900px; below that it hides (see style.css).
+
+           Drawn after the scene's light pass: an LED board emits its own
+           light, so the golden-hour wash must not tint it brown. -->
+      <g id="scorebug" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif">
+        <rect x="202" y="262" width="116" height="82" rx="4" fill="#02070A"/>
+        <rect x="204" y="264" width="112" height="78" rx="3" fill="#0A1519"/>
+
+        <!-- visiting line -->
+        <rect x="204" y="264" width="5" height="24" fill="#8A9296"/>
+        <text x="217" y="281" font-size="11" font-weight="700" letter-spacing="0.7"
+              fill="#C3CDCB">VIS</text>
+        <text id="board-away-runs" x="308" y="282" text-anchor="end"
+              font-size="14" font-weight="800" fill="#FFFFFF">0</text>
+
+        <path d="M204,288 H316" stroke="#26363D" stroke-width="1"/>
+
+        <!-- home line, lit because they are the side at bat -->
+        <rect x="204" y="289" width="112" height="24" fill="#13252B"/>
+        <rect x="204" y="289" width="5" height="24" fill="#F2A73B"/>
+        <text x="217" y="306" font-size="11" font-weight="700" letter-spacing="0.7"
+              fill="#FFFFFF">SJU</text>
+        <text id="board-home-runs" x="308" y="307" text-anchor="end"
+              font-size="14" font-weight="800" fill="#F2A73B">0</text>
+
+        <!-- status strip: half-inning and outs -->
+        <rect x="204" y="314" width="112" height="28" fill="#02070A"/>
+        <!-- a down arrow: the home side bats in the bottom half -->
+        <polygon points="213,322 222,322 217.5,330" fill="#F2A73B"/>
+        <text id="board-inning" x="228" y="331" font-size="11" font-weight="700"
+              fill="#E4EBE9">1</text>
+        <text id="board-outs" x="308" y="331" text-anchor="end" font-size="11"
+              font-weight="700" fill="#E4EBE9">0 OUT</text>
+      </g>
+
     </svg>
   </div>
 
