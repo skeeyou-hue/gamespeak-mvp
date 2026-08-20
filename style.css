@@ -17,6 +17,10 @@
   --walk:       #4a90d9;
   --single:     #2f9e5f;
   --double:     #d98324;
+
+  /* Scene colors — see the SVG in index.html */
+  --sky:        #5fc6d2;
+  --clay:       #c4662f;
 }
 
 /* --- Base page --- */
@@ -27,13 +31,42 @@ body {
   padding: 24px 16px 56px;
   font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   color: var(--ink);
-  background: var(--grass);
-  background-image: linear-gradient(var(--grass), var(--grass-dark));
+  background: var(--sky);   /* shows through only before the SVG paints */
   min-height: 100vh;
 }
 
+/* --- The stadium scene ---------------------------------------------------
+   Fixed behind everything and pinned to the bottom of the viewport, so the
+   field stays put while the page scrolls. Decorative only: it never takes
+   clicks and is hidden from screen readers (aria-hidden in the markup).
+   ------------------------------------------------------------------------ */
+.scene {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+}
+
+.scene svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
 /* --- Header --- */
-.header { text-align: center; color: #fff; margin-bottom: 20px; }
+.header {
+  position: relative;   /* stacks above the fixed scene */
+  z-index: 1;
+  text-align: center;
+  color: #fff;
+  text-shadow: 0 2px 10px rgba(12, 60, 78, 0.45);
+  /* Negative margins let the scrim below run edge to edge past the
+     body padding, so the title stays readable wherever the scene's
+     bright spots (sun, light towers) happen to land behind it. */
+  margin: -24px -16px 4px;
+  padding: 24px 16px 16px;
+  background: linear-gradient(rgba(8, 52, 68, 0.42), rgba(8, 52, 68, 0));
+}
 
 .logo {
   margin: 0;
@@ -51,6 +84,8 @@ body {
 
 /* --- The centered column that holds everything --- */
 .field {
+  position: relative;   /* stacks above the fixed scene */
+  z-index: 1;
   max-width: 540px;
   margin: 0 auto;
 }
@@ -114,7 +149,8 @@ body {
   background: var(--card);
   border-radius: 14px;
   padding: 22px 20px 24px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.22);
+  border: 1px solid rgba(255, 233, 199, 0.7);
+  box-shadow: 0 14px 38px rgba(20, 52, 30, 0.38);
 }
 
 .hidden { display: none; }   /* used to swap between screens */
