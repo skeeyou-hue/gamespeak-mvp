@@ -139,7 +139,58 @@ function advanceOnHit(bases, advance) {
 
 
 /* -------------------------------------------------------------------------
-   4. GAME STATE
+   4. THE BANKED HOME-RUN SWING
+   Three SINGLE-tier hits in a row bank a bonus swing. The player does not
+   have to use it right away — it sits in state until they spend it, or
+   until it times out after a random number of later at-bats.
+
+   All of this is pure: applyAtBatToBonus takes the current bonus, the
+   current streak, what just happened, and a 0..1 roll, and hands back the
+   new bonus and streak. No state is touched here, so every rule can be
+   tested one case at a time.
+   ------------------------------------------------------------------------- */
+
+const BONUS_STREAK   = 3;   // SINGLE-tier hits in a row needed to bank one
+const BONUS_LIFE_MIN = 1;   // shortest a banked swing survives, in at-bats
+const BONUS_LIFE_MAX = 3;   // longest
+
+// How many later at-bats a freshly banked swing survives. `roll` is a
+// number in [0, 1) — Math.random() in the game, a fixed value in tests.
+function rollBonusLife(roll) {
+  const span = BONUS_LIFE_MAX - BONUS_LIFE_MIN + 1;
+  return BONUS_LIFE_MIN + Math.floor(roll * span);
+}
+
+// Fold one finished at-bat into the bonus state.
+//
+//   bonus   - { atBatsLeft } if one is banked, otherwise null
+//   streak  - SINGLE-tier hits in a row before this at-bat
+//   outcome - 'WALK' | 'SINGLE' | 'DOUBLE' | 'TRIPLE' | 'HOMERUN' | 'OUT'
+//   roll    - only read when this at-bat banks a new swing
+//
+// Order matters: an existing swing ages FIRST, so the at-bat that banks a
+// swing never also ages it. Anything that isn't a single — including an
+// out, a walk, or a bigger hit — resets the streak to zero.
+function applyAtBatToBonus(bonus, streak, outcome, roll) {
+  // 1. A banked swing gets one at-bat older, and expires at zero.
+  let nextBonus = bonus ? { atBatsLeft: bonus.atBatsLeft - 1 } : null;
+  if (nextBonus && nextBonus.atBatsLeft <= 0) nextBonus = null;
+
+  // 2. The streak only survives on a single.
+  const nextStreak = outcome === 'SINGLE' ? streak + 1 : 0;
+
+  // 3. Three in a row banks a fresh swing, replacing any older one, and
+  //    starts the streak over.
+  if (nextStreak >= BONUS_STREAK) {
+    return { bonus: { atBatsLeft: rollBonusLife(roll) }, streak: 0, banked: true };
+  }
+
+  return { bonus: nextBonus, streak: nextStreak, banked: false };
+}
+
+
+/* -------------------------------------------------------------------------
+   5. GAME STATE
    Everything that changes during a game lives in this one object, so it is
    easy to see what the game "knows" at any moment.
    ------------------------------------------------------------------------- */
@@ -154,6 +205,8 @@ function newState(inning) {
     runs: 0,                // runs driven in this inning
     bases: [false, false, false],  // [first, second, third]
     hits: { WALK: 0, SINGLE: 0, DOUBLE: 0, TRIPLE: 0, HOMERUN: 0 },
+    singleStreak: 0,        // SINGLE-tier hits in a row, toward a banked swing
+    bonus: null,            // { atBatsLeft } once a swing is banked
     missed: [],             // words the player got wrong, for the box score
     locked: false           // true while feedback is showing, blocks double-clicks
   };
@@ -161,7 +214,7 @@ function newState(inning) {
 
 
 /* -------------------------------------------------------------------------
-   5. GRAB THE PAGE ELEMENTS ONCE
+   6. GRAB THE PAGE ELEMENTS ONCE
    ------------------------------------------------------------------------- */
 const el = {
   quizScreen:  document.getElementById('quiz-screen'),
@@ -209,7 +262,7 @@ const el = {
 
 
 /* -------------------------------------------------------------------------
-   6. SMALL HELPERS
+   7. SMALL HELPERS
    ------------------------------------------------------------------------- */
 
 // Return a shuffled COPY of an array (Fisher-Yates shuffle).
@@ -240,7 +293,7 @@ function runWord(count) {
 
 
 /* -------------------------------------------------------------------------
-   7. DRAWING THE SCREEN
+   8. DRAWING THE SCREEN
    ------------------------------------------------------------------------- */
 
 // Update runs, the out-dots, and the base state. The per-tier hit counts
@@ -289,7 +342,7 @@ function renderQuestion() {
 
 
 /* -------------------------------------------------------------------------
-   8. ANSWERING A QUESTION
+   9. ANSWERING A QUESTION
    ------------------------------------------------------------------------- */
 function handleAnswer(picked, clickedButton) {
   if (state.locked) return;  // ignore extra clicks while feedback shows
@@ -329,6 +382,12 @@ function handleAnswer(picked, clickedButton) {
     el.feedback.className   = 'feedback bad';
   }
 
+  // Every finished at-bat ages a banked swing and moves the streak along.
+  const bonusStep = applyAtBatToBonus(
+    state.bonus, state.singleStreak, isCorrect ? current.tag : 'OUT', Math.random());
+  state.bonus        = bonusStep.bonus;
+  state.singleStreak = bonusStep.streak;
+
   renderScoreboard();
 
   // Pause so the player can read the feedback, then move on.
@@ -351,7 +410,7 @@ function nextTurn() {
 
 
 /* -------------------------------------------------------------------------
-   9. END OF INNING BOX SCORE
+   10. END OF INNING BOX SCORE
    ------------------------------------------------------------------------- */
 function endInning(title, subtitle) {
   const h = state.hits;
@@ -403,7 +462,7 @@ function endInning(title, subtitle) {
 
 
 /* -------------------------------------------------------------------------
-   10. STARTING (AND RESTARTING) THE GAME
+   11. STARTING (AND RESTARTING) THE GAME
    ------------------------------------------------------------------------- */
 function startInning() {
   // Carry the inning count forward; the first inning is 1.

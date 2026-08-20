@@ -408,6 +408,76 @@ const show = state => state.map((on, i) => on ? ['1B', '2B', '3B'][i] : null)
   assert((await page.locator('#board-home-runs').textContent()) === '0',
          'the scorebug run total resets with the inning');
 
+  /* ===================================================================
+     G. THE BANKED HOME-RUN SWING — state layer
+     applyAtBatToBonus is pure, so each rule is checked on its own.
+     =================================================================== */
+  section('Banked swing — how it is earned');
+
+  const step = (bonus, streak, outcome, roll = 0) =>
+    page.evaluate(([b, s, o, r]) => applyAtBatToBonus(b, s, o, r), [bonus, streak, outcome, roll]);
+
+  // The random life is a fixed function of the roll, so it can be pinned.
+  for (const [roll, life] of [[0, 1], [0.33, 1], [0.34, 2], [0.66, 2], [0.67, 3], [0.999, 3]]) {
+    assert((await page.evaluate(r => rollBonusLife(r), roll)) === life,
+           `a roll of ${roll} banks a swing for ${life} at-bat${life > 1 ? 's' : ''}`);
+  }
+  assert(await page.evaluate(() => {
+    for (let i = 0; i < 200; i++) {
+      const life = rollBonusLife(i / 200);
+      if (life < BONUS_LIFE_MIN || life > BONUS_LIFE_MAX) return false;
+    }
+    return true;
+  }), 'the life is always within 1..3 at-bats');
+
+  let s1 = await step(null, 0, 'SINGLE');
+  assert(s1.streak === 1 && !s1.banked && s1.bonus === null, 'one single: streak 1, nothing banked');
+  let s2 = await step(null, 1, 'SINGLE');
+  assert(s2.streak === 2 && !s2.banked, 'two singles: streak 2, still nothing banked');
+  let s3 = await step(null, 2, 'SINGLE', 0.5);
+  assert(s3.banked === true, 'three singles in a row banks a swing');
+  assert(s3.bonus && s3.bonus.atBatsLeft === 2, 'the banked swing carries its rolled life (2)');
+  assert(s3.streak === 0, 'banking starts the streak over');
+
+  for (const breaker of ['WALK', 'DOUBLE', 'TRIPLE', 'HOMERUN', 'OUT']) {
+    const r = await step(null, 2, breaker);
+    assert(r.streak === 0 && !r.banked, `a ${breaker} breaks the streak at two`);
+  }
+
+  section('Banked swing — how it expires');
+
+  // A swing banked with life N is usable during the next N at-bats and gone
+  // after that. Ageing happens on every at-bat, hit or out.
+  for (const life of [1, 2, 3]) {
+    let bonus = { atBatsLeft: life }, atBats = 0;
+    while (bonus) { bonus = (await step(bonus, 0, 'OUT')).bonus; atBats++; if (atBats > 6) break; }
+    assert(atBats === life, `a swing banked for ${life} survives exactly ${life} later at-bat${life > 1 ? 's' : ''}`);
+  }
+
+  const fresh = await step({ atBatsLeft: 1 }, 2, 'SINGLE', 0.999);
+  assert(fresh.banked && fresh.bonus.atBatsLeft === 3,
+         're-banking replaces an about-to-expire swing with a fresh one');
+  const aged = await step({ atBatsLeft: 2 }, 0, 'DOUBLE');
+  assert(aged.bonus.atBatsLeft === 1, 'an unrelated at-bat just ages the swing');
+  assert((await step({ atBatsLeft: 1 }, 0, 'WALK')).bonus === null,
+         'a swing with one at-bat left expires unused');
+
+  section('Banked swing — through the real UI');
+
+  await stackDeck(['SINGLE', 'SINGLE', 'SINGLE', 'DOUBLE', 'DOUBLE', 'DOUBLE', 'DOUBLE']);
+  await page.evaluate(() => { Math.random = () => 0.5; });   // pin the life to 2
+  assert((await page.evaluate(() => state.bonus)) === null, 'no swing banked at the start of an inning');
+  await answer(); await answer();
+  assert((await page.evaluate(() => state.singleStreak)) === 2, 'two singles tracked in state');
+  await answer();
+  const banked = await page.evaluate(() => state.bonus);
+  assert(banked && banked.atBatsLeft === 2, 'three singles through the UI bank a swing for 2 at-bats');
+  assert((await page.evaluate(() => state.singleStreak)) === 0, 'streak reset after banking');
+  await answer();
+  assert((await page.evaluate(() => state.bonus)).atBatsLeft === 1, 'the swing ages on the next at-bat');
+  await answer();
+  assert((await page.evaluate(() => state.bonus)) === null, 'the swing expires unused after its last at-bat');
+
   assert(errors.length === 0, 'no console/page errors (' + errors.join('; ') + ')');
 
   await browser.close();
