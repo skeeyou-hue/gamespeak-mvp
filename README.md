@@ -42,6 +42,7 @@ third sit off the edges.
 | --- | --- |
 | `index.html` | Page structure: scoreboard, quiz screen, summary screen |
 | `style.css`  | All styling; colors are CSS variables at the top |
+| — | The ballpark behind the game is an inline SVG at the top of `index.html`: golden hour in San Juan, home of the fictional **Cotorras de San Juan** (teal `#0E4C5C`, gold `#F2A73B`, cream `#F4EDE0`). It is decorative only — `aria-hidden`, `pointer-events: none`. |
 | `app.js`     | The word list, base-running rules, and all game logic |
 | `test.js`    | Browser tests (see below) |
 

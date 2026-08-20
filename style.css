@@ -72,29 +72,29 @@ body {
 .header {
   position: relative;   /* stacks above the fixed scene */
   z-index: 1;
-  text-align: center;
+  text-align: left;
   color: #fff;
   text-shadow: 0 2px 10px rgba(12, 60, 78, 0.45);
   /* Negative margins let the scrim below run edge to edge past the
      body padding, so the title stays readable wherever the scene's
      bright spots (sun, light towers) happen to land behind it. */
-  margin: -16px -16px 2px;
-  padding: 14px 16px 12px;
+  margin: -16px -16px 4px;
+  padding: 10px 16px 8px;
   background: linear-gradient(rgba(8, 52, 68, 0.42), rgba(8, 52, 68, 0));
 }
 
 .logo {
   margin: 0;
-  font-size: 1.45rem;
-  letter-spacing: 0.5px;
+  font-size: 1.05rem;
+  letter-spacing: 0.4px;
 }
 
-.ball { font-size: 1.2rem; }
+.ball { font-size: 0.95rem; }
 
 .tagline {
-  margin: 3px 0 0;
-  font-size: 0.78rem;
-  opacity: 0.82;
+  margin: 1px 0 0;
+  font-size: 0.7rem;
+  opacity: 0.78;
 }
 
 /* --- The centered column that holds everything --- */
