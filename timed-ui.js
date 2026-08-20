@@ -30,6 +30,18 @@ const el = {
   choices:     document.getElementById('choices'),
   feedback:    document.getElementById('feedback'),
 
+  bankButton: document.getElementById('bank-button'),
+  bankLife:   document.getElementById('bank-life'),
+
+  swingScreen:   document.getElementById('swing-screen'),
+  dugoutPhrase:  document.getElementById('dugout-phrase'),
+  dugoutGloss:   document.getElementById('dugout-gloss'),
+  swingFigure:   document.getElementById('swing-figure'),
+  swingSweet:    document.getElementById('swing-sweet'),
+  swingMarker:   document.getElementById('swing-marker'),
+  swingGo:       document.getElementById('swing-go'),
+  swingFeedback: document.getElementById('swing-feedback'),
+
   hudRuns:  document.getElementById('hud-runs'),
   hudOuts:  document.getElementById('hud-outs'),
   hudBank:  document.getElementById('hud-bank'),
@@ -82,8 +94,10 @@ function renderHud() {
   // The banked swing is only shown here for now — spending it is the next
   // step, and it will use the sweeping marker we already agreed on.
   el.hudBank.classList.toggle('hidden', !state.bonus);
+  el.bankButton.classList.toggle('hidden', !state.bonus);
   if (state.bonus) {
-    el.hudBank.textContent = `SWING BANKED · ${state.bonus.atBatsLeft}`;
+    el.hudBank.textContent  = `SWING BANKED · ${state.bonus.atBatsLeft}`;
+    el.bankLife.textContent = `· ${state.bonus.atBatsLeft} at-bat${state.bonus.atBatsLeft > 1 ? 's' : ''} left`;
   }
 }
 
@@ -147,6 +161,10 @@ function throwPitch() {
   startedAt = performance.now();
 
   const tick = now => {
+    // A banked swing can take over the at-bat mid-pitch. Cancelling the
+    // handle can lose a race with a callback already in flight, so the loop
+    // also checks for itself and stops.
+    if (state.swing) { frame = null; return; }
     const elapsed = now - startedAt;
     if (elapsed >= state.atBat.windowMs) { renderClock(elapsed); resolvePitch(elapsed, false); return; }
     renderClock(elapsed);
@@ -217,6 +235,94 @@ function afterPitch() {
   startAtBat();
 }
 
+
+/* ---------- the power swing ----------
+   Spending a banked swing replaces the whole at-bat. The word on screen is
+   set aside, the countdown stops, and the at-bat is settled by the marker
+   alone: sweet spot is a home run, anywhere else is an out. -------------- */
+
+let swingFrame = null;
+
+function startSwing() {
+  if (!state.bonus || state.locked || state.swing) return;
+  state.locked = true;
+  if (frame) { cancelAnimationFrame(frame); frame = null; }   // the pitch clock stops
+
+  const phrase = DUGOUT_PHRASES[Math.floor(Math.random() * DUGOUT_PHRASES.length)];
+  state.swing = { position: 0, phrase: phrase.es, result: null };
+
+  el.dugoutPhrase.textContent = phrase.es;
+  el.dugoutGloss.textContent  = phrase.en;
+  el.swingFeedback.innerHTML  = '&nbsp;';
+  el.swingFeedback.className  = 'feedback';
+  el.swingGo.disabled         = false;
+  el.swingFigure.classList.remove('bat-flip');
+  el.pitchScreen.classList.add('hidden');
+  el.swingScreen.classList.remove('hidden');
+
+  const startedSwingAt = performance.now();
+  const tick = now => {
+    if (!state.swing || state.swing.result) return;
+    state.swing.position = markerPositionAt(now - startedSwingAt);
+    el.swingMarker.style.left = (state.swing.position * 100) + '%';
+    swingFrame = requestAnimationFrame(tick);
+  };
+  swingFrame = requestAnimationFrame(tick);
+}
+
+function takeSwing(position) {
+  if (!state.swing || state.swing.result) return;
+  if (swingFrame) { cancelAnimationFrame(swingFrame); swingFrame = null; }
+
+  const onTime = isSwingOnTime(position);
+  state.swing.result  = onTime ? 'HOMERUN' : 'MISS';
+  state.bonus         = null;          // spent, hit or miss
+  el.swingGo.disabled = true;
+
+  if (onTime) {
+    state.hits.HOMERUN++;
+    const play = advanceOnHit(state.bases, HIT_ADVANCE.HOMERUN);
+    state.bases = play.bases;
+    state.runs += play.runs;
+    el.swingFeedback.textContent = `¡JONRÓN! ${play.runs} in.`;
+    el.swingFeedback.className   = 'feedback good';
+    el.swingFigure.classList.add('bat-flip');
+  } else {
+    state.outs++;
+    el.swingFeedback.textContent = 'Swing and a miss — that is an out.';
+    el.swingFeedback.className   = 'feedback bad';
+  }
+
+  renderHud();
+  setTimeout(endSwing, onTime ? 2400 : 1500);   // longer, to let the bat land
+}
+
+function endSwing() {
+  el.swingFigure.classList.remove('bat-flip');
+  el.swingScreen.classList.add('hidden');
+  el.pitchScreen.classList.remove('hidden');
+
+  // The swing was the whole at-bat, so it ages the bonus exactly once, the
+  // same as any other at-bat ending.
+  const result = state.swing.result === 'HOMERUN' ? 'HIT' : 'OUT';
+  state.swing = null;
+
+  const stepped = applyAtBatToBonus(state.bonus, state.hitStreak, result, Math.random());
+  state.bonus     = stepped.bonus;
+  state.hitStreak = stepped.streak;
+
+  state.atBat = null;
+  state.index++;
+  state.locked = false;
+  renderHud();
+
+  if (state.outs >= MAX_OUTS) return endInning('Inning over', 'Three outs — side retired.');
+  if (state.index >= state.deck.length) {
+    return endInning('Through the lineup!', `All ${state.deck.length} words, never struck out.`);
+  }
+  startAtBat();
+}
+
 /* ---------- end of inning ---------- */
 
 function endInning(title, subtitle) {
@@ -261,4 +367,18 @@ function startInning() {
 }
 
 el.playAgain.addEventListener('click', startInning);
+el.bankButton.addEventListener('click', startSwing);
+el.swingGo.addEventListener('click', () => takeSwing(state.swing ? state.swing.position : 0));
+document.addEventListener('keydown', event => {
+  if (event.code === 'Space' && state.swing && !state.swing.result) {
+    event.preventDefault();
+    takeSwing(state.swing.position);
+  }
+});
+
+// Draw the sweet spot straight from the constants, so what the player aims
+// at is always exactly what isSwingOnTime() accepts.
+el.swingSweet.style.left  = (SWING_SWEET_MIN * 100) + '%';
+el.swingSweet.style.width = ((SWING_SWEET_MAX - SWING_SWEET_MIN) * 100) + '%';
+
 startInning();

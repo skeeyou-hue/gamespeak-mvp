@@ -108,7 +108,7 @@ body {
   box-shadow: 0 14px 38px rgba(6, 26, 15, 0.45);
 }
 
-.hidden { display: none; }
+.hidden { display: none !important; }   /* utility: must beat any component's own display */
 
 .pitch-top {
   display: flex;
@@ -245,4 +245,137 @@ body {
 
 @media (prefers-reduced-motion: reduce) {
   .pip, .strike-pip { transition: none; }
+}
+
+/* =========================================================================
+   THE POWER SWING
+   ========================================================================= */
+
+.bank-button {
+  display: block;
+  width: 100%;
+  margin: 0 0 10px;
+  padding: 10px 12px;
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #3a2a05;
+  background: linear-gradient(#f8d268, var(--onbase));
+  border: 2px solid #d9a91f;
+  border-radius: 9px;
+  cursor: pointer;
+}
+
+.bank-button:hover { filter: brightness(1.05); }
+.bank-life { opacity: 0.7; font-weight: 700; }
+
+.swing-eyebrow {
+  margin: 0;
+  font-size: 0.66rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--medium);
+}
+
+/* The dugout shouting */
+.dugout-es {
+  margin: 6px 0 0;
+  font-size: 1.75rem;
+  font-weight: 800;
+  line-height: 1.05;
+  color: var(--ink);
+}
+
+.dugout-en {
+  margin: 2px 0 0;
+  font-size: 0.82rem;
+  color: var(--muted);
+}
+
+.swing-figure {
+  display: block;
+  width: 190px;
+  height: 175px;
+  margin: 2px auto 6px;
+}
+
+/* --- the timing bar --- */
+.swing-track {
+  position: relative;
+  height: 34px;
+  margin: 0 0 12px;
+  border-radius: 8px;
+  background: #16241c;
+  border: 2px solid #0d1a13;
+  overflow: hidden;
+}
+
+/* Placed from the constants by timed-ui.js, so what you aim at is exactly
+   what isSwingOnTime() accepts. */
+.swing-sweet {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  background: linear-gradient(#f8d268, #e0a022);
+}
+
+.swing-marker {
+  position: absolute;
+  top: -4px;
+  bottom: -4px;
+  width: 4px;
+  margin-left: -2px;
+  background: #fff;
+  box-shadow: 0 0 10px rgba(255, 255, 255, 0.9);
+}
+
+.swing-go {
+  font: inherit;
+  font-size: 0.95rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  width: 100%;
+  padding: 13px;
+  border: none;
+  border-radius: 9px;
+  background: #0E4C5C;
+  color: #fff;
+  cursor: pointer;
+}
+
+.swing-go:hover:not(:disabled) { background: #12606f; }
+.swing-go:disabled { opacity: 0.55; cursor: default; }
+.swing-key { font-size: 0.7rem; font-weight: 600; opacity: 0.65; letter-spacing: 0.04em; }
+
+/* --- the bat flip ---------------------------------------------------------
+   Only on a home run. The bat pivots at the hands and leaves the frame,
+   and the batter gives a small hop, so the payoff reads as a beat of its
+   own rather than another green feedback line. */
+@keyframes batFlip {
+  0%   { transform: rotate(0deg)    translate(0, 0);       opacity: 1; }
+  60%  { transform: rotate(-260deg) translate(30px, -40px); opacity: 1; }
+  100% { transform: rotate(-420deg) translate(70px, -120px); opacity: 0; }
+}
+
+@keyframes batterHop {
+  0%, 100% { transform: translateY(0); }
+  35%      { transform: translateY(-10px); }
+}
+
+#swing-figure.bat-flip #swing-bat {
+  transform-box: view-box;
+  transform-origin: 150px 58px;
+  animation: batFlip 1000ms cubic-bezier(0.2, 0.7, 0.3, 1) forwards;
+}
+
+#swing-figure.bat-flip {
+  animation: batterHop 700ms ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #swing-figure.bat-flip #swing-bat { animation: none; opacity: 0; }
+  #swing-figure.bat-flip { animation: none; }
 }

@@ -250,6 +250,55 @@ const TIMED_VOCAB = [
 
 
 /* -------------------------------------------------------------------------
+   8. THE POWER SWING
+   Spending a banked swing replaces the whole at-bat: no word, no clock, no
+   count. A marker sweeps a bar and one press stops it. Inside the sweet
+   spot is a home run; outside it is an out — the at-bat ends either way.
+
+   Both of these are pure functions of time and position, so the timing is
+   testable without running the animation.
+   ------------------------------------------------------------------------- */
+
+const SWING_SWEET_MIN = 0.38;   // sweet spot, as a fraction of the bar
+const SWING_SWEET_MAX = 0.62;
+const SWING_PERIOD_MS = 1700;   // one full sweep out and back
+
+// Where the marker sits, 0..1, after this long. It ping-pongs, so the sweet
+// spot is crossed twice per cycle.
+function markerPositionAt(elapsedMs, period = SWING_PERIOD_MS) {
+  const t = (elapsedMs % period) / period;
+  return t < 0.5 ? t * 2 : (1 - t) * 2;
+}
+
+// Did the swing connect?
+function isSwingOnTime(position) {
+  return position >= SWING_SWEET_MIN && position <= SWING_SWEET_MAX;
+}
+
+
+/* -------------------------------------------------------------------------
+   9. THE DUGOUT
+   Short shouts of the kind you would actually hear from a Caribbean dugout.
+   One is picked at random for each swing. The English is there because this
+   is still a vocabulary app.
+   ------------------------------------------------------------------------- */
+const DUGOUT_PHRASES = [
+  { es: '¡Vamos!',             en: "Let's go!" },
+  { es: '¡Dale!',              en: 'Come on!' },
+  { es: '¡Tú puedes!',         en: 'You can do it!' },
+  { es: '¡Échale!',            en: 'Go get it!' },
+  { es: '¡Con todo!',          en: 'With everything!' },
+  { es: '¡Duro con ella!',     en: 'Hit it hard!' },
+  { es: '¡Sácala del parque!', en: 'Knock it out of the park!' },
+  { es: '¡Ahora sí!',          en: "Now's the time!" },
+  { es: '¡Métele!',            en: 'Give it a ride!' },
+  { es: '¡Esa es tuya!',       en: "That one's yours!" },
+  { es: '¡Sin miedo!',         en: 'No fear!' },
+  { es: '¡Vamos, campeón!',    en: "Let's go, champ!" }
+];
+
+
+/* -------------------------------------------------------------------------
    NOTE ON DUPLICATION
    rollBonusLife, advanceOnHit and the word list also exist in app.js. That
    is deliberate: this branch must not touch Classic, and unifying them
@@ -266,6 +315,8 @@ if (typeof module !== 'undefined' && module.exports) {
     BONUS_STREAK, BONUS_LIFE_MIN, BONUS_LIFE_MAX,
     windowForTag, bucketForTag, hitForResponse, applyPitch,
     rollBonusLife, applyAtBatToBonus, newAtBat, newTimedState,
-    HIT_ADVANCE, advanceOnHit, TIMED_VOCAB
+    HIT_ADVANCE, advanceOnHit, TIMED_VOCAB,
+    SWING_SWEET_MIN, SWING_SWEET_MAX, SWING_PERIOD_MS,
+    markerPositionAt, isSwingOnTime, DUGOUT_PHRASES
   };
 }
