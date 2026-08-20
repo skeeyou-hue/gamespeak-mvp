@@ -13,13 +13,23 @@ Open `index.html` in a browser. That's it.
 ## How the game works
 
 - You see one Spanish word and four English choices.
-- **Right answer** → a *hit*, credited to that word's difficulty tier:
-  `WALK` (easiest), `SINGLE`, or `DOUBLE` (hardest).
-- **Wrong answer** → an *out*.
-- **Three outs** → the inning ends and you get a summary with your hits,
-  total bases, batting average, and the words you missed.
-- Get through all 20 words without three outs and you've batted through
-  the lineup.
+- **Right answer** → you reach base, according to that word's difficulty
+  tier: `WALK` (easiest), `SINGLE`, `DOUBLE`, `TRIPLE`, or `HOME RUN`.
+- **Runners advance** by real baseball rules. A walk only pushes runners who
+  are *forced*; a hit moves every runner as far as the batter goes (1 base on
+  a single, 2 on a double, 3 on a triple, 4 on a homer). Anyone pushed past
+  third scores.
+- **Wrong answer** → an *out*. Runners stay where they are.
+- **Three outs** → the inning ends and you get a box score: runs, the
+  breakdown by hit type, total bases, left on base, batting average, and the
+  words you missed.
+- Get through the whole word list without three outs and you've batted
+  through the lineup.
+
+The base state shows up in two places: the diamond on the scoreboard, and
+runners out on the field itself. The scoreboard diamond is the one that's
+always visible — on a narrow screen the quiz card covers the middle of the
+infield.
 
 ## Files
 
@@ -27,7 +37,8 @@ Open `index.html` in a browser. That's it.
 | --- | --- |
 | `index.html` | Page structure: scoreboard, quiz screen, summary screen |
 | `style.css`  | All styling; colors are CSS variables at the top |
-| `app.js`     | The word list and all game logic |
+| `app.js`     | The word list, base-running rules, and all game logic |
+| `test.js`    | Browser tests (see below) |
 
 ## Editing the vocabulary
 
@@ -38,4 +49,20 @@ The whole word list is the `VOCAB` array near the top of `app.js`:
 ```
 
 Add, remove, or retag entries freely — the wrong-answer choices are drawn
-from the other words in the list, so nothing else needs updating.
+from the other words in the list, so nothing else needs updating. Keep each
+English meaning unique, or a question could offer the same answer twice.
+
+## Running the tests
+
+The game itself has no dependencies. The tests drive it in a real browser,
+so they need Playwright:
+
+```bash
+npm install -D playwright
+npx playwright install chromium
+node test.js
+```
+
+`test.js` covers the base-running rules case by case — every combination of
+runners for a walk, single, double, triple, and home run — plus the inning
+and box-score behavior.

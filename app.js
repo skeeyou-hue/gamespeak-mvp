@@ -4,34 +4,44 @@
 
    HOW IT WORKS
    1. You see one Spanish word and four English choices.
-   2. Right answer  -> a "hit", worth WALK, SINGLE, or DOUBLE depending on
-                       how hard that word is.
+   2. Right answer  -> you reach base. How far depends on how hard the word
+                       is: WALK, SINGLE, DOUBLE, TRIPLE, or HOME RUN.
    3. Wrong answer  -> an "out".
-   4. Three outs    -> the inning is over and you get a summary.
+   4. Three outs    -> the inning is over and you get a box score.
 
-   Note on naming: WALK / SINGLE / DOUBLE are difficulty tiers, not literal
-   play outcomes — WALK is the easiest tier. Change the labels in DIFFICULTY
-   below if you'd rather call them EASY / MEDIUM / HARD.
+   Runners on base advance by real baseball rules (see section 3), and runs
+   score whenever a runner is pushed past third.
+
+   Note on naming: WALK / SINGLE / DOUBLE / TRIPLE / HOME RUN are difficulty
+   tiers as well as play outcomes — WALK is the easiest tier. Change the
+   labels in DIFFICULTY below if you'd rather call them EASY ... HARDEST.
    ========================================================================= */
 
 
 /* -------------------------------------------------------------------------
    1. DIFFICULTY TIERS
-   Each tier has a label, how many bases it's worth, and a message.
+   Each tier has a label, how many bases the batter takes, how many total
+   bases it's worth on the stat line, and a message.
+
+   'advance' is the base-running distance: a single moves everyone up 1, a
+   double 2, and so on. A walk is special (see advanceOnWalk) because it
+   only pushes runners who are forced, so its advance is 0.
    ------------------------------------------------------------------------- */
 const DIFFICULTY = {
-  WALK:   { label: 'WALK',   bases: 1, praise: 'Walk! Take your base.' },
-  SINGLE: { label: 'SINGLE', bases: 1, praise: 'Base hit!' },
-  DOUBLE: { label: 'DOUBLE', bases: 2, praise: 'Double into the gap!' }
+  WALK:    { label: 'WALK',     advance: 0, bases: 1, praise: 'Walk! Take your base.' },
+  SINGLE:  { label: 'SINGLE',   advance: 1, bases: 1, praise: 'Base hit!' },
+  DOUBLE:  { label: 'DOUBLE',   advance: 2, bases: 2, praise: 'Double into the gap!' },
+  TRIPLE:  { label: 'TRIPLE',   advance: 3, bases: 3, praise: 'Triple! Standing up at third.' },
+  HOMERUN: { label: 'HOME RUN', advance: 4, bases: 4, praise: '¡Jonrón! Gone.' }
 };
 
 
 /* -------------------------------------------------------------------------
    2. THE VOCABULARY LIST
-   20 baseball-related Spanish words. Each entry is:
+   Baseball-related Spanish words. Each entry is:
      es   - the Spanish word (shown to the player)
      en   - the correct English meaning
-     tag  - difficulty: 'WALK' (easiest), 'SINGLE', or 'DOUBLE' (hardest)
+     tag  - difficulty, which doubles as the hit type earned
    Add or edit entries here — everything else adapts automatically.
    ------------------------------------------------------------------------- */
 const VOCAB = [
@@ -54,19 +64,78 @@ const VOCAB = [
   { es: 'ganar',          en: 'to win',          tag: 'SINGLE' },
 
   // --- DOUBLE: specialist vocabulary, false friends (6) ---
-  { es: 'el receptor',    en: 'the catcher',           tag: 'DOUBLE' },
-  { es: 'el jardinero',   en: 'the outfielder',        tag: 'DOUBLE' },
-  { es: 'la entrada',     en: 'the inning',            tag: 'DOUBLE' },
-  { es: 'el montículo',   en: "the pitcher's mound",   tag: 'DOUBLE' },
-  { es: 'el árbitro',     en: 'the umpire',            tag: 'DOUBLE' },
-  { es: 'ponchar',        en: 'to strike (someone) out', tag: 'DOUBLE' }
+  { es: 'el receptor',    en: 'the catcher',             tag: 'DOUBLE' },
+  { es: 'el jardinero',   en: 'the outfielder',          tag: 'DOUBLE' },
+  { es: 'la entrada',     en: 'the inning',              tag: 'DOUBLE' },
+  { es: 'el montículo',   en: "the pitcher's mound",     tag: 'DOUBLE' },
+  { es: 'el árbitro',     en: 'the umpire',              tag: 'DOUBLE' },
+  { es: 'ponchar',        en: 'to strike (someone) out', tag: 'DOUBLE' },
+
+  // --- TRIPLE: positions and pitches you'd only know from the game (5) ---
+  { es: 'el toletero',    en: 'the slugger',        tag: 'TRIPLE' },
+  { es: 'el campocorto',  en: 'the shortstop',      tag: 'TRIPLE' },
+  { es: 'la recta',       en: 'the fastball',       tag: 'TRIPLE' },
+  { es: 'el relevista',   en: 'the relief pitcher', tag: 'TRIPLE' },
+  { es: 'la antesala',    en: 'third base',         tag: 'TRIPLE' },
+
+  // --- HOME RUN: Caribbean broadcast vocabulary, the hardest tier (5) ---
+  { es: 'el cuadrangular',      en: 'the home run',           tag: 'HOMERUN' },
+  { es: 'la carrera impulsada', en: 'the run batted in (RBI)', tag: 'HOMERUN' },
+  { es: 'el emergente',         en: 'the pinch hitter',       tag: 'HOMERUN' },
+  { es: 'el inicialista',       en: 'the first baseman',      tag: 'HOMERUN' },
+  { es: 'la almohadilla',       en: 'the base (bag)',         tag: 'HOMERUN' }
 ];
 
 const MAX_OUTS = 3; // three outs and the inning is over
 
 
 /* -------------------------------------------------------------------------
-   3. GAME STATE
+   3. BASE-RUNNING RULES
+   Bases are a three-slot array: [first, second, third], each true or false.
+   Both functions are pure — they take the current bases and hand back the
+   new bases plus how many runs scored, without touching game state. That
+   makes them easy to test on their own.
+   ------------------------------------------------------------------------- */
+
+// A WALK only moves runners who are FORCED to move. The batter takes first,
+// which forces a runner on first, who forces a runner on second, and so on.
+// A runner on second with first base empty does not move at all.
+function advanceOnWalk(bases) {
+  const [first, second, third] = bases;
+
+  if (!first)  return { bases: [true, second, third], runs: 0 };
+  if (!second) return { bases: [true, true, third],   runs: 0 };
+  if (!third)  return { bases: [true, true, true],    runs: 0 };
+
+  // Bases loaded: the runner on third is forced home.
+  return { bases: [true, true, true], runs: 1 };
+}
+
+// A HIT moves every runner the same number of bases the batter takes:
+// 1 on a single, 2 on a double, 3 on a triple, 4 on a home run. Anyone
+// pushed past third scores.
+function advanceOnHit(bases, advance) {
+  const next = [false, false, false];
+  let runs = 0;
+
+  // Existing runners first: index 0 is first base, 2 is third.
+  bases.forEach((occupied, index) => {
+    if (!occupied) return;
+    const destination = index + advance;   // 3 or more means home
+    if (destination > 2) runs++;
+    else next[destination] = true;
+  });
+
+  // Then the batter, who ends up on base number `advance`.
+  if (advance > 3) runs++;                 // home run: the batter scores too
+  else next[advance - 1] = true;
+
+  return { bases: next, runs };
+}
+
+
+/* -------------------------------------------------------------------------
+   4. GAME STATE
    Everything that changes during a game lives in this one object, so it is
    easy to see what the game "knows" at any moment.
    ------------------------------------------------------------------------- */
@@ -74,18 +143,20 @@ let state = {};
 
 function newState() {
   return {
-    deck: shuffle(VOCAB),  // the 20 words in random order
-    index: 0,              // which word we're on (0-19)
-    outs: 0,               // wrong answers so far
-    hits: { WALK: 0, SINGLE: 0, DOUBLE: 0 }, // right answers by difficulty
-    missed: [],            // words the player got wrong, for the summary
-    locked: false          // true while feedback is showing, blocks double-clicks
+    deck: shuffle(VOCAB),   // the words in random order
+    index: 0,               // which word we're on
+    outs: 0,                // wrong answers so far
+    runs: 0,                // runs driven in this inning
+    bases: [false, false, false],  // [first, second, third]
+    hits: { WALK: 0, SINGLE: 0, DOUBLE: 0, TRIPLE: 0, HOMERUN: 0 },
+    missed: [],             // words the player got wrong, for the box score
+    locked: false           // true while feedback is showing, blocks double-clicks
   };
 }
 
 
 /* -------------------------------------------------------------------------
-   4. GRAB THE PAGE ELEMENTS ONCE
+   5. GRAB THE PAGE ELEMENTS ONCE
    ------------------------------------------------------------------------- */
 const el = {
   quizScreen:  document.getElementById('quiz-screen'),
@@ -95,28 +166,44 @@ const el = {
   choices:     document.getElementById('choices'),
   feedback:    document.getElementById('feedback'),
 
+  scoreRuns:   document.getElementById('score-runs'),
+  outsDisplay: document.getElementById('outs-display'),
   scoreWalk:   document.getElementById('score-walk'),
   scoreSingle: document.getElementById('score-single'),
   scoreDouble: document.getElementById('score-double'),
-  outsDisplay: document.getElementById('outs-display'),
+  scoreTriple: document.getElementById('score-triple'),
+  scoreHomerun:document.getElementById('score-homerun'),
 
-  summary:     document.getElementById('summary-screen'),
-  summaryTitle:document.getElementById('summary-title'),
-  summarySub:  document.getElementById('summary-sub'),
-  sumWalk:     document.getElementById('sum-walk'),
-  sumSingle:   document.getElementById('sum-single'),
-  sumDouble:   document.getElementById('sum-double'),
-  sumHits:     document.getElementById('sum-hits'),
-  sumBases:    document.getElementById('sum-bases'),
-  sumAvg:      document.getElementById('sum-avg'),
-  missedBlock: document.getElementById('missed-block'),
-  missedList:  document.getElementById('missed-list'),
-  playAgain:   document.getElementById('play-again')
+  // Base state shows up twice: as a small diamond on the scoreboard, and as
+  // runners out on the field itself.
+  pips:        [document.getElementById('pip-first'),
+                document.getElementById('pip-second'),
+                document.getElementById('pip-third')],
+  runners:     [document.getElementById('runner-first'),
+                document.getElementById('runner-second'),
+                document.getElementById('runner-third')],
+
+  summary:      document.getElementById('summary-screen'),
+  summaryTitle: document.getElementById('summary-title'),
+  summarySub:   document.getElementById('summary-sub'),
+  sumRuns:      document.getElementById('sum-runs'),
+  sumWalk:      document.getElementById('sum-walk'),
+  sumSingle:    document.getElementById('sum-single'),
+  sumDouble:    document.getElementById('sum-double'),
+  sumTriple:    document.getElementById('sum-triple'),
+  sumHomerun:   document.getElementById('sum-homerun'),
+  sumHits:      document.getElementById('sum-hits'),
+  sumBases:     document.getElementById('sum-bases'),
+  sumAvg:       document.getElementById('sum-avg'),
+  sumLob:       document.getElementById('sum-lob'),
+  missedBlock:  document.getElementById('missed-block'),
+  missedList:   document.getElementById('missed-list'),
+  playAgain:    document.getElementById('play-again')
 };
 
 
 /* -------------------------------------------------------------------------
-   5. SMALL HELPERS
+   6. SMALL HELPERS
    ------------------------------------------------------------------------- */
 
 // Return a shuffled COPY of an array (Fisher-Yates shuffle).
@@ -140,20 +227,34 @@ function buildChoices(correctWord) {
   return shuffle([correctWord.en, ...distractors]);
 }
 
+// "1 run" / "2 runs", for the feedback line.
+function runWord(count) {
+  return count === 1 ? '1 run' : `${count} runs`;
+}
+
 
 /* -------------------------------------------------------------------------
-   6. DRAWING THE SCREEN
+   7. DRAWING THE SCREEN
    ------------------------------------------------------------------------- */
 
-// Update the scoreboard numbers and the three out-dots.
+// Update runs, the hit tally, the out-dots, and the base state.
 function renderScoreboard() {
-  el.scoreWalk.textContent   = state.hits.WALK;
-  el.scoreSingle.textContent = state.hits.SINGLE;
-  el.scoreDouble.textContent = state.hits.DOUBLE;
+  el.scoreRuns.textContent    = state.runs;
+  el.scoreWalk.textContent    = state.hits.WALK;
+  el.scoreSingle.textContent  = state.hits.SINGLE;
+  el.scoreDouble.textContent  = state.hits.DOUBLE;
+  el.scoreTriple.textContent  = state.hits.TRIPLE;
+  el.scoreHomerun.textContent = state.hits.HOMERUN;
 
   // Fill in one dot per out recorded.
   const dots = el.outsDisplay.querySelectorAll('.out-dot');
   dots.forEach((dot, i) => dot.classList.toggle('filled', i < state.outs));
+
+  // Light up the scoreboard diamond and the runners on the field together.
+  state.bases.forEach((occupied, i) => {
+    el.pips[i].classList.toggle('on', occupied);
+    el.runners[i].classList.toggle('on', occupied);
+  });
 }
 
 // Show the current word and its four answer buttons.
@@ -179,7 +280,7 @@ function renderQuestion() {
 
 
 /* -------------------------------------------------------------------------
-   7. ANSWERING A QUESTION
+   8. ANSWERING A QUESTION
    ------------------------------------------------------------------------- */
 function handleAnswer(picked, clickedButton) {
   if (state.locked) return;  // ignore extra clicks while feedback shows
@@ -196,12 +297,23 @@ function handleAnswer(picked, clickedButton) {
   if (!isCorrect) clickedButton.classList.add('wrong');
 
   if (isCorrect) {
-    // A hit — credited to the tier this word belongs to.
+    // Credit the hit, then run the bases.
+    const tier = DIFFICULTY[current.tag];
     state.hits[current.tag]++;
-    el.feedback.textContent = `${DIFFICULTY[current.tag].praise} (${current.tag})`;
-    el.feedback.className   = 'feedback good';
+
+    const play = current.tag === 'WALK'
+      ? advanceOnWalk(state.bases)
+      : advanceOnHit(state.bases, tier.advance);
+
+    state.bases = play.bases;
+    state.runs += play.runs;
+
+    el.feedback.textContent = play.runs > 0
+      ? `${tier.praise} ${runWord(play.runs)} in.`
+      : tier.praise;
+    el.feedback.className = 'feedback good';
   } else {
-    // An out — remember the word so we can list it in the summary.
+    // An out — runners stay where they are.
     state.outs++;
     state.missed.push(current);
     el.feedback.textContent = `Out. "${current.es}" means "${current.en}".`;
@@ -222,7 +334,7 @@ function nextTurn() {
   if (state.outs >= MAX_OUTS) {
     endInning('Inning over', 'Three outs — side retired.');
   } else if (state.index >= state.deck.length) {
-    endInning('Through the lineup!', 'You used all 20 words without going down.');
+    endInning('Through the lineup!', `You used all ${state.deck.length} words without going down.`);
   } else {
     renderQuestion();
   }
@@ -230,27 +342,37 @@ function nextTurn() {
 
 
 /* -------------------------------------------------------------------------
-   8. END OF INNING SUMMARY
+   9. END OF INNING BOX SCORE
    ------------------------------------------------------------------------- */
 function endInning(title, subtitle) {
-  const totalHits = state.hits.WALK + state.hits.SINGLE + state.hits.DOUBLE;
+  const h = state.hits;
+  const totalHits = h.WALK + h.SINGLE + h.DOUBLE + h.TRIPLE + h.HOMERUN;
   const totalBases =
-      state.hits.WALK   * DIFFICULTY.WALK.bases +
-      state.hits.SINGLE * DIFFICULTY.SINGLE.bases +
-      state.hits.DOUBLE * DIFFICULTY.DOUBLE.bases;
+      h.WALK    * DIFFICULTY.WALK.bases +
+      h.SINGLE  * DIFFICULTY.SINGLE.bases +
+      h.DOUBLE  * DIFFICULTY.DOUBLE.bases +
+      h.TRIPLE  * DIFFICULTY.TRIPLE.bases +
+      h.HOMERUN * DIFFICULTY.HOMERUN.bases;
 
   const atBats  = totalHits + state.outs;
   // Batting average, shown baseball-style: .500 rather than 0.5
   const average = atBats === 0 ? 0 : totalHits / atBats;
 
+  // Left on base: runners still standing when the inning ended.
+  const leftOnBase = state.bases.filter(Boolean).length;
+
   el.summaryTitle.textContent = title;
   el.summarySub.textContent   = subtitle;
-  el.sumWalk.textContent      = state.hits.WALK;
-  el.sumSingle.textContent    = state.hits.SINGLE;
-  el.sumDouble.textContent    = state.hits.DOUBLE;
+  el.sumRuns.textContent      = state.runs;
+  el.sumWalk.textContent      = h.WALK;
+  el.sumSingle.textContent    = h.SINGLE;
+  el.sumDouble.textContent    = h.DOUBLE;
+  el.sumTriple.textContent    = h.TRIPLE;
+  el.sumHomerun.textContent   = h.HOMERUN;
   el.sumHits.textContent      = totalHits;
   el.sumBases.textContent     = totalBases;
   el.sumAvg.textContent       = average.toFixed(3).replace(/^0/, '');
+  el.sumLob.textContent       = leftOnBase;
 
   // List the missed words, or hide that block if there were none.
   if (state.missed.length > 0) {
@@ -265,14 +387,14 @@ function endInning(title, subtitle) {
     el.missedBlock.classList.add('hidden');
   }
 
-  // Swap the quiz screen out for the summary screen.
+  // Swap the quiz screen out for the box score.
   el.quizScreen.classList.add('hidden');
   el.summary.classList.remove('hidden');
 }
 
 
 /* -------------------------------------------------------------------------
-   9. STARTING (AND RESTARTING) THE GAME
+   10. STARTING (AND RESTARTING) THE GAME
    ------------------------------------------------------------------------- */
 function startInning() {
   state = newState();
