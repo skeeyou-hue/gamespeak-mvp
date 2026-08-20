@@ -287,6 +287,74 @@ const show = state => state.map((on, i) => on ? ['1B', '2B', '3B'][i] : null)
   assert(await page.locator('#missed-block').isHidden(),
          'missed-words block hidden when nothing was missed');
 
+  /* ===================================================================
+     E. THE DEFENSE
+     Static art only — no fielding logic behind any of it. These checks
+     guard placement: fielders must not sit on top of a base runner, the
+     HUD chips, or be sliced in half by the screen edge at any of the
+     window sizes we support.
+     =================================================================== */
+  section('Fielders');
+
+  const FIELDERS = ['fielder-p', 'fielder-c', 'fielder-1b', 'fielder-2b', 'fielder-3b',
+                    'fielder-ss', 'fielder-lf', 'fielder-cf', 'fielder-rf'];
+
+  assert(await page.evaluate(ids => ids.every(id => !!document.getElementById(id)), FIELDERS),
+         'all nine defensive positions are on the field');
+  assert((await page.locator('.fielder').count()) === 9, 'nine fielder figures rendered');
+  assert(await page.evaluate(() =>
+           document.querySelector('.scene').getAttribute('aria-hidden') === 'true' &&
+           getComputedStyle(document.querySelector('.scene')).pointerEvents === 'none'),
+         'fielders live in the decorative scene: no clicks, hidden from screen readers');
+
+  // Geometry scales uniformly, so runner overlap only needs checking once.
+  const overlapFn = ids => {
+    const R = el => el.getBoundingClientRect();
+    const hit = (a, c) => a.left < c.right && c.left < a.right &&
+                          a.top < c.bottom && c.top < a.bottom;
+    const runners = [...document.querySelectorAll('.runner')].map(e => [e.id, R(e)]);
+    const clashes = [];
+    for (const id of ids) {
+      const f = R(document.getElementById(id));
+      for (const [rid, r] of runners) if (hit(f, r)) clashes.push(`${id}/${rid}`);
+    }
+    return clashes;
+  };
+  const runnerClashes = await page.evaluate(overlapFn, FIELDERS);
+  assert(runnerClashes.length === 0,
+         'no fielder sits on a base runner' + (runnerClashes.length ? ' (' + runnerClashes.join(', ') + ')' : ''));
+
+  // HUD collision and edge slicing, at every supported window size.
+  const SIZES = [[760, 900], [900, 900], [1024, 768], [1180, 860],
+                 [1290, 940], [1440, 900], [1600, 800], [480, 900]];
+  let hudClean = true, edgeClean = true;
+  for (const [w, h] of SIZES) {
+    const sized = await browser.newPage({ viewport: { width: w, height: h } });
+    await sized.goto(URL);
+    await sized.waitForSelector('.choice');
+    const r = await sized.evaluate(ids => {
+      const R = el => el.getBoundingClientRect();
+      const hit = (a, c) => a.left < c.right && c.left < a.right &&
+                            a.top < c.bottom && c.top < a.bottom;
+      const chips = [...document.querySelectorAll('.hud-chip')].map(R);
+      const hud = [], sliced = [];
+      for (const id of ids) {
+        const f = R(document.getElementById(id));
+        if (chips.some(c => hit(f, c))) hud.push(id);
+        // Either fully on screen or fully off it — never cut by the edge.
+        const off = f.right < 0 || f.left > innerWidth;
+        const inside = f.left >= 0 && f.right <= innerWidth;
+        if (!off && !inside) sliced.push(id);
+      }
+      return { hud, sliced };
+    }, FIELDERS);
+    await sized.close();
+    if (r.hud.length)    { hudClean = false;  console.error(`     ${w}x${h} HUD: ${r.hud.join(',')}`); }
+    if (r.sliced.length) { edgeClean = false; console.error(`     ${w}x${h} sliced: ${r.sliced.join(',')}`); }
+  }
+  assert(hudClean, `no fielder collides with a HUD chip, across ${SIZES.length} window sizes`);
+  assert(edgeClean, `no fielder is cut in half by the screen edge, across ${SIZES.length} window sizes`);
+
   assert(errors.length === 0, 'no console/page errors (' + errors.join('; ') + ')');
 
   await browser.close();
