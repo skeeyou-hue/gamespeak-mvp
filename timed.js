@@ -184,11 +184,78 @@ function newTimedState(inning) {
 
 
 /* -------------------------------------------------------------------------
+   6. SCORING A HIT
+   Hits move runners the same way they do in Classic: every runner advances
+   as far as the batter goes. There are no walks in this mode — a WALK-tagged
+   word is just an easy word now, and what it earns comes from the clock.
+   ------------------------------------------------------------------------- */
+const HIT_ADVANCE = { SINGLE: 1, DOUBLE: 2, TRIPLE: 3, HOMERUN: 4 };
+
+function advanceOnHit(bases, advance) {
+  const next = [false, false, false];
+  let runs = 0;
+
+  bases.forEach((occupied, index) => {
+    if (!occupied) return;
+    const destination = index + advance;   // 3 or more means home
+    if (destination > 2) runs++;
+    else next[destination] = true;
+  });
+
+  if (advance > 3) runs++;                 // home run: the batter scores too
+  else next[advance - 1] = true;
+
+  return { bases: next, runs };
+}
+
+
+/* -------------------------------------------------------------------------
+   7. THE WORD LIST
+   The same 30 words Classic uses. Duplicated on purpose while this mode
+   proves itself — see the note at the bottom of the file. The tags mean
+   difficulty here, which is what sets each word's clock.
+   ------------------------------------------------------------------------- */
+const TIMED_VOCAB = [
+  { es: 'el béisbol',     en: 'baseball',        tag: 'WALK'   },
+  { es: 'la pelota',      en: 'the ball',        tag: 'WALK'   },
+  { es: 'el bate',        en: 'the bat',         tag: 'WALK'   },
+  { es: 'el guante',      en: 'the glove',       tag: 'WALK'   },
+  { es: 'el equipo',      en: 'the team',        tag: 'WALK'   },
+  { es: 'el jugador',     en: 'the player',      tag: 'WALK'   },
+  { es: 'correr',         en: 'to run',          tag: 'WALK'   },
+  { es: 'el lanzador',    en: 'the pitcher',     tag: 'SINGLE' },
+  { es: 'el bateador',    en: 'the batter',      tag: 'SINGLE' },
+  { es: 'la carrera',     en: 'the run (score)', tag: 'SINGLE' },
+  { es: 'la gorra',       en: 'the cap',         tag: 'SINGLE' },
+  { es: 'atrapar',        en: 'to catch',        tag: 'SINGLE' },
+  { es: 'lanzar',         en: 'to throw/pitch',  tag: 'SINGLE' },
+  { es: 'ganar',          en: 'to win',          tag: 'SINGLE' },
+  { es: 'el receptor',    en: 'the catcher',             tag: 'DOUBLE' },
+  { es: 'el jardinero',   en: 'the outfielder',          tag: 'DOUBLE' },
+  { es: 'la entrada',     en: 'the inning',              tag: 'DOUBLE' },
+  { es: 'el montículo',   en: "the pitcher's mound",     tag: 'DOUBLE' },
+  { es: 'el árbitro',     en: 'the umpire',              tag: 'DOUBLE' },
+  { es: 'ponchar',        en: 'to strike (someone) out', tag: 'DOUBLE' },
+  { es: 'el toletero',    en: 'the slugger',        tag: 'TRIPLE' },
+  { es: 'el campocorto',  en: 'the shortstop',      tag: 'TRIPLE' },
+  { es: 'la recta',       en: 'the fastball',       tag: 'TRIPLE' },
+  { es: 'el relevista',   en: 'the relief pitcher', tag: 'TRIPLE' },
+  { es: 'la antesala',    en: 'third base',         tag: 'TRIPLE' },
+  { es: 'el cuadrangular',      en: 'the home run',            tag: 'HOMERUN' },
+  { es: 'la carrera impulsada', en: 'the run batted in (RBI)', tag: 'HOMERUN' },
+  { es: 'el emergente',         en: 'the pinch hitter',        tag: 'HOMERUN' },
+  { es: 'el inicialista',       en: 'the first baseman',       tag: 'HOMERUN' },
+  { es: 'la almohadilla',       en: 'the base (bag)',          tag: 'HOMERUN' }
+];
+
+
+/* -------------------------------------------------------------------------
    NOTE ON DUPLICATION
-   rollBonusLife and the ageing half of applyAtBatToBonus also exist in
-   app.js. That is deliberate for now: this branch must not touch Classic.
-   Once this mode settles, both should move to a shared rules module — a
-   change that edits Classic on purpose rather than by accident.
+   rollBonusLife, advanceOnHit and the word list also exist in app.js. That
+   is deliberate: this branch must not touch Classic, and unifying them
+   before this mode has proven itself would mean editing Classic for the
+   sake of a mode that might not survive. Once this is built, tested and
+   actually played, that is the moment to consolidate — not before.
    ------------------------------------------------------------------------- */
 
 // Usable as a plain <script> in the browser and as a module under Node, so
@@ -198,6 +265,7 @@ if (typeof module !== 'undefined' && module.exports) {
     TIMED_TIERS, MAX_STRIKES, SPEED_BANDS,
     BONUS_STREAK, BONUS_LIFE_MIN, BONUS_LIFE_MAX,
     windowForTag, bucketForTag, hitForResponse, applyPitch,
-    rollBonusLife, applyAtBatToBonus, newAtBat, newTimedState
+    rollBonusLife, applyAtBatToBonus, newAtBat, newTimedState,
+    HIT_ADVANCE, advanceOnHit, TIMED_VOCAB
   };
 }
