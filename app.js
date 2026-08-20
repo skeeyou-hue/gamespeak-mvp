@@ -88,6 +88,10 @@ const VOCAB = [
 
 const MAX_OUTS = 3; // three outs and the inning is over
 
+// There is no opposing side in the game yet, so the visiting line on the
+// outfield scorebug is a placeholder. Replace this when one exists.
+const VISITOR_RUNS = 2;
+
 
 /* -------------------------------------------------------------------------
    3. BASE-RUNNING RULES
@@ -141,8 +145,9 @@ function advanceOnHit(bases, advance) {
    ------------------------------------------------------------------------- */
 let state = {};
 
-function newState() {
+function newState(inning) {
   return {
+    inning,                 // which inning this is, counting from 1
     deck: shuffle(VOCAB),   // the words in random order
     index: 0,               // which word we're on
     outs: 0,                // wrong answers so far
@@ -168,6 +173,12 @@ const el = {
 
   scoreRuns:   document.getElementById('score-runs'),
   outsDisplay: document.getElementById('outs-display'),
+
+  // The scorebug out on the outfield wall
+  boardAwayRuns: document.getElementById('board-away-runs'),
+  boardHomeRuns: document.getElementById('board-home-runs'),
+  boardInning:   document.getElementById('board-inning'),
+  boardOuts:     document.getElementById('board-outs'),
 
   // Base state shows up twice: as the HUD diamond in the corner, and as
   // runners out on the field itself.
@@ -237,6 +248,12 @@ function runWord(count) {
 // the inning, not on the HUD during play.
 function renderScoreboard() {
   el.scoreRuns.textContent = state.runs;
+
+  // The outfield scorebug reads from the same state as the HUD.
+  el.boardAwayRuns.textContent = VISITOR_RUNS;
+  el.boardHomeRuns.textContent = state.runs;
+  el.boardInning.textContent   = state.inning;
+  el.boardOuts.textContent     = `${state.outs} OUT`;
 
   // Fill in one dot per out recorded.
   const dots = el.outsDisplay.querySelectorAll('.out-dot');
@@ -389,7 +406,8 @@ function endInning(title, subtitle) {
    10. STARTING (AND RESTARTING) THE GAME
    ------------------------------------------------------------------------- */
 function startInning() {
-  state = newState();
+  // Carry the inning count forward; the first inning is 1.
+  state = newState((state.inning || 0) + 1);
   el.summary.classList.add('hidden');
   el.quizScreen.classList.remove('hidden');
   renderScoreboard();

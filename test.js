@@ -355,6 +355,59 @@ const show = state => state.map((on, i) => on ? ['1B', '2B', '3B'][i] : null)
   assert(hudClean, `no fielder collides with a HUD chip, across ${SIZES.length} window sizes`);
   assert(edgeClean, `no fielder is cut in half by the screen edge, across ${SIZES.length} window sizes`);
 
+  /* ===================================================================
+     F. THE OUTFIELD SCOREBUG
+     It must read from live state, not carry numbers of its own.
+     =================================================================== */
+  section('Outfield scorebug');
+
+  assert((await page.locator('#scorebug').count()) === 1, 'the scorebug is on the wall');
+  assert(!(await page.evaluate(() => document.body.innerHTML.includes('COTORRAS'))),
+         'the old static COTORRAS card is gone');
+  assert(await page.evaluate(() => !('balls' in state) && !('strikes' in state)),
+         'no ball-strike field on the bug: the game tracks no count');
+
+  // Compare the bug against state at several points in an inning.
+  const bugMatchesState = async label => {
+    const [s, bug] = await Promise.all([
+      page.evaluate(() => ({ runs: state.runs, outs: state.outs, inning: state.inning })),
+      page.evaluate(() => ({
+        runs:   document.getElementById('board-home-runs').textContent,
+        outs:   document.getElementById('board-outs').textContent,
+        inning: document.getElementById('board-inning').textContent
+      }))
+    ]);
+    assert(bug.runs === String(s.runs),
+           `scorebug run total matches state.runs — ${label} (shows ${bug.runs}, state ${s.runs})`);
+    assert(bug.outs === `${s.outs} OUT`,
+           `scorebug outs match state.outs — ${label} (shows "${bug.outs}")`);
+    assert(bug.inning === String(s.inning),
+           `scorebug inning matches state.inning — ${label} (shows ${bug.inning})`);
+  };
+
+  await stackDeck(['SINGLE', 'HOMERUN', 'SINGLE', 'SINGLE']);
+  await bugMatchesState('fresh inning');
+  const inningAtStart = await page.evaluate(() => state.inning);
+
+  await answer();                       // single: runner on first, no run
+  await bugMatchesState('after a single');
+  await answer();                       // two-run homer
+  assert((await page.locator('#board-home-runs').textContent()) === '2',
+         'a two-run homer puts 2 on the scorebug');
+  await bugMatchesState('after a two-run homer');
+
+  await answer(false);                  // an out
+  await bugMatchesState('after an out');
+
+  // A new inning must advance the number and reset the line.
+  await page.evaluate(() => { state.outs = 3; });
+  await stackDeck(['SINGLE']);
+  assert((await page.evaluate(() => state.inning)) === inningAtStart + 1,
+         'the inning number advances on a new inning');
+  await bugMatchesState('new inning');
+  assert((await page.locator('#board-home-runs').textContent()) === '0',
+         'the scorebug run total resets with the inning');
+
   assert(errors.length === 0, 'no console/page errors (' + errors.join('; ') + ')');
 
   await browser.close();
