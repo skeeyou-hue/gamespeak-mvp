@@ -254,42 +254,36 @@
         <path d="M1050,346 L1050,384"/>
       </g>
 
-      <!-- Wall signage. The wordmark sits on its own backing panel so it
-           reads as painted signage rather than floating letters, and it is
-           placed clear of both the centered quiz card and the screen edge. -->
-      <g font-family="system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif">
-        <rect x="892" y="354" width="232" height="26" rx="3" fill="#F4EDE0" opacity="0.94"/>
-        <text x="1008" y="373" text-anchor="middle" font-size="15" font-weight="800"
-              letter-spacing="4" fill="#0E4C5C">SAN JUAN</text>
-      </g>
-
-      <!-- Distance markers -->
-      <g font-family="system-ui, sans-serif" font-size="13" font-weight="700"
-         fill="#F4EDE0" opacity="0.75" text-anchor="middle">
-        <text x="330" y="374">330</text>
-        <text x="870" y="374">330</text>
+      <!-- Wall signage on its own backing panel, so it reads as painted
+           signage rather than floating letters. Both this and the video
+           board sit inside the horizontal band that survives cropping on
+           any window >= 900px; below that they hide entirely (see the
+           media query in style.css) rather than render half cut off. -->
+      <g id="wall-sign" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif">
+        <rect x="885" y="354" width="110" height="26" rx="3" fill="#F4EDE0" opacity="0.94"/>
+        <text x="940" y="373" text-anchor="middle" font-size="12" font-weight="800"
+              letter-spacing="1.6" fill="#0E4C5C">SAN JUAN</text>
       </g>
 
       <!-- ================= VIDEO BOARD =================
-           Mounted above the wall in left-center, positioned to clear both
-           the foul pole and the centered quiz card. -->
-      <g>
-        <rect x="186" y="198" width="158" height="146" rx="5" fill="#061F29"/>
-        <rect x="190" y="202" width="150" height="138" rx="3" fill="#0B3A48"/>
-        <rect x="190" y="202" width="150" height="26" rx="3" fill="#0E4C5C"/>
-        <text x="265" y="220" text-anchor="middle"
-              font-family="system-ui, sans-serif" font-size="12.5" font-weight="800"
-              letter-spacing="1.8" fill="#F2A73B">COTORRAS</text>
-        <g font-family="system-ui, sans-serif" font-size="12" font-weight="700" fill="#F4EDE0">
-          <rect x="197" y="236" width="136" height="24" rx="2" fill="#0E4C5C" opacity="0.55"/>
-          <text x="206" y="253">VIS</text>
-          <text x="325" y="253" text-anchor="end">2</text>
-          <rect x="197" y="264" width="136" height="24" rx="2" fill="#F2A73B" opacity="0.22"/>
-          <text x="206" y="281" fill="#F2A73B">SJU</text>
-          <text x="325" y="281" text-anchor="end" fill="#F2A73B">5</text>
+           Mounted above the wall in left-center, inside the safe band. -->
+      <g id="video-board">
+        <rect x="205" y="205" width="110" height="139" rx="4" fill="#061F29"/>
+        <rect x="209" y="209" width="102" height="131" rx="2" fill="#0B3A48"/>
+        <rect x="209" y="209" width="102" height="22" rx="2" fill="#0E4C5C"/>
+        <text x="260" y="224" text-anchor="middle"
+              font-family="system-ui, sans-serif" font-size="10" font-weight="800"
+              letter-spacing="1" fill="#F2A73B">COTORRAS</text>
+        <g font-family="system-ui, sans-serif" font-size="10" font-weight="700" fill="#F4EDE0">
+          <rect x="215" y="236" width="90" height="20" rx="2" fill="#0E4C5C" opacity="0.55"/>
+          <text x="221" y="250">VIS</text>
+          <text x="299" y="250" text-anchor="end">2</text>
+          <rect x="215" y="260" width="90" height="20" rx="2" fill="#F2A73B" opacity="0.22"/>
+          <text x="221" y="274" fill="#F2A73B">SJU</text>
+          <text x="299" y="274" text-anchor="end" fill="#F2A73B">5</text>
         </g>
         <!-- club mark: a cotorra, beak and crest in gold -->
-        <g transform="translate(265,314)">
+        <g transform="translate(260,308) scale(0.8)">
           <ellipse rx="18" ry="16" fill="#8CC63F"/>
           <path d="M-2,-15 q8,-9 14,-6 q-6,2 -8,8 Z" fill="#F2A73B"/>
           <path d="M6,-2 q12,3 11,10 q-8,2 -12,-4 Z" fill="#F2A73B"/>
