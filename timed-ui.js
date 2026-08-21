@@ -15,6 +15,10 @@
 const PAYOFF_LABEL = { HOMERUN: 'HOME RUN', TRIPLE: 'TRIPLE', DOUBLE: 'DOUBLE', SINGLE: 'SINGLE' };
 const MAX_OUTS = 3;
 
+// No opposing side in the game yet, so the visiting line on the outfield
+// scorebug is a placeholder. Replace this when there is one.
+const VISITOR_RUNS = 2;
+
 let state     = newTimedState(0);
 let frame     = null;   // requestAnimationFrame handle for the countdown
 let startedAt = 0;      // when the pitch on screen was thrown
@@ -47,6 +51,13 @@ const el = {
   hudOuts:  document.getElementById('hud-outs'),
   hudBank:  document.getElementById('hud-bank'),
   pips:     ['first', 'second', 'third'].map(b => document.getElementById('pip-' + b)),
+
+  // Out in the park, mounted by scene.js before this file runs
+  runners:       ['first', 'second', 'third'].map(b => document.getElementById('runner-' + b)),
+  boardAwayRuns: document.getElementById('board-away-runs'),
+  boardHomeRuns: document.getElementById('board-home-runs'),
+  boardInning:   document.getElementById('board-inning'),
+  boardOuts:     document.getElementById('board-outs'),
 
   summary:      document.getElementById('summary-screen'),
   summaryTitle: document.getElementById('summary-title'),
@@ -96,7 +107,17 @@ function renderHud() {
   el.hudRuns.textContent = state.runs;
   el.hudOuts.querySelectorAll('.out-dot')
     .forEach((dot, i) => dot.classList.toggle('filled', i < state.outs));
-  state.bases.forEach((on, i) => el.pips[i].classList.toggle('on', on));
+  // Base state reads in three places now: the HUD diamond, the runners out
+  // on the field, and the scorebug on the outfield wall.
+  state.bases.forEach((on, i) => {
+    el.pips[i].classList.toggle('on', on);
+    el.runners[i].classList.toggle('on', on);
+  });
+
+  el.boardAwayRuns.textContent = VISITOR_RUNS;
+  el.boardHomeRuns.textContent = state.runs;
+  el.boardInning.textContent   = state.inning;
+  el.boardOuts.textContent     = `${state.outs} OUT`;
 
   // The banked swing is only shown here for now — spending it is the next
   // step, and it will use the sweeping marker we already agreed on.
