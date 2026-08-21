@@ -221,7 +221,7 @@ assert(Math.abs(spanishFirst / dirSamples - 0.5) < 0.01,
 
 section('What each direction shows');
 
-const word = T.TIMED_VOCAB.find(w => w.es === 'el campocorto');
+const word = T.VOCAB.find(w => w.es === 'el campocorto');
 
 const fwd = T.promptFor(word, 'ES_TO_EN');
 assert(fwd.prompt === 'el campocorto' && fwd.answer === 'the shortstop',
@@ -241,7 +241,7 @@ assert(T.promptFor(word, 'ES_TO_EN').prompt === T.promptFor(word, 'anything else
 // Choices are drawn from one field, so that field has to be collision-free
 // in both directions or a question could offer the same answer twice.
 for (const field of ['es', 'en']) {
-  assert(new Set(T.TIMED_VOCAB.map(w => w[field])).size === T.TIMED_VOCAB.length,
+  assert(new Set(T.VOCAB.map(w => w[field])).size === T.VOCAB.length,
          `every ${field} value is unique, so ${field} choices can never duplicate`);
 }
 
