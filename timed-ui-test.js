@@ -349,6 +349,91 @@ const section = title => console.log('\n# ' + title);
   });
   assert(seen.length === 2, `both directions appear across fresh at-bats (${seen.join(', ')})`);
 
+  /* ===================================================================
+     H. THE BALLPARK
+     Timed mode plays in the same park Classic does, mounted from scene.js.
+     These mirror Classic's scene checks, on the same window-size matrix.
+     =================================================================== */
+  section('The shared ballpark');
+
+  assert((await page.locator('.scene svg').count()) === 1, 'the park is mounted from scene.js');
+  assert((await page.locator('.fielder').count()) === 9, 'all nine fielders are out there');
+  assert((await page.locator('.runner').count()) === 3, 'and three base-runner slots');
+  assert((await page.locator('#scorebug').count()) === 1, 'the outfield scorebug came with it');
+  assert(await page.evaluate(() =>
+           document.querySelector('.scene').getAttribute('aria-hidden') === 'true' &&
+           getComputedStyle(document.querySelector('.scene')).pointerEvents === 'none'),
+         'the park is decorative: no clicks, hidden from screen readers');
+
+  section('The park reads Timed mode state');
+
+  await stack(['DOUBLE', 'DOUBLE']);
+  await page.evaluate(() => {
+    state.runs = 5; state.outs = 2; state.bases = [true, false, true];
+    renderHud();
+  });
+  const park = await page.evaluate(() => ({
+    sju:     document.getElementById('board-home-runs').textContent,
+    outs:    document.getElementById('board-outs').textContent,
+    inning:  document.getElementById('board-inning').textContent,
+    runners: ['first', 'second', 'third']
+               .map(b => document.getElementById('runner-' + b).classList.contains('on')),
+    pips:    ['first', 'second', 'third']
+               .map(b => document.getElementById('pip-' + b).classList.contains('on')),
+    state:   { runs: state.runs, outs: state.outs, inning: state.inning }
+  }));
+  assert(park.sju === String(park.state.runs), `the scorebug shows Timed's runs (${park.sju})`);
+  assert(park.outs === `${park.state.outs} OUT`, 'and Timed\'s out count');
+  assert(park.inning === String(park.state.inning), 'and Timed\'s inning');
+  assert(JSON.stringify(park.runners) === JSON.stringify([true, false, true]),
+         'runners on the field match the base state');
+  assert(JSON.stringify(park.pips) === JSON.stringify(park.runners),
+         'and the HUD diamond agrees with them');
+
+  section('The park and the Timed HUD share the screen');
+
+  const FIELDERS = ['fielder-p', 'fielder-c', 'fielder-1b', 'fielder-2b', 'fielder-3b',
+                    'fielder-ss', 'fielder-lf', 'fielder-cf', 'fielder-rf'];
+  const SIZES = [[760, 900], [900, 900], [1024, 768], [1180, 860],
+                 [1290, 940], [1440, 900], [1600, 800], [480, 900]];
+
+  let hudClean = true, edgeClean = true, signClean = true;
+  for (const [w, h] of SIZES) {
+    const sized = await browser.newPage({ viewport: { width: w, height: h } });
+    await sized.goto(URL);
+    await sized.waitForSelector('.choice');
+    const r = await sized.evaluate(ids => {
+      const R = el => el.getBoundingClientRect();
+      const hit = (a, c) => a.left < c.right && c.left < a.right &&
+                            a.top < c.bottom && c.top < a.bottom;
+      // Every chrome element Timed mode puts on top of the park.
+      const chrome = [...document.querySelectorAll('.hud-chip, .hud-bank')].map(R);
+      const hud = [], sliced = [], clipped = [];
+      for (const id of ids) {
+        const f = R(document.getElementById(id));
+        if (chrome.some(c => hit(f, c))) hud.push(id);
+        const off = f.right < 0 || f.left > innerWidth;
+        const inside = f.left >= 0 && f.right <= innerWidth;
+        if (!off && !inside) sliced.push(id);
+      }
+      // Signage is either fully on screen or hidden outright, never sliced.
+      for (const id of ['scorebug', 'wall-sign']) {
+        const el = document.getElementById(id);
+        if (getComputedStyle(el).display === 'none') continue;
+        const b = R(el);
+        if (b.left < 0 || b.right > innerWidth) clipped.push(id);
+      }
+      return { hud, sliced, clipped };
+    }, FIELDERS);
+    await sized.close();
+    if (r.hud.length)     { hudClean = false;  console.error(`     ${w}x${h} HUD: ${r.hud.join(',')}`); }
+    if (r.sliced.length)  { edgeClean = false; console.error(`     ${w}x${h} sliced: ${r.sliced.join(',')}`); }
+    if (r.clipped.length) { signClean = false; console.error(`     ${w}x${h} clipped: ${r.clipped.join(',')}`); }
+  }
+  assert(hudClean,  `no fielder collides with Timed's HUD chips, across ${SIZES.length} window sizes`);
+  assert(edgeClean, `no fielder is cut in half by the screen edge, across ${SIZES.length} window sizes`);
+  assert(signClean, `the scorebug and wall sign are never sliced, across ${SIZES.length} window sizes`);
+
   assert(errors.length === 0, 'no console/page errors (' + errors.join('; ') + ')');
 
   await browser.close();

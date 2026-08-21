@@ -4,9 +4,13 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>GameSpeak — Tiered Timed Pitch</title>
+  <link rel="stylesheet" href="scene.css">
   <link rel="stylesheet" href="timed.css">
 </head>
 <body>
+
+  <!-- The same ballpark Classic plays in. Markup lives in scene.js. -->
+  <div class="scene" id="scene-mount" aria-hidden="true"></div>
 
   <header class="header">
     <h1 class="logo">GameSpeak</h1>
@@ -166,6 +170,7 @@
   </main>
 
   <!-- Rules first, then the flow that drives them. -->
+  <script src="scene.js"></script>
   <script src="timed.js"></script>
   <script src="timed-ui.js"></script>
 </body>
