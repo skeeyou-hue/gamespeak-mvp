@@ -35,7 +35,7 @@ const section = title => console.log('\n# ' + title);
   // Stack the deck with words of chosen tiers and start a fresh at-bat.
   const stack = tags => page.evaluate(list => {
     startInning();
-    state.deck = list.map(t => TIMED_VOCAB.find(w => w.tag === t));
+    state.deck = list.map(t => VOCAB.find(w => w.tag === t));
     state.index = 0;
     startAtBat();
   }, tags);
@@ -277,8 +277,8 @@ const section = title => console.log('\n# ' + title);
     };
   });
 
-  const SPANISH = await page.evaluate(() => TIMED_VOCAB.map(w => w.es));
-  const ENGLISH = await page.evaluate(() => TIMED_VOCAB.map(w => w.en));
+  const SPANISH = await page.evaluate(() => VOCAB.map(w => w.es));
+  const ENGLISH = await page.evaluate(() => VOCAB.map(w => w.en));
 
   await stack(['TRIPLE', 'TRIPLE']);
   await forceDirection('ES_TO_EN');

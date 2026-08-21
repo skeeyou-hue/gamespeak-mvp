@@ -76,21 +76,13 @@ const el = {
 
 /* ---------- helpers ---------- */
 
-function shuffle(array) {
-  const copy = array.slice();
-  for (let i = copy.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [copy[i], copy[j]] = [copy[j], copy[i]];
-  }
-  return copy;
-}
 
 // Wrong answers have to come from the same field as the right one, or a
 // Spanish-first question would offer English distractors. promptFor says
 // which field that is.
 function buildChoices(word, direction) {
   const face = promptFor(word, direction);
-  const wrong = TIMED_VOCAB
+  const wrong = VOCAB
     .filter(w => w[face.answerLang] !== face.answer)
     .map(w => w[face.answerLang]);
   return shuffle([face.answer, ...shuffle(wrong).slice(0, 3)]);
@@ -395,7 +387,7 @@ function endInning(title, subtitle) {
 
 function startInning() {
   state = newTimedState((state.inning || 0) + 1);
-  state.deck = shuffle(TIMED_VOCAB);
+  state.deck = shuffle(VOCAB);
   el.summary.classList.add('hidden');
   el.pitchScreen.classList.remove('hidden');
   renderHud();
