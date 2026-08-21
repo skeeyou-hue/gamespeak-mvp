@@ -152,10 +152,11 @@ function applyAtBatToBonus(bonus, streak, result, roll) {
    Built here so the countdown UI has one obvious thing to read from, and so
    tests can assert against a known shape.
    ------------------------------------------------------------------------- */
-function newAtBat(tag) {
+function newAtBat(tag, direction = pickDirection(Math.random())) {
   return {
     tag,                          // the word's tier, which set the window
     windowMs: windowForTag(tag),
+    direction,                    // held for every pitch of this at-bat
     strikes: 0,                   // resets with every new at-bat
     over: false,
     result: null,                 // 'HIT' | 'OUT' once over
@@ -299,6 +300,36 @@ const DUGOUT_PHRASES = [
 
 
 /* -------------------------------------------------------------------------
+   10. WHICH WAY THE PITCH COMES
+   Each new word is shown in one of two directions, picked at random:
+
+     ES_TO_EN  the Spanish word, with English choices
+     EN_TO_ES  the English meaning, with Spanish choices
+
+   The direction belongs to the AT-BAT, not to each pitch. That is what
+   "fresh per pitch, but preserved on a re-pitch" actually means here: a
+   strike brings the same word back, so every pitch after the first is a
+   re-pitch and must keep the direction it was first shown in. Picking
+   again on a new word is what keeps it unpredictable.
+   ------------------------------------------------------------------------- */
+
+const DIRECTIONS = ['ES_TO_EN', 'EN_TO_ES'];
+
+// `roll` is a number in [0, 1) — Math.random() in the game, fixed in tests.
+function pickDirection(roll) {
+  return roll < 0.5 ? 'ES_TO_EN' : 'EN_TO_ES';
+}
+
+// What to show, what counts as right, and which field the wrong answers
+// have to be drawn from so the choices are all in one language.
+function promptFor(word, direction) {
+  return direction === 'EN_TO_ES'
+    ? { prompt: word.en, answer: word.es, promptLang: 'en', answerLang: 'es' }
+    : { prompt: word.es, answer: word.en, promptLang: 'es', answerLang: 'en' };
+}
+
+
+/* -------------------------------------------------------------------------
    NOTE ON DUPLICATION
    rollBonusLife, advanceOnHit and the word list also exist in app.js. That
    is deliberate: this branch must not touch Classic, and unifying them
@@ -317,6 +348,7 @@ if (typeof module !== 'undefined' && module.exports) {
     rollBonusLife, applyAtBatToBonus, newAtBat, newTimedState,
     HIT_ADVANCE, advanceOnHit, TIMED_VOCAB,
     SWING_SWEET_MIN, SWING_SWEET_MAX, SWING_PERIOD_MS,
-    markerPositionAt, isSwingOnTime, DUGOUT_PHRASES
+    markerPositionAt, isSwingOnTime, DUGOUT_PHRASES,
+    DIRECTIONS, pickDirection, promptFor
   };
 }
