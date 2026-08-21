@@ -200,5 +200,70 @@ assert(new Set(T.DUGOUT_PHRASES.map(p => p.es)).size === T.DUGOUT_PHRASES.length
 assert(T.DUGOUT_PHRASES.every(p => p.es.length <= 22),
        'all short enough to read in a moment');
 
+/* ===================================================================
+   G. WHICH WAY THE PITCH COMES
+   =================================================================== */
+section('Picking a direction');
+
+for (const [roll, dir] of [[0, 'ES_TO_EN'], [0.25, 'ES_TO_EN'], [0.499, 'ES_TO_EN'],
+                           [0.5, 'EN_TO_ES'], [0.75, 'EN_TO_ES'], [0.999, 'EN_TO_ES']]) {
+  assert(T.pickDirection(roll) === dir, `a roll of ${roll} gives ${dir}`);
+}
+assert(T.DIRECTIONS.length === 2, 'there are exactly two directions');
+
+let spanishFirst = 0;
+const dirSamples = 20000;
+for (let i = 0; i < dirSamples; i++) {
+  if (T.pickDirection(i / dirSamples) === 'ES_TO_EN') spanishFirst++;
+}
+assert(Math.abs(spanishFirst / dirSamples - 0.5) < 0.01,
+       `the two directions come up equally often (measured ${(spanishFirst / dirSamples * 100).toFixed(1)}% Spanish-first)`);
+
+section('What each direction shows');
+
+const word = T.TIMED_VOCAB.find(w => w.es === 'el campocorto');
+
+const fwd = T.promptFor(word, 'ES_TO_EN');
+assert(fwd.prompt === 'el campocorto' && fwd.answer === 'the shortstop',
+       'ES_TO_EN shows the Spanish and wants the English');
+assert(fwd.promptLang === 'es' && fwd.answerLang === 'en',
+       'and says which field the choices come from');
+
+const rev = T.promptFor(word, 'EN_TO_ES');
+assert(rev.prompt === 'the shortstop' && rev.answer === 'el campocorto',
+       'EN_TO_ES shows the English and wants the Spanish');
+assert(rev.promptLang === 'en' && rev.answerLang === 'es',
+       'and flips the choice field too');
+
+assert(T.promptFor(word, 'ES_TO_EN').prompt === T.promptFor(word, 'anything else').prompt,
+       'an unknown direction falls back to Spanish-first rather than breaking');
+
+// Choices are drawn from one field, so that field has to be collision-free
+// in both directions or a question could offer the same answer twice.
+for (const field of ['es', 'en']) {
+  assert(new Set(T.TIMED_VOCAB.map(w => w[field])).size === T.TIMED_VOCAB.length,
+         `every ${field} value is unique, so ${field} choices can never duplicate`);
+}
+
+section('The direction rides on the at-bat');
+
+const ab1 = T.newAtBat('TRIPLE', 'EN_TO_ES');
+assert(ab1.direction === 'EN_TO_ES', 'an at-bat carries the direction it was given');
+assert(T.DIRECTIONS.includes(T.newAtBat('WALK').direction),
+       'and picks one for itself when none is given');
+
+// A re-pitch is the same at-bat object, so the direction cannot drift:
+// applyPitch never touches it.
+const ab2 = T.newAtBat('DOUBLE', 'EN_TO_ES');
+let strikes = ab2.strikes;
+for (let i = 0; i < 2; i++) strikes = T.applyPitch(strikes, false, 800, ab2.windowMs).strikes;
+assert(ab2.direction === 'EN_TO_ES' && strikes === 2,
+       'two strikes later the at-bat still has its original direction');
+
+// Direction and tier are independent — a word's tier still sets the clock.
+assert(T.newAtBat('WALK', 'EN_TO_ES').windowMs === 3000 &&
+       T.newAtBat('TRIPLE', 'EN_TO_ES').windowMs === 5000,
+       'flipping the direction does not change the clock');
+
 console.log(`\n${passed} passed, ${failed} failed`);
 process.exit(failed ? 1 : 0);
