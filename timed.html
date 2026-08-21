@@ -45,7 +45,12 @@
          ============================================================ -->
     <section class="card" id="pitch-screen">
       <div class="pitch-top">
-        <span class="tier-badge" id="tier-badge">EASY · 3.0s</span>
+        <span class="pitch-tags">
+          <span class="tier-badge" id="tier-badge">EASY · 3.0s</span>
+          <!-- Which way this pitch is coming. Set per at-bat, held across
+               a re-pitch, so it never changes under the player mid-count. -->
+          <span class="direction-hint" id="direction-hint">→ English</span>
+        </span>
         <span class="strike-pips" id="strike-pips" aria-label="Strikes">
           <span class="strike-pip"></span><span class="strike-pip"></span><span class="strike-pip"></span>
         </span>

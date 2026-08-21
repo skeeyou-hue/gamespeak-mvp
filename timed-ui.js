@@ -22,6 +22,7 @@ let startedAt = 0;      // when the pitch on screen was thrown
 const el = {
   pitchScreen: document.getElementById('pitch-screen'),
   tierBadge:   document.getElementById('tier-badge'),
+  directionHint: document.getElementById('direction-hint'),
   strikePips:  document.getElementById('strike-pips'),
   timerFill:   document.getElementById('timer-fill'),
   clockNum:    document.getElementById('clock-num'),
@@ -73,9 +74,15 @@ function shuffle(array) {
   return copy;
 }
 
-function buildChoices(word) {
-  const wrong = TIMED_VOCAB.filter(w => w.en !== word.en).map(w => w.en);
-  return shuffle([word.en, ...shuffle(wrong).slice(0, 3)]);
+// Wrong answers have to come from the same field as the right one, or a
+// Spanish-first question would offer English distractors. promptFor says
+// which field that is.
+function buildChoices(word, direction) {
+  const face = promptFor(word, direction);
+  const wrong = TIMED_VOCAB
+    .filter(w => w[face.answerLang] !== face.answer)
+    .map(w => w[face.answerLang]);
+  return shuffle([face.answer, ...shuffle(wrong).slice(0, 3)]);
 }
 
 function say(text, tone) {
@@ -123,7 +130,10 @@ function renderClock(elapsedMs) {
 
 function renderQuestion() {
   const word = state.deck[state.index];
-  el.word.textContent = word.es;
+  const face = promptFor(word, state.atBat.direction);
+  el.word.textContent = face.prompt;
+  el.word.lang = face.promptLang;
+  el.directionHint.textContent = face.answerLang === 'es' ? '→ Español' : '→ English';
   el.tierBadge.textContent = `${bucketForTag(word.tag).toUpperCase()} · ${(state.atBat.windowMs / 1000).toFixed(1)}s`;
   el.tierBadge.className = 'tier-badge tier-' + bucketForTag(word.tag);
   renderStrikes();
@@ -131,13 +141,15 @@ function renderQuestion() {
 
 function renderChoices() {
   const word = state.deck[state.index];
+  const face = promptFor(word, state.atBat.direction);
   el.choices.innerHTML = '';
-  buildChoices(word).forEach(text => {
+  buildChoices(word, state.atBat.direction).forEach(text => {
     const button = document.createElement('button');
     button.className = 'choice';
+    button.lang = face.answerLang;
     button.textContent = text;
     button.addEventListener('click', () => {
-      resolvePitch(performance.now() - startedAt, text === word.en);
+      resolvePitch(performance.now() - startedAt, text === face.answer);
     });
     el.choices.appendChild(button);
   });
@@ -146,6 +158,8 @@ function renderChoices() {
 /* ---------- the at-bat loop ---------- */
 
 function startAtBat() {
+  // The direction is picked here, once, and rides on the at-bat — so a
+  // strike bringing the same word back cannot re-roll it.
   state.atBat = newAtBat(state.deck[state.index].tag);
   renderQuestion();
   throwPitch();
@@ -185,9 +199,10 @@ function resolvePitch(elapsedMs, correct) {
   const pitch = applyPitch(atBat.strikes, correct, elapsedMs, atBat.windowMs);
   atBat.strikes = pitch.strikes;
 
+  const face = promptFor(word, atBat.direction);
   el.choices.querySelectorAll('.choice').forEach(button => {
     button.disabled = true;
-    if (button.textContent === word.en) button.classList.add('correct');
+    if (button.textContent === face.answer) button.classList.add('correct');
   });
 
   if (pitch.result === 'HIT') {
