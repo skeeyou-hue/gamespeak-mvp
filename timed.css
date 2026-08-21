@@ -116,6 +116,20 @@ body {
   align-items: center;
 }
 
+.pitch-tags {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.direction-hint {
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
 .tier-badge {
   padding: 2px 9px;
   border-radius: 999px;

@@ -29,6 +29,8 @@ const section = title => console.log('\n# ' + title);
 
   await page.goto(URL);
   await page.waitForSelector('.choice');
+  await page.evaluate(() => { window.__realRandom = Math.random; });
+  const unpinRandom = () => page.evaluate(() => { Math.random = window.__realRandom; });
 
   // Stack the deck with words of chosen tiers and start a fresh at-bat.
   const stack = tags => page.evaluate(list => {
@@ -251,6 +253,101 @@ const section = title => console.log('\n# ' + title);
   assert((await page.evaluate(() => state.swing && state.swing.result)) === 'HOMERUN',
          'space bar takes the swing too');
   await page.waitForTimeout(2600);
+
+  /* =================================================================== */
+  section('Both prompt directions');
+
+  // Re-throw the current pitch with a direction we choose, so both ways can
+  // be checked deterministically.
+  const forceDirection = dir => page.evaluate(d => {
+    state.atBat.direction = d;
+    renderQuestion();
+    throwPitch();
+  }, dir);
+
+  const face = () => page.evaluate(() => {
+    const w = state.deck[state.index];
+    return {
+      prompt:    document.getElementById('word').textContent,
+      promptLang: document.getElementById('word').lang,
+      hint:      document.getElementById('direction-hint').textContent,
+      choices:   [...document.querySelectorAll('.choice')].map(b => b.textContent),
+      direction: state.atBat.direction,
+      word:      w
+    };
+  });
+
+  const SPANISH = await page.evaluate(() => TIMED_VOCAB.map(w => w.es));
+  const ENGLISH = await page.evaluate(() => TIMED_VOCAB.map(w => w.en));
+
+  await stack(['TRIPLE', 'TRIPLE']);
+  await forceDirection('ES_TO_EN');
+  let f = await face();
+  assert(f.prompt === f.word.es, `Spanish-first shows the Spanish ("${f.prompt}")`);
+  assert(f.promptLang === 'es', 'and marks the prompt as Spanish for screen readers');
+  assert(f.hint === '→ English', 'the hint says to answer in English');
+  assert(f.choices.every(c => ENGLISH.includes(c)), 'every choice is an English meaning');
+  assert(f.choices.includes(f.word.en), 'the right English answer is among them');
+  assert(new Set(f.choices).size === 4, 'no duplicate choices');
+
+  await forceDirection('EN_TO_ES');
+  f = await face();
+  assert(f.prompt === f.word.en, `English-first shows the English ("${f.prompt}")`);
+  assert(f.promptLang === 'en', 'and marks the prompt as English');
+  assert(f.hint === '→ Español', 'the hint says to answer in Spanish');
+  assert(f.choices.every(c => SPANISH.includes(c)), 'every choice is a Spanish word');
+  assert(f.choices.includes(f.word.es), 'the right Spanish answer is among them');
+  assert(new Set(f.choices).size === 4, 'no duplicate choices in this direction either');
+
+  section('Answering in the reversed direction');
+
+  // Click the Spanish word that matches the English prompt.
+  const target = f.word.es;
+  await page.locator('.choice', { hasText: target }).first().click();
+  assert((await page.evaluate(() => state.atBat.result)) === 'HIT',
+         'picking the right Spanish word is a hit');
+
+  await stack(['TRIPLE']);
+  await forceDirection('EN_TO_ES');
+  f = await face();
+  const wrongOne = f.choices.find(c => c !== f.word.es);
+  await page.locator('.choice', { hasText: wrongOne }).first().click();
+  assert((await page.evaluate(() => state.atBat.strikes)) === 1,
+         'picking the wrong Spanish word is a strike');
+
+  section('A re-pitch keeps the direction it came in on');
+
+  const beforeRepitch = await face();
+  await page.waitForTimeout(1700);
+  const afterRepitch = await face();
+  assert(afterRepitch.direction === beforeRepitch.direction,
+         `the direction is unchanged after a strike (${afterRepitch.direction})`);
+  assert(afterRepitch.prompt === beforeRepitch.prompt,
+         'the same prompt comes back, in the same language');
+  assert(afterRepitch.hint === beforeRepitch.hint, 'and the hint still says the same thing');
+  assert(afterRepitch.choices.every(c => SPANISH.includes(c)),
+         'the choices are still in the answer language');
+  assert((await page.evaluate(() => state.atBat.strikes)) === 1,
+         'and it is still the same at-bat, one strike in');
+
+  // Strike two on the same word, still no drift.
+  await page.evaluate(() => resolvePitch(9999, false));
+  await page.waitForTimeout(1700);
+  const afterTwo = await face();
+  assert(afterTwo.direction === beforeRepitch.direction && afterTwo.prompt === beforeRepitch.prompt,
+         'two strikes deep, the direction still has not drifted');
+
+  section('Fresh words get a fresh roll');
+
+  // Earlier sections pinned Math.random to fix a roll; put the real one
+  // back before asking whether the direction actually varies.
+  await unpinRandom();
+  const seen = await page.evaluate(() => {
+    const out = [];
+    for (let i = 0; i < 400; i++) out.push(newAtBat('DOUBLE').direction);
+    return [...new Set(out)];
+  });
+  assert(seen.length === 2, `both directions appear across fresh at-bats (${seen.join(', ')})`);
 
   assert(errors.length === 0, 'no console/page errors (' + errors.join('; ') + ')');
 
