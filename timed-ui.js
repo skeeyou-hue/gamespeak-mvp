@@ -42,8 +42,8 @@ const el = {
   dugoutPhrase:  document.getElementById('dugout-phrase'),
   dugoutGloss:   document.getElementById('dugout-gloss'),
   swingFigure:   document.getElementById('swing-figure'),
-  swingSweet:    document.getElementById('swing-sweet'),
-  swingMarker:   document.getElementById('swing-marker'),
+  pitchBall:     document.getElementById('pitch-ball'),
+  contactZone:   document.getElementById('contact-zone'),
   swingGo:       document.getElementById('swing-go'),
   swingFeedback: document.getElementById('swing-feedback'),
 
@@ -266,8 +266,44 @@ function afterPitch() {
 
 /* ---------- the power swing ----------
    Spending a banked swing replaces the whole at-bat. The word on screen is
-   set aside, the countdown stops, and the at-bat is settled by the marker
-   alone: sweet spot is a home run, anywhere else is an out. -------------- */
+   set aside, the countdown stops, and the at-bat is settled by one swing at
+   one pitch: contact is a home run, anything else is an out.
+
+   The lane geometry below is the only place the drawing and the rules meet.
+   Progress runs 0 (the pitcher's hand) to 1 (the catcher's mitt), and both
+   the ball's height and its size are read straight off it, so the plate at
+   PLATE_AT of the travel is also the plate on screen. ------------------- */
+
+const LANE_RELEASE_Y = 26;     // px down the lane: the ball leaves the hand
+const LANE_MITT_Y    = 196;    // px down the lane: the ball is caught
+const LANE_SCALE_MIN = 0.32;   // far away
+const LANE_SCALE_MAX = 1.05;   // right on top of you
+
+function laneY(progress) {
+  return LANE_RELEASE_Y + progress * (LANE_MITT_Y - LANE_RELEASE_Y);
+}
+
+// Perspective: the ball grows as it closes. Linear in progress, which is
+// not strictly how perspective works, but it is honest about the timing —
+// how big the ball looks and how close it is stay in step.
+function laneScale(progress) {
+  return LANE_SCALE_MIN + progress * (LANE_SCALE_MAX - LANE_SCALE_MIN);
+}
+
+function placeBall(progress) {
+  el.pitchBall.style.top       = laneY(progress).toFixed(2) + 'px';
+  el.pitchBall.style.transform =
+    'translate(-50%, -50%) scale(' + laneScale(progress).toFixed(3) + ')';
+}
+
+// Why the swing missed, in the batter's own terms. Being told which side of
+// the ball you were on is the difference between learning the timing and
+// guessing at it again.
+const MISS_TEXT = {
+  EARLY:   'Way out in front — that is an out.',
+  LATE:    'Under it late — that is an out.',
+  LOOKING: 'Took it all the way. Called strike, that is an out.'
+};
 
 let swingFrame = null;
 
@@ -277,7 +313,7 @@ function startSwing() {
   if (frame) { cancelAnimationFrame(frame); frame = null; }   // the pitch clock stops
 
   const phrase = DUGOUT_PHRASES[Math.floor(Math.random() * DUGOUT_PHRASES.length)];
-  state.swing = { position: 0, phrase: phrase.es, result: null };
+  state.swing = { progress: 0, phrase: phrase.es, result: null, verdict: null };
 
   el.dugoutPhrase.textContent = phrase.es;
   el.dugoutGloss.textContent  = phrase.en;
@@ -285,24 +321,34 @@ function startSwing() {
   el.swingFeedback.className  = 'feedback';
   el.swingGo.disabled         = false;
   el.swingFigure.classList.remove('bat-flip');
+  el.pitchBall.classList.remove('struck');
+  placeBall(0);
   el.pitchScreen.classList.add('hidden');
   el.swingScreen.classList.remove('hidden');
 
   const startedSwingAt = performance.now();
   const tick = now => {
-    if (!state.swing || state.swing.result) return;
-    state.swing.position = markerPositionAt(now - startedSwingAt);
-    el.swingMarker.style.left = (state.swing.position * 100) + '%';
+    if (!state.swing || state.swing.result) { swingFrame = null; return; }
+    const progress = ballProgressAt(now - startedSwingAt);
+    state.swing.progress = progress;
+    placeBall(progress);
+    // The ball is in the mitt and the bat never left the shoulder. One
+    // pitch means one chance, so that settles it.
+    if (progress >= 1) { swingFrame = null; takeSwing(null); return; }
     swingFrame = requestAnimationFrame(tick);
   };
   swingFrame = requestAnimationFrame(tick);
 }
 
-function takeSwing(position) {
+// `progress` is where the ball was when the bat came through. Null means it
+// never came through at all.
+function takeSwing(progress) {
   if (!state.swing || state.swing.result) return;
   if (swingFrame) { cancelAnimationFrame(swingFrame); swingFrame = null; }
 
-  const onTime = isSwingOnTime(position);
+  const swung  = progress !== null && progress !== undefined;
+  const onTime = swung && isContact(progress);
+  state.swing.verdict = swung ? swingVerdict(progress) : 'LOOKING';
   state.swing.result  = onTime ? 'HOMERUN' : 'MISS';
   state.bonus         = null;          // spent, hit or miss
   el.swingGo.disabled = true;
@@ -315,9 +361,10 @@ function takeSwing(position) {
     el.swingFeedback.textContent = `¡JONRÓN! ${play.runs} in.`;
     el.swingFeedback.className   = 'feedback good';
     el.swingFigure.classList.add('bat-flip');
+    el.pitchBall.classList.add('struck');
   } else {
     state.outs++;
-    el.swingFeedback.textContent = 'Swing and a miss — that is an out.';
+    el.swingFeedback.textContent = MISS_TEXT[state.swing.verdict];
     el.swingFeedback.className   = 'feedback bad';
   }
 
@@ -327,6 +374,8 @@ function takeSwing(position) {
 
 function endSwing() {
   el.swingFigure.classList.remove('bat-flip');
+  el.pitchBall.classList.remove('struck');
+  placeBall(0);
   el.swingScreen.classList.add('hidden');
   el.pitchScreen.classList.remove('hidden');
 
@@ -396,17 +445,20 @@ function startInning() {
 
 el.playAgain.addEventListener('click', startInning);
 el.bankButton.addEventListener('click', startSwing);
-el.swingGo.addEventListener('click', () => takeSwing(state.swing ? state.swing.position : 0));
+el.swingGo.addEventListener('click', () => takeSwing(state.swing ? state.swing.progress : null));
 document.addEventListener('keydown', event => {
   if (event.code === 'Space' && state.swing && !state.swing.result) {
     event.preventDefault();
-    takeSwing(state.swing.position);
+    takeSwing(state.swing.progress);
   }
 });
 
-// Draw the sweet spot straight from the constants, so what the player aims
-// at is always exactly what isSwingOnTime() accepts.
-el.swingSweet.style.left  = (SWING_SWEET_MIN * 100) + '%';
-el.swingSweet.style.width = ((SWING_SWEET_MAX - SWING_SWEET_MIN) * 100) + '%';
+// Draw the contact window straight from the rules, so the band over the
+// plate is exactly the stretch of flight isContact() accepts — no more, no
+// less, and it cannot drift if the numbers are retuned.
+el.contactZone.style.top    = laneY(PLATE_AT - CONTACT_WINDOW) + 'px';
+el.contactZone.style.height = (laneY(PLATE_AT + CONTACT_WINDOW) -
+                               laneY(PLATE_AT - CONTACT_WINDOW)) + 'px';
+placeBall(0);
 
 startInning();

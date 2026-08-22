@@ -85,7 +85,7 @@
     <!-- ============================================================
          THE POWER SWING
          Spending a banked swing replaces the whole at-bat: no word, no
-         countdown, no count. A marker sweeps; one press stops it.
+         countdown, no count. One pitch comes in; one press swings at it.
          ============================================================ -->
     <section class="card hidden" id="swing-screen">
       <p class="swing-eyebrow">Banked swing</p>
@@ -94,11 +94,91 @@
       <p class="dugout-es" id="dugout-phrase">¡Vamos!</p>
       <p class="dugout-en" id="dugout-gloss">Let's go!</p>
 
-      <!-- The batter, built the same way as the one out at the plate:
-           weight sunk into a bent back leg, front leg braced, near arm
-           carrying a high elbow. The bat keeps its own group so it can
-           leave on a home run — its pivot is the hands, which is where
-           the flip animation's transform-origin points. -->
+      <!-- The pitch. The view is from behind the catcher: mound at the top,
+           plate at the bottom, ball straight down the middle. The plate is
+           not placed by eye — it sits at exactly PLATE_AT of the ball's
+           travel, so the ball is over the plate at the same instant
+           isContact() says it is. -->
+      <div class="pitch-lane">
+        <svg class="pitch-field" viewBox="0 0 200 210" aria-hidden="true">
+          <defs>
+            <linearGradient id="laneGrass" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0" stop-color="#2A6539"/>
+              <stop offset="1" stop-color="#3E8B52"/>
+            </linearGradient>
+            <linearGradient id="laneDirt" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0" stop-color="#A2703F"/>
+              <stop offset="1" stop-color="#C08A58"/>
+            </linearGradient>
+          </defs>
+
+          <rect width="200" height="210" fill="url(#laneGrass)"/>
+
+          <!-- Mow stripes, narrowing toward the top so the lane reads as
+               depth rather than as a flat strip. -->
+          <path d="M64,0 L136,0 L154,210 L46,210 Z" fill="#ffffff" opacity="0.032"/>
+          <path d="M26,0 L46,0 L18,210 L0,210 Z"    fill="#ffffff" opacity="0.04"/>
+          <path d="M154,0 L174,0 L200,210 L182,210 Z" fill="#ffffff" opacity="0.04"/>
+
+          <!-- The mound -->
+          <ellipse cx="100" cy="36" rx="46" ry="14" fill="url(#laneDirt)"/>
+          <rect x="94" y="29.5" width="12" height="3.2" rx="1" fill="#F2EFE6" opacity="0.8"/>
+
+          <!-- The pitcher, mid-delivery. Front foot down, throwing arm
+               coming through — his hand finishes where the ball starts. -->
+          <ellipse cx="101" cy="37" rx="13" ry="3" fill="#0A3D24" opacity="0.28"/>
+          <g stroke="#EDE6D6" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+            <path d="M99,25 L95,31 L92,35.6"/>
+            <path d="M102,25 L108,30 L112,34.8"/>
+          </g>
+          <ellipse cx="91" cy="36.4" rx="4" ry="1.6" fill="#12313B"/>
+          <ellipse cx="113" cy="35.6" rx="4" ry="1.6" fill="#12313B"/>
+
+          <path d="M95,13 Q100.5,11 106,13 L104,26 Q100.5,27.5 96.5,26 Z" fill="#EDE6D6"/>
+          <path d="M95,13 Q100.5,11 106,13 L105.7,16.2 Q100.5,14.2 95.3,16.2 Z" fill="#0E4C5C"/>
+
+          <g stroke="#EDE6D6" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none">
+            <path d="M95.5,15 L90.5,19 L92.5,23"/>
+            <path d="M105.8,15 L108.5,20 L102,25.4"/>
+          </g>
+          <circle cx="90" cy="24" r="3.2" fill="#8A5A2B"/>
+
+          <circle cx="100.6" cy="9.2" r="4.2" fill="#C08A6B"/>
+          <path d="M96.4,8.6 A4.2,4.2 0 0 1 104.8,8.6 Z" fill="#0E4C5C"/>
+          <path d="M96.4,8.8 L92.4,9.7 L96.8,10.4 Z" fill="#0E4C5C"/>
+
+          <!-- The corridor the ball comes down, and the dirt around the plate -->
+          <path d="M88,40 L112,40 L124,176 L76,176 Z" fill="#000000" opacity="0.055"/>
+          <ellipse cx="100" cy="177" rx="72" ry="31" fill="url(#laneDirt)"/>
+
+          <!-- The plate itself, point toward the catcher -->
+          <path d="M89,156 L111,156 L111,164 L100,170.5 L89,164 Z" fill="#F7F5EF"/>
+
+          <!-- The catcher, nearest the viewer and mostly out of frame. The
+               mitt is held up in the ball's line — it is where the ball ends
+               up if nobody swings, so the pocket is drawn dark enough for a
+               white ball to read against it. -->
+          <path d="M56,210 Q64,198 100,195 Q136,198 144,210 Z" fill="#254A5A"/>
+          <circle cx="100" cy="211" r="11" fill="#12313B"/>
+          <path d="M90,209.5 Q100,203 110,209.5" fill="none" stroke="#8FA0A8" stroke-width="1.6"/>
+          <path d="M100,181 q14,0 14.6,10.5 q0.7,11.6 -14.6,12.6 q-15.3,-1 -14.6,-12.6 q0.6,-10.5 14.6,-10.5 Z"
+                fill="#8A5628"/>
+          <path d="M86.6,186 q6,-6.5 13.4,-6.6 q7.4,0.1 13.4,6.6" fill="none"
+                stroke="#5C3517" stroke-width="1.6"/>
+          <ellipse cx="100" cy="196" rx="8.6" ry="7" fill="#40230D" opacity="0.7"/>
+        </svg>
+
+        <!-- The window isContact() accepts, drawn from the constants by
+             timed-ui.js so what you aim at is what the rules allow. -->
+        <div class="contact-zone" id="contact-zone"></div>
+
+        <!-- The batter, built the same way as the one out at the plate:
+             weight sunk into a bent back leg, front leg braced, near arm
+             carrying a high elbow. The bat keeps its own group so it can
+             leave on a home run — its pivot is the hands, which is where
+             the flip animation's transform-origin points. Its viewBox is
+             untouched, so the flip's transform-origin still lands on the
+             hands however small it is drawn here. -->
       <svg class="swing-figure" id="swing-figure" viewBox="0 0 220 200" aria-hidden="true">
         <ellipse cx="96" cy="190" rx="46" ry="8" fill="#0a2a18" opacity="0.3"/>
 
@@ -142,9 +222,9 @@
         </g>
       </svg>
 
-      <div class="swing-track" id="swing-track">
-        <div class="swing-sweet" id="swing-sweet"></div>
-        <div class="swing-marker" id="swing-marker"></div>
+        <!-- The ball. Positioned and scaled by timed-ui.js from the same
+             progress value the rules score the swing on. -->
+        <div class="pitch-ball" id="pitch-ball"></div>
       </div>
 
       <button class="swing-go" id="swing-go">SWING <span class="swing-key">or space</span></button>
