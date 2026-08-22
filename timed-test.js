@@ -265,5 +265,64 @@ assert(T.newAtBat('WALK', 'EN_TO_ES').windowMs === 3000 &&
        T.newAtBat('TRIPLE', 'EN_TO_ES').windowMs === 5000,
        'flipping the direction does not change the clock');
 
+/* ===================================================================
+   H. THE PITCH — ball position to swing timing
+   =================================================================== */
+section('Where the ball is');
+
+assert(T.ballProgressAt(0) === 0, 'before the wind-up, the ball has not been released');
+assert(T.ballProgressAt(T.PITCH_WINDUP_MS) === 0, 'still zero at the moment of release');
+assert(T.ballProgressAt(T.PITCH_WINDUP_MS + T.PITCH_FLIGHT_MS / 2) === 0.5,
+       'halfway through the flight is halfway to the mitt');
+assert(T.ballProgressAt(T.PITCH_WINDUP_MS + T.PITCH_FLIGHT_MS) === 1, 'the mitt is progress 1');
+assert(T.ballProgressAt(99999) === 1, 'and it stops there rather than running on');
+
+// One pitch, one chance: unlike the sweeping marker, progress never comes
+// back around. Anything that made it non-monotonic would hand the player a
+// second bite at the window.
+let last = -1, monotonic = true;
+for (let ms = 0; ms <= 2600; ms += 10) {
+  const p = T.ballProgressAt(ms);
+  if (p < last) monotonic = false;
+  last = p;
+}
+assert(monotonic, 'progress only ever moves forward — there is no second pass');
+
+section('What a swing at that position is worth');
+
+for (const [p, verdict] of [
+  [0,     'EARLY'], [0.5,  'EARLY'], [0.699, 'EARLY'],
+  [0.70,  'ON_TIME'], [0.80, 'ON_TIME'], [0.90, 'ON_TIME'],
+  [0.901, 'LATE'], [1,    'LATE']
+]) {
+  assert(T.swingVerdict(p) === verdict, `progress ${p} is ${verdict}`);
+  assert(T.isContact(p) === (verdict === 'ON_TIME'), `  and isContact agrees at ${p}`);
+}
+assert(T.PLATE_AT === 0.8 && T.isContact(T.PLATE_AT),
+       'the window is centred on the plate, not somewhere arbitrary in the flight');
+assert(T.PLATE_AT + T.CONTACT_WINDOW < 1,
+       'the ball travels past the plate, so a late swing has something to be late against');
+
+section('The window in wall-clock terms');
+
+const release = T.PITCH_WINDUP_MS;
+const openAt  = release + (T.PLATE_AT - T.CONTACT_WINDOW) * T.PITCH_FLIGHT_MS;
+const shutAt  = release + (T.PLATE_AT + T.CONTACT_WINDOW) * T.PITCH_FLIGHT_MS;
+assert(T.contactWindowMs() === Math.round(shutAt - openAt),
+       `the window is ${T.contactWindowMs()}ms wide, from ${openAt}ms to ${shutAt}ms`);
+assert(T.isContact(T.ballProgressAt(openAt)) && T.isContact(T.ballProgressAt(shutAt)),
+       'both edges of that span are contact');
+assert(!T.isContact(T.ballProgressAt(openAt - 20)) && !T.isContact(T.ballProgressAt(shutAt + 20)),
+       'and 20ms outside either edge is not');
+assert(T.contactWindowMs() >= 200,
+       `the window is wide enough to be fair on one attempt (${T.contactWindowMs()}ms)`);
+
+// Swinging before the ball is even released must never accidentally land.
+let earlyClean = true;
+for (let ms = 0; ms <= T.PITCH_WINDUP_MS; ms += 25) {
+  if (T.isContact(T.ballProgressAt(ms))) earlyClean = false;
+}
+assert(earlyClean, 'no swing during the wind-up can accidentally be contact');
+
 console.log(`\n${passed} passed, ${failed} failed`);
 process.exit(failed ? 1 : 0);

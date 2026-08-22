@@ -238,6 +238,73 @@ function isSwingOnTime(position) {
 
 
 /* -------------------------------------------------------------------------
+   8b. THE PITCH — how ball position maps to swing timing
+
+   The power swing is timed against a ball actually travelling from the
+   pitcher to the plate, not against a marker on a bar. One pitch, one
+   chance: unlike the sweeping marker, there is no second pass to wait for.
+
+   The whole thing is described by one number, `progress`:
+
+     0.00  release, ball leaves the pitcher's hand
+     0.80  the ball is over the plate — this is the contact point
+     1.00  the ball is in the catcher's mitt
+
+   The ball deliberately travels PAST the plate, because a late swing needs
+   something to be late against. Stopping the ball at the plate would make
+   "too late" invisible.
+
+   Progress is linear in time, so the timing is honest and testable. What
+   the UI does with it on screen — position along the flight line, the ball
+   growing as it nears — is presentation and lives in the UI layer. Only
+   this file decides what a swing at a given progress is worth.
+
+   Timeline, with the numbers below:
+
+     |<-- 600ms set -->|<---------- 1400ms flight ---------->|
+                       0.0                0.80 (plate)     1.0
+                                     [====== 280ms ======]
+                                       contact window
+   ------------------------------------------------------------------------- */
+
+const PITCH_WINDUP_MS = 600;    // the set beat before release, so it reads
+const PITCH_FLIGHT_MS = 1400;   // release to the mitt
+const PLATE_AT        = 0.80;   // where in the flight the ball crosses the plate
+const CONTACT_WINDOW  = 0.10;   // half-width of the window around the plate
+
+// Where the ball is, 0..1. Zero through the wind-up: the ball has not been
+// released yet, so swinging during it is as early as early gets.
+function ballProgressAt(elapsedMs, windup = PITCH_WINDUP_MS, flight = PITCH_FLIGHT_MS) {
+  if (!(elapsedMs > windup)) return 0;
+  return Math.min(1, (elapsedMs - windup) / flight);
+}
+
+// Did the bat meet the ball? The window is inclusive of both edges, and
+// they need an epsilon: PLATE_AT - CONTACT_WINDOW is 0.7000000000000001 in
+// floating point, so a swing at exactly 0.70 would otherwise be scored a
+// miss by a rounding error the player can neither see nor avoid.
+const CONTACT_EDGE_EPSILON = 1e-9;
+
+function isContact(progress) {
+  return progress >= PLATE_AT - CONTACT_WINDOW - CONTACT_EDGE_EPSILON
+      && progress <= PLATE_AT + CONTACT_WINDOW + CONTACT_EDGE_EPSILON;
+}
+
+// Contact, or which side of it they missed on. Knowing whether you were
+// early or late is the difference between learning the timing and guessing.
+function swingVerdict(progress) {
+  if (isContact(progress)) return 'ON_TIME';
+  return progress < PLATE_AT ? 'EARLY' : 'LATE';
+}
+
+// How long the window is open, in ms. Derived rather than written down, so
+// the two cannot drift apart.
+function contactWindowMs(flight = PITCH_FLIGHT_MS) {
+  return 2 * CONTACT_WINDOW * flight;
+}
+
+
+/* -------------------------------------------------------------------------
    9. THE DUGOUT
    Short shouts of the kind you would actually hear from a Caribbean dugout.
    One is picked at random for each swing. The English is there because this
@@ -308,6 +375,8 @@ if (typeof module !== 'undefined' && module.exports) {
     HIT_ADVANCE,
     SWING_SWEET_MIN, SWING_SWEET_MAX, SWING_PERIOD_MS,
     markerPositionAt, isSwingOnTime, DUGOUT_PHRASES,
+    PITCH_WINDUP_MS, PITCH_FLIGHT_MS, PLATE_AT, CONTACT_WINDOW,
+    ballProgressAt, isContact, swingVerdict, contactWindowMs,
     DIRECTIONS, pickDirection, promptFor,
     // shared, re-exported so timed-test.js has a single import
     VOCAB, shuffle, advanceOnHit
