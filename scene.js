@@ -424,67 +424,112 @@ const BALLPARK_SVG = String.raw`
 
       <!-- ================= THE BATTER =================
            Cotorras home whites: cream uniform, teal trim, gold accents.
-           Right-handed, so he stands in the third-base box, on our left.
-           Seen from behind, hands up by his back shoulder. -->
+           Right-handed, so he stands in the third-base box, on our left,
+           seen from behind.
+
+           Loaded rather than standing: a wide base with the weight sunk
+           into a bent back leg, the front leg braced straighter, the torso
+           coiled over the hips, and the back elbow carried high with the
+           hands back by the rear shoulder — the position a hitter is in
+           when the pitch is on its way.
+
+           Only the near arm is drawn in full, with the far one showing as a
+           forearm by the hands. From behind that is what you actually see:
+           two full arms across the chest read as a sash, not limbs. -->
       <g>
         <!-- long golden-hour shadow, thrown away from the low sun -->
         <ellipse cx="596" cy="774" rx="86" ry="13" fill="#7A3A14"
                  opacity="0.32" transform="rotate(-5 596 774)"/>
 
-        <!-- legs -->
-        <path d="M498,700 L518,700 L514,768 L494,768 Z" fill="#F4EDE0"/>
-        <path d="M524,700 L544,700 L550,768 L530,768 Z" fill="#F4EDE0"/>
-        <path d="M500,700 L505,700 L501,768 L496,768 Z" fill="#0E4C5C" opacity="0.8"/>
-        <path d="M538,700 L543,700 L547,768 L542,768 Z" fill="#0E4C5C" opacity="0.8"/>
-        <ellipse cx="502" cy="772" rx="16" ry="7" fill="#12313B"/>
-        <ellipse cx="542" cy="772" rx="16" ry="7" fill="#12313B"/>
-
-        <!-- jersey -->
-        <path d="M489,656 Q520,645 551,656 L557,704 Q520,714 483,704 Z" fill="#F4EDE0"/>
-        <!-- teal yoke and gold piping across the shoulders -->
-        <path d="M489,656 Q520,645 551,656 L552,668 Q520,657 488,668 Z" fill="#0E4C5C"/>
-        <path d="M488,668 Q520,657 552,668 L552,672 Q520,661 488,672 Z" fill="#F2A73B"/>
-        <text x="520" y="697" text-anchor="middle"
-              font-family="system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif"
-              font-size="28" font-weight="800" fill="#0E4C5C"
-              stroke="#F2A73B" stroke-width="1.2">21</text>
-
-        <!-- arms up to the hands -->
-        <g stroke="#F4EDE0" stroke-width="13" stroke-linecap="round" fill="none">
-          <path d="M497,668 Q530,666 561,650"/>
-          <path d="M544,658 Q556,659 564,651"/>
+        <!-- legs: hip -> knee -> foot. The back leg carries the weight, so
+             it bends deeper than the braced front leg. -->
+        <g stroke="#F4EDE0" stroke-width="21" stroke-linecap="round" stroke-linejoin="round" fill="none">
+          <path d="M509,702 L497,736 L494,766"/>
+          <path d="M533,702 L547,734 L551,766"/>
         </g>
-        <circle cx="567" cy="648" r="9" fill="#12313B"/>
+        <g stroke="#0E4C5C" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"
+           fill="none" opacity="0.75">
+          <path d="M500,704 L487,736 L485,764"/>
+          <path d="M542,704 L556,734 L559,764"/>
+        </g>
+        <ellipse cx="492" cy="770" rx="17" ry="7" fill="#12313B" transform="rotate(-8 492 770)"/>
+        <ellipse cx="553" cy="770" rx="17" ry="7" fill="#12313B" transform="rotate(6 553 770)"/>
 
-        <!-- bat -->
-        <path d="M566,647 L628,556" stroke="#C98A4B" stroke-width="10" stroke-linecap="round"/>
-        <path d="M564,651 L574,636" stroke="#8A5A2B" stroke-width="12" stroke-linecap="round"/>
+        <!-- jersey: shoulders turned in over a narrower waist -->
+        <path d="M491,654 Q521,643 553,656 L552,700 Q520,712 489,700 Z" fill="#F4EDE0"/>
+        <path d="M491,654 Q521,643 553,656 L554,668 Q521,655 490,666 Z" fill="#0E4C5C"/>
+        <path d="M490,666 Q521,655 554,668 L554,672 Q521,659 490,670 Z" fill="#F2A73B"/>
+        <text x="519" y="695" text-anchor="middle"
+              font-family="system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif"
+              font-size="26" font-weight="800" fill="#0E4C5C"
+              stroke="#F2A73B" stroke-width="1.1">21</text>
 
-        <!-- helmet, seen from behind, ear flap on the near side, club
-             mark in gold on the back -->
-        <ellipse cx="520" cy="637" rx="20" ry="18" fill="#0E4C5C"/>
-        <path d="M502,639 Q497,650 505,656 Q513,657 515,648 Z" fill="#0E4C5C"/>
-        <path d="M500,632 Q520,623 540,632 Q520,627 500,632 Z" fill="#F2A73B" opacity="0.9"/>
-        <text x="521" y="644" text-anchor="middle"
+        <!-- arms: the back elbow rides high, both hands together behind the
+             rear shoulder -->
+        <g stroke="#F4EDE0" stroke-width="12" stroke-linecap="round" stroke-linejoin="round" fill="none">
+          <path d="M499,660 L509,641 L549,642"/>
+        </g>
+        <g stroke="#E8DECA" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" fill="none">
+          <path d="M539,656 L550,648 L552,643"/>
+        </g>
+        <circle cx="554" cy="642" r="9" fill="#12313B"/>
+
+        <!-- bat, cocked back over the shoulder -->
+        <path d="M553,640 L617,549" stroke="#C98A4B" stroke-width="10" stroke-linecap="round"/>
+        <path d="M551,645 L561,630" stroke="#8A5A2B" stroke-width="12" stroke-linecap="round"/>
+
+        <!-- helmet, seen from behind, ear flap on the near side, club mark
+             in gold on the back -->
+        <ellipse cx="519" cy="636" rx="20" ry="18" fill="#0E4C5C"/>
+        <path d="M501,638 Q496,649 504,655 Q512,656 514,647 Z" fill="#0E4C5C"/>
+        <path d="M499,631 Q519,622 539,631 Q519,626 499,631 Z" fill="#F2A73B" opacity="0.9"/>
+        <text x="520" y="643" text-anchor="middle"
               font-family="system-ui, sans-serif" font-size="13" font-weight="800"
               fill="#F2A73B">SJ</text>
       </g>
 
       <!-- Catcher, crouched behind the plate. He is nearer the camera than
-           anyone, so he is the largest figure on the field. Grey back with
-           dark straps and shin guards, so the shape still reads at a glance
-           instead of going to a single dark mass. Sits below home plate and
-           clear of the batter's box on our left. -->
+           anyone, so he is the largest figure on the field.
+
+           A real squat rather than a block: thighs splayed wide off the
+           hips, shins dropping to planted feet, shin guards strapped over
+           them, the chest protector's back panel above, and the mitt up and
+           out to the glove side. Grey with dark gear, so the shape still
+           reads at a glance instead of going to a single dark mass. -->
       <g id="fielder-c" class="fielder" transform="translate(632,802) scale(1.15)">
         <ellipse rx="46" ry="11" fill="#7A3A14" opacity="0.3"/>
-        <path d="M-30,0 q-6,-26 8,-36 l44,0 q14,10 8,36 Z" fill="#B9C2C0"/>
-        <path d="M-29,0 q-5,-22 6,-31 l9,3 q-8,11 -5,28 Z" fill="#1D3A46"/>
-        <path d="M29,0 q5,-22 -6,-31 l-9,3 q8,11 5,28 Z" fill="#1D3A46"/>
-        <path d="M-22,-34 q22,-12 44,0 l3,22 q-25,9 -50,0 Z" fill="#B9C2C0"/>
-        <path d="M-20,-26 q22,-8 42,0 l1,6 q-22,-7 -44,0 Z" fill="#1D3A46" opacity="0.85"/>
-        <ellipse cy="-54" rx="15" ry="13" fill="#243A44"/>
-        <path d="M-15,-54 q15,-8 30,0 q-15,-4 -30,0 Z" fill="#8CC63F" opacity="0.5"/>
-        <circle cx="-34" cy="-32" r="10" fill="#8A5A2B"/>
+
+        <!-- thighs splayed out from the hips, then shins down to the feet -->
+        <g stroke="#B9C2C0" stroke-width="17" stroke-linecap="round" stroke-linejoin="round" fill="none">
+          <path d="M-9,-38 L-29,-22 L-26,-5"/>
+          <path d="M9,-38 L29,-22 L26,-5"/>
+        </g>
+        <!-- shin guards strapped over the shins -->
+        <g stroke="#1D3A46" stroke-width="11" stroke-linecap="round" fill="none">
+          <path d="M-29,-21 L-26,-6"/>
+          <path d="M29,-21 L26,-6"/>
+        </g>
+        <g fill="#1D3A46">
+          <ellipse cx="-26" cy="-2" rx="9" ry="4"/>
+          <ellipse cx="26" cy="-2" rx="9" ry="4"/>
+        </g>
+
+        <!-- back panel of the chest protector, over the shoulders -->
+        <path d="M-21,-36 q21,-11 42,0 l2,10 q-23,9 -46,0 Z" fill="#B9C2C0"/>
+        <path d="M-23,-52 q23,-13 46,0 l-1,14 q-22,-10 -44,0 Z" fill="#1D3A46"/>
+        <path d="M-16,-50 l3,16 M16,-50 l-3,16" stroke="#B9C2C0" stroke-width="3"
+              opacity="0.5" fill="none"/>
+
+        <!-- mask and helmet -->
+        <ellipse cy="-62" rx="14" ry="12" fill="#243A44"/>
+        <path d="M-14,-62 q14,-8 28,0 q-14,-4 -28,0 Z" fill="#8CC63F" opacity="0.5"/>
+
+        <!-- mitt, up and out on the glove side -->
+        <g stroke="#B9C2C0" stroke-width="9" stroke-linecap="round" fill="none">
+          <path d="M-19,-44 L-31,-40"/>
+        </g>
+        <circle cx="-37" cy="-40" r="11" fill="#8A5A2B"/>
+        <path d="M-45,-45 q8,-3 15,2" stroke="#6E4522" stroke-width="2.6" fill="none"/>
       </g>
 
       <!-- ================= LIGHT PASS ================= -->
