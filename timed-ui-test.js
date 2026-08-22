@@ -215,6 +215,34 @@ const section = title => console.log('\n# ' + title);
   assert(known.some(p => p.es === shout.es && p.en === shout.en),
          `the dugout shouts a real phrase from the bank ("${shout.es}" / "${shout.en}")`);
 
+  const call = await page.evaluate(() => ({
+    es: document.getElementById('coach-phrase').textContent,
+    en: document.getElementById('coach-gloss').textContent
+  }));
+  const orders = await page.evaluate(() => COACH_PHRASES);
+  assert(orders.some(p => p.es === call.es && p.en === call.en),
+         `the coach calls a real instruction ("${call.es}" / "${call.en}")`);
+  assert(!known.some(p => p.es === call.es),
+         'and it came from the coach bank, not the bench one');
+  assert(call.es !== shout.es, 'the two voices are not saying the same thing');
+  assert((await page.evaluate(() => state.swing.coach)) === call.es,
+         'the coach line on screen is the one the swing recorded');
+
+  // Both banks are really being drawn from, not stuck on their first entry.
+  const spread = { bench: new Set(), coach: new Set() };
+  for (let i = 0; i < 40; i++) {
+    const pair = await page.evaluate(() => {
+      const rnd = window.__realRandom;
+      const b = DUGOUT_PHRASES[Math.floor(rnd() * DUGOUT_PHRASES.length)];
+      const c = COACH_PHRASES[Math.floor(rnd() * COACH_PHRASES.length)];
+      return [b.es, c.es];
+    });
+    spread.bench.add(pair[0]);
+    spread.coach.add(pair[1]);
+  }
+  assert(spread.bench.size > 5 && spread.coach.size > 4,
+         `both banks vary across draws (${spread.bench.size} bench, ${spread.coach.size} coach)`);
+
   section('The ball in flight');
 
   // The ball is really travelling, and the element really follows it.

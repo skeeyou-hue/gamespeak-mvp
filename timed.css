@@ -367,6 +367,41 @@ body {
 /* The batter stands in the right-hand box, clear of the ball's line. Drawn
    small here, but on its original viewBox — the bat flip's transform-origin
    is in viewBox units, so it still pivots on the hands. */
+/* The coach's instruction. Deliberately quieter and tighter than the shout
+   above it — an instruction that shouts as loud as the hype stops reading
+   as an instruction. */
+.coach-line {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 0 7px;
+  margin: 9px 0 0;
+  padding-top: 8px;
+  border-top: 1px solid rgba(14, 76, 92, 0.16);
+}
+
+.coach-who {
+  font-size: 0.6rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #fff;
+  background: #0E4C5C;
+  border-radius: 4px;
+  padding: 2px 6px;
+}
+
+.coach-es {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.coach-en {
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+
 .swing-figure {
   position: absolute;
   left: 93px;

@@ -155,6 +155,23 @@ section('The dugout');
 
 assert(T.DUGOUT_PHRASES.length >= 10, `${T.DUGOUT_PHRASES.length} phrases in the bank`);
 assert(T.DUGOUT_PHRASES.every(p => p.es && p.en), 'every phrase has Spanish and English');
+assert(new Set(T.DUGOUT_PHRASES.map(p => p.es)).size === T.DUGOUT_PHRASES.length,
+       'no phrase is in the bench bank twice');
+
+section('The coach');
+
+assert(T.COACH_PHRASES.length >= 8, `${T.COACH_PHRASES.length} instructions in the coach bank`);
+assert(T.COACH_PHRASES.every(p => p.es && p.en), 'every instruction has Spanish and English');
+assert(new Set(T.COACH_PHRASES.map(p => p.es)).size === T.COACH_PHRASES.length,
+       'no instruction is in the coach bank twice');
+
+// The two are drawn together, one from each. If they shared an entry the
+// screen could show the same line twice in two different voices.
+const benchEs = new Set(T.DUGOUT_PHRASES.map(p => p.es));
+const overlap = T.COACH_PHRASES.filter(p => benchEs.has(p.es));
+assert(overlap.length === 0,
+       `the two banks share nothing${overlap.length ? ': ' + overlap.map(p => p.es).join(', ') : ''}`);
+assert(T.COACH_PHRASES !== T.DUGOUT_PHRASES, 'and they really are separate banks');
 assert(T.DUGOUT_PHRASES.every(p => p.es.startsWith('¡') && p.es.endsWith('!')),
        'they are all written as shouts');
 assert(new Set(T.DUGOUT_PHRASES.map(p => p.es)).size === T.DUGOUT_PHRASES.length,
