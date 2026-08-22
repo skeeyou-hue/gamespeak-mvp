@@ -171,24 +171,37 @@ const section = title => console.log('\n# ' + title);
   assert((await page.locator('#bank-life').textContent()).includes('2 at-bats'),
          'and says how long it lasts');
 
-  // The sweet spot the player aims at must be the one the rules accept.
-  const sweet = await page.evaluate(() => ({
-    left:  document.getElementById('swing-sweet').style.left,
-    width: document.getElementById('swing-sweet').style.width,
-    min:   SWING_SWEET_MIN,
-    max:   SWING_SWEET_MAX
-  }));
-  assert(sweet.left === (sweet.min * 100) + '%' &&
-         sweet.width === ((sweet.max - sweet.min) * 100) + '%',
-         `the drawn sweet spot matches the constants (${sweet.left} + ${sweet.width})`);
+  // The band drawn over the plate must be exactly the stretch of flight the
+  // rules accept — aiming at a lie is the one bug this screen cannot have.
+  const zone = await page.evaluate(() => {
+    const z = document.getElementById('contact-zone');
+    return {
+      top:    parseFloat(z.style.top),
+      height: parseFloat(z.style.height),
+      opens:  laneY(PLATE_AT - CONTACT_WINDOW),
+      shuts:  laneY(PLATE_AT + CONTACT_WINDOW),
+      plateY: laneY(PLATE_AT)
+    };
+  });
+  assert(Math.abs(zone.top - zone.opens) < 0.01 &&
+         Math.abs(zone.top + zone.height - zone.shuts) < 0.01,
+         `the drawn contact zone is exactly the accepted window (${zone.top}px + ${zone.height}px)`);
+  assert(zone.plateY > zone.top && zone.plateY < zone.top + zone.height,
+         'and the plate sits inside it, not at one end');
+
+  // Home plate is drawn at 156-170.5 in the field art. The ball is over the
+  // plate when the rules say it is, or the picture is lying about the timing.
+  assert(zone.plateY > 156 && zone.plateY < 170.5,
+         `the ball crosses the drawn plate at PLATE_AT (y=${zone.plateY})`);
 
   await page.click('#bank-button');
   assert(await page.locator('#swing-screen').isVisible(), 'the swing screen takes over');
   assert(await page.locator('#pitch-screen').isHidden(), 'the question is set aside');
-  // What matters is not the handle but the behaviour: the abandoned pitch
-  // must not be able to charge a strike while the swing is up. Wait past
-  // the window it was on and check nothing happened.
-  await page.waitForTimeout(4600);
+
+  // The abandoned pitch must not be able to charge a strike while the swing
+  // is up. Squeeze its window down to nothing and wait well past it.
+  await page.evaluate(() => { state.atBat.windowMs = 200; });
+  await page.waitForTimeout(650);
   assert((await page.evaluate(() => state.atBat.strikes)) === 0,
          'the abandoned pitch cannot charge a strike during the swing');
   assert(await page.locator('#swing-screen').isVisible(),
@@ -202,53 +215,110 @@ const section = title => console.log('\n# ' + title);
   assert(known.some(p => p.es === shout.es && p.en === shout.en),
          `the dugout shouts a real phrase from the bank ("${shout.es}" / "${shout.en}")`);
 
-  // The marker is actually moving.
-  const a = await page.evaluate(() => state.swing.position);
-  await page.waitForTimeout(220);
-  const bpos = await page.evaluate(() => state.swing.position);
-  assert(a !== bpos, 'the marker sweeps while the swing is live');
+  section('The ball in flight');
+
+  // The ball is really travelling, and the element really follows it.
+  const frameA = await page.evaluate(() => ({
+    progress: state.swing.progress,
+    top:      parseFloat(document.getElementById('pitch-ball').style.top)
+  }));
+  await page.waitForTimeout(240);
+  const frameB = await page.evaluate(() => ({
+    progress: state.swing.progress,
+    top:      parseFloat(document.getElementById('pitch-ball').style.top)
+  }));
+  assert(frameB.progress > frameA.progress, 'the ball is closing while the swing is live');
+  assert(frameB.top > frameA.top, 'and the drawn ball comes down the lane with it');
+
+  const drawn = await page.evaluate(p => {
+    placeBall(p);
+    const b = document.getElementById('pitch-ball');
+    return { top: parseFloat(b.style.top), transform: b.style.transform, want: laneY(p) };
+  }, 0.5);
+  assert(Math.abs(drawn.top - drawn.want) < 0.01,
+         'the ball is drawn at exactly the height its progress says');
+
+  const sizes = await page.evaluate(() => [0, 0.5, 1].map(p => laneScale(p)));
+  assert(sizes[0] < sizes[1] && sizes[1] < sizes[2],
+         `the ball grows the whole way in (${sizes.map(s => s.toFixed(2)).join(' → ')})`);
+
+  section('Letting it go by');
+
+  // Nobody swung. One pitch means one chance, so the ball reaching the mitt
+  // has to settle the at-bat by itself.
+  let outsBefore = (await look()).outs;
+  await page.waitForTimeout(2200);
+  v = await look();
+  assert((await page.evaluate(() => state.swing && state.swing.verdict)) === 'LOOKING' ||
+         v.outs === outsBefore + 1,
+         'a pitch nobody swings at is an out');
+  assert((await page.locator('#swing-feedback').textContent()).toLowerCase().includes('called strike'),
+         'and the feedback says it was taken');
+  await page.waitForTimeout(1700);
+  assert(await page.locator('#pitch-screen').isVisible(), 'play returns after a called strike');
 
   section('Connecting');
 
-  await page.evaluate(() => { state.bases = [true, true, false]; takeSwing(0.5); });
+  await stack(['DOUBLE', 'DOUBLE', 'DOUBLE']);
+  await bank(2);
+  await page.click('#bank-button');
+  await page.evaluate(() => { state.bases = [true, true, false]; takeSwing(PLATE_AT); });
   v = await look();
-  assert(v.hits.HOMERUN >= 1, 'a swing inside the sweet spot is a home run');
+  assert(v.hits.HOMERUN >= 1, 'a swing as the ball crosses the plate is a home run');
   assert(v.runs === 3, 'two on plus the batter scores three');
   assert(v.bases.every(x => !x), 'the bases are cleared');
+  assert((await page.evaluate(() => state.swing.verdict)) === 'ON_TIME', 'the verdict is on time');
   assert((await page.evaluate(() => state.bonus)) === null, 'the swing is spent');
   assert(await page.locator('#swing-figure').evaluate(e => e.classList.contains('bat-flip')),
          'the bat flip fires on the home run');
+  assert(await page.locator('#pitch-ball').evaluate(e => e.classList.contains('struck')),
+         'and the ball is sent back up the middle');
   assert((await page.locator('#swing-feedback').textContent()).includes('JONRÓN'), 'and the dugout gets its payoff');
 
   await page.waitForTimeout(2600);
   assert(await page.locator('#pitch-screen').isVisible(), 'play returns to the next at-bat');
   assert(!(await page.locator('#swing-figure').evaluate(e => e.classList.contains('bat-flip'))),
          'the bat flip is cleared before the next one');
-  assert((await look()).index === 1, 'the swing consumed the at-bat');
+  assert(!(await page.locator('#pitch-ball').evaluate(e => e.classList.contains('struck'))),
+         'and the ball is back on the mound for the next one');
 
-  section('Missing');
+  section('Missing early and late');
 
+  // Out in front of it.
   await stack(['DOUBLE', 'DOUBLE']);
   await bank(1);
-  const outsBefore = (await look()).outs;
+  outsBefore = (await look()).outs;
   await page.click('#bank-button');
   await page.evaluate(() => takeSwing(0.05));
   v = await look();
-  assert(v.outs === outsBefore + 1, 'a swing outside the sweet spot is an out');
-  assert((await page.evaluate(() => state.bonus)) === null, 'and the swing is spent either way');
+  assert(v.outs === outsBefore + 1, 'a swing before the ball arrives is an out');
+  assert((await page.evaluate(() => state.swing.verdict)) === 'EARLY', 'and it is scored early');
+  assert((await page.evaluate(() => state.bonus)) === null, 'the swing is spent either way');
   assert(!(await page.locator('#swing-figure').evaluate(e => e.classList.contains('bat-flip'))),
          'no bat flip on a miss');
-  assert((await page.locator('#swing-feedback').textContent()).toLowerCase().includes('miss'),
-         'the feedback says what happened');
+  assert((await page.locator('#swing-feedback').textContent()).toLowerCase().includes('in front'),
+         'the feedback says which side of it they were on');
   await page.waitForTimeout(1700);
   assert(await page.locator('#pitch-screen').isVisible(), 'and play moves on');
+
+  // Under it late.
+  await stack(['DOUBLE', 'DOUBLE']);
+  await bank(1);
+  outsBefore = (await look()).outs;
+  await page.click('#bank-button');
+  await page.evaluate(() => takeSwing(0.97));
+  assert((await look()).outs === outsBefore + 1, 'a swing after it has gone by is an out too');
+  assert((await page.evaluate(() => state.swing.verdict)) === 'LATE', 'and it is scored late');
+  assert((await page.locator('#swing-feedback').textContent()).toLowerCase().includes('late'),
+         'the feedback says so');
+  await page.waitForTimeout(1700);
 
   section('Swinging with the keyboard');
 
   await stack(['DOUBLE', 'DOUBLE']);
   await bank(2);
   await page.click('#bank-button');
-  await page.evaluate(() => { state.swing.position = 0.5; });
+  await page.evaluate(() => { state.swing.progress = PLATE_AT; });
   await page.keyboard.press('Space');
   assert((await page.evaluate(() => state.swing && state.swing.result)) === 'HOMERUN',
          'space bar takes the swing too');

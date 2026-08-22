@@ -211,38 +211,12 @@ const HIT_ADVANCE = { SINGLE: 1, DOUBLE: 2, TRIPLE: 3, HOMERUN: 4 };
 
 
 /* -------------------------------------------------------------------------
-   8. THE POWER SWING
+   8. THE PITCH — how ball position maps to swing timing
+
    Spending a banked swing replaces the whole at-bat: no word, no clock, no
-   count. A marker sweeps a bar and one press stops it. Inside the sweet
-   spot is a home run; outside it is an out — the at-bat ends either way.
-
-   Both of these are pure functions of time and position, so the timing is
-   testable without running the animation.
-   ------------------------------------------------------------------------- */
-
-const SWING_SWEET_MIN = 0.38;   // sweet spot, as a fraction of the bar
-const SWING_SWEET_MAX = 0.62;
-const SWING_PERIOD_MS = 1700;   // one full sweep out and back
-
-// Where the marker sits, 0..1, after this long. It ping-pongs, so the sweet
-// spot is crossed twice per cycle.
-function markerPositionAt(elapsedMs, period = SWING_PERIOD_MS) {
-  const t = (elapsedMs % period) / period;
-  return t < 0.5 ? t * 2 : (1 - t) * 2;
-}
-
-// Did the swing connect?
-function isSwingOnTime(position) {
-  return position >= SWING_SWEET_MIN && position <= SWING_SWEET_MAX;
-}
-
-
-/* -------------------------------------------------------------------------
-   8b. THE PITCH — how ball position maps to swing timing
-
-   The power swing is timed against a ball actually travelling from the
-   pitcher to the plate, not against a marker on a bar. One pitch, one
-   chance: unlike the sweeping marker, there is no second pass to wait for.
+   count. It is settled by one swing at a ball actually travelling from the
+   pitcher to the plate. One pitch, one chance — there is no second pass to
+   wait for, so the timing has to be read off the ball itself.
 
    The whole thing is described by one number, `progress`:
 
@@ -373,8 +347,7 @@ if (typeof module !== 'undefined' && module.exports) {
     windowForTag, bucketForTag, hitForResponse, applyPitch,
     rollBonusLife, applyAtBatToBonus, newAtBat, newTimedState,
     HIT_ADVANCE,
-    SWING_SWEET_MIN, SWING_SWEET_MAX, SWING_PERIOD_MS,
-    markerPositionAt, isSwingOnTime, DUGOUT_PHRASES,
+    DUGOUT_PHRASES,
     PITCH_WINDUP_MS, PITCH_FLIGHT_MS, PLATE_AT, CONTACT_WINDOW,
     ballProgressAt, isContact, swingVerdict, contactWindowMs,
     DIRECTIONS, pickDirection, promptFor,

@@ -327,41 +327,76 @@ body {
   color: var(--muted);
 }
 
-.swing-figure {
-  display: block;
-  width: 190px;
-  height: 175px;
-  margin: 2px auto 6px;
-}
-
-/* --- the timing bar --- */
-.swing-track {
+/* --- the pitch -------------------------------------------------------------
+   A fixed 200x210 box, so the pixel positions timed-ui.js computes for the
+   ball line up with the field drawn underneath it at every screen size. The
+   plate is drawn at PLATE_AT of the ball's travel, not wherever it looked
+   right, so seeing the ball over the plate and isContact() agreeing are the
+   same event. */
+.pitch-lane {
   position: relative;
-  height: 34px;
-  margin: 0 0 12px;
-  border-radius: 8px;
-  background: #16241c;
-  border: 2px solid #0d1a13;
+  width: 200px;
+  height: 210px;
+  margin: 6px auto 12px;
+  border-radius: 10px;
   overflow: hidden;
+  background: #2A6539;
+  box-shadow: inset 0 0 0 2px rgba(0, 0, 0, 0.25),
+              0 6px 16px rgba(0, 0, 0, 0.3);
 }
 
-/* Placed from the constants by timed-ui.js, so what you aim at is exactly
-   what isSwingOnTime() accepts. */
-.swing-sweet {
+.pitch-field {
   position: absolute;
-  top: 0;
-  bottom: 0;
-  background: linear-gradient(#f8d268, #e0a022);
+  inset: 0;
+  width: 200px;
+  height: 210px;
 }
 
-.swing-marker {
+/* Top and height come from the contact window, drawn by timed-ui.js. */
+.contact-zone {
   position: absolute;
-  top: -4px;
-  bottom: -4px;
-  width: 4px;
-  margin-left: -2px;
-  background: #fff;
-  box-shadow: 0 0 10px rgba(255, 255, 255, 0.9);
+  left: 50%;
+  width: 64px;
+  margin-left: -32px;
+  box-sizing: border-box;
+  border-top: 2px solid rgba(250, 214, 110, 0.85);
+  border-bottom: 2px solid rgba(250, 214, 110, 0.85);
+  background: rgba(250, 214, 110, 0.14);
+}
+
+/* The batter stands in the right-hand box, clear of the ball's line. Drawn
+   small here, but on its original viewBox — the bat flip's transform-origin
+   is in viewBox units, so it still pivots on the hands. */
+.swing-figure {
+  position: absolute;
+  left: 93px;
+  top: 99px;
+  width: 92px;
+  height: 84px;
+}
+
+.pitch-ball {
+  position: absolute;
+  left: 50%;
+  top: 26px;
+  width: 20px;
+  height: 20px;
+  margin: 0;
+  border-radius: 50%;
+  background: radial-gradient(circle at 34% 28%, #ffffff 0%, #f4f1e6 52%, #c9c0aa 100%);
+  box-shadow: 0 2px 7px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(30, 24, 14, 0.35);
+  transform: translate(-50%, -50%) scale(0.32);
+  will-change: top, transform;
+}
+
+/* Struck: back up the middle, over the pitcher, gone. */
+@keyframes ballGone {
+  0%   { opacity: 1; }
+  100% { top: -40px; transform: translate(-50%, -50%) scale(0.08); opacity: 0; }
+}
+
+.pitch-ball.struck {
+  animation: ballGone 900ms cubic-bezier(0.25, 0.6, 0.4, 1) forwards;
 }
 
 .swing-go {
@@ -410,4 +445,7 @@ body {
 @media (prefers-reduced-motion: reduce) {
   #swing-figure.bat-flip #swing-bat { animation: none; opacity: 0; }
   #swing-figure.bat-flip { animation: none; }
+  /* The ball still has to fly — that is the mechanic — but it can vanish
+     on contact instead of being launched. */
+  .pitch-ball.struck { animation: none; opacity: 0; }
 }

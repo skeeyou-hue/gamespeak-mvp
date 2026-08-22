@@ -149,46 +149,8 @@ assert('atBat' in st, 'there is a slot for the at-bat in progress');
 assert(!('strikes' in st), 'strikes live on the at-bat, not the inning — they reset with it');
 
 /* ===================================================================
-   F. THE POWER SWING
+   F. THE DUGOUT
    =================================================================== */
-section('The swing marker');
-
-const P = T.SWING_PERIOD_MS;
-for (const [ms, pos, label] of [
-  [0,       0,   'starts at the left'],
-  [P / 4,   0.5, 'halfway out at a quarter cycle'],
-  [P / 2,   1,   'reaches the far end at half a cycle'],
-  [P * 3/4, 0.5, 'halfway back at three quarters'],
-  [P,       0,   'home again after a full cycle'],
-  [P * 2.5, 1,   'and keeps ping-ponging']
-]) {
-  assert(Math.abs(T.markerPositionAt(ms) - pos) < 1e-9, `${label} (${pos})`);
-}
-assert(T.markerPositionAt(500, 1000) === 1 && T.markerPositionAt(750, 1000) === 0.5,
-       'the period is adjustable for testing');
-
-section('The sweet spot');
-
-for (const [pos, ok] of [
-  [0, false], [0.2, false], [0.379, false],
-  [T.SWING_SWEET_MIN, true], [0.5, true], [T.SWING_SWEET_MAX, true],
-  [0.621, false], [0.9, false], [1, false]
-]) {
-  assert(T.isSwingOnTime(pos) === ok,
-         `a swing at ${pos} ${ok ? 'connects' : 'misses'}`);
-}
-assert(T.SWING_SWEET_MAX - T.SWING_SWEET_MIN === 0.24,
-       'the sweet spot is 24% of the bar');
-
-// Over one full sweep the marker is inside the sweet spot twice.
-let inside = 0, samples = 20000;
-for (let i = 0; i < samples; i++) {
-  if (T.isSwingOnTime(T.markerPositionAt(P * i / samples))) inside++;
-}
-const share = inside / samples;
-assert(Math.abs(share - 0.24) < 0.01,
-       `the sweet spot is reachable ~24% of the time (measured ${(share * 100).toFixed(1)}%)`);
-
 section('The dugout');
 
 assert(T.DUGOUT_PHRASES.length >= 10, `${T.DUGOUT_PHRASES.length} phrases in the bank`);
