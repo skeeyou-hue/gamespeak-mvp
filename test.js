@@ -324,6 +324,25 @@ const show = state => state.map((on, i) => on ? ['1B', '2B', '3B'][i] : null)
   assert(runnerClashes.length === 0,
          'no fielder sits on a base runner' + (runnerClashes.length ? ' (' + runnerClashes.join(', ') + ')' : ''));
 
+  // Not just "no overlap" — how much room is left. The figures were redrawn
+  // taller and wider once already; without a floor here, the next change to
+  // their proportions would close this gap silently instead of failing.
+  const tightest = await page.evaluate(ids => {
+    const R = id => document.getElementById(id).getBoundingClientRect();
+    const gap = (a, c) => Math.max(Math.max(a.left - c.right, c.left - a.right),
+                                   Math.max(a.top - c.bottom, c.top - a.bottom));
+    let worst = { gap: Infinity, pair: '' };
+    for (const f of ids) {
+      for (const rn of ['runner-first', 'runner-second', 'runner-third']) {
+        const g = gap(R(f), R(rn));
+        if (g < worst.gap) worst = { gap: Math.round(g), pair: `${f}/${rn}` };
+      }
+    }
+    return worst;
+  }, FIELDERS);
+  assert(tightest.gap >= 4,
+         `every fielder clears every runner by at least 4px (tightest: ${tightest.pair} at ${tightest.gap}px)`);
+
   // HUD collision and edge slicing, at every supported window size.
   const SIZES = [[760, 900], [900, 900], [1024, 768], [1180, 860],
                  [1290, 940], [1440, 900], [1600, 800], [480, 900]];

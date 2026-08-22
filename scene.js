@@ -119,32 +119,59 @@ const BALLPARK_SVG = String.raw`
           <circle cx="19" cy="13" r="1.2" fill="#F0A263" opacity="0.12"/>
         </pattern>
 
-        <!-- A runner, reused at each base. Drawn small: these are up the
-             field, well behind the batter in the foreground. -->
+        <!-- A runner, reused at each base. Built as a jointed figure rather
+             than a block: hip-knee-foot legs so the crouch is real geometry,
+             shoulders wider than the waist, bent arms, and a batting helmet.
+             Drawn small — these are up the field, behind the batter. -->
         <g id="runnerFig">
-          <circle cy="-27" r="6" fill="#EBCBA6"/>
-          <path d="M-7,-21 q7,-4 14,0 l1,13 q-8,3 -16,0 Z" fill="#F4EDE0"/>
-          <path d="M-7,-21 q7,-4 14,0 l0.4,4 q-7,-3 -14.6,0 Z" fill="#0E4C5C"/>
-          <g stroke="#F4EDE0" stroke-width="4" stroke-linecap="round" fill="none">
-            <path d="M-4,-8 L-7,1"/>
-            <path d="M4,-8 L8,1"/>
+          <g stroke="#F4EDE0" stroke-width="4.6" stroke-linecap="round" stroke-linejoin="round" fill="none">
+          <path d="M-4,-14.4 L-8,-7.4 L-10.5,0"/>
+          <path d="M4,-14.4 L8,-7.4 L10.5,0"/>
           </g>
+          <g fill="#0E4C5C">
+          <ellipse cx="-10.9" cy="0.5" rx="3.2" ry="1.8"/>
+          <ellipse cx="10.9" cy="0.5" rx="3.2" ry="1.8"/>
+          </g>
+          <path d="M-7.5,-25.8 Q0,-28.6 7.5,-25.8 L5,-13.9 Q0,-12.2 -5,-13.9 Z" fill="#F4EDE0"/>
+          <path d="M-7.5,-25.8 Q0,-28.6 7.5,-25.8 L7.1,-23.4 Q0,-26.2 -7.1,-23.4 Z" fill="#0E4C5C"/>
+          <g stroke="#F4EDE0" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+          <path d="M-6.8,-24.6 L-11.4,-19.4 L-10.2,-12.8"/>
+          <path d="M6.8,-24.6 L11.2,-19.8 L9.6,-13.4"/>
+          </g>
+          <circle cx="0.4" cy="-30.8" r="5" fill="#EBCBA6"/>
+          <path d="M-5.6,-30.2 A6,6 0 0 1 6.4,-30.2 Z" fill="#0E4C5C"/>
+          <ellipse cx="0.4" cy="-30.4" rx="6" ry="1.4" fill="#0E4C5C"/>
+          <path d="M-5,-30.2 q-1.5,2.8 0.5,4.3 q1.9,0.4 2.4,-1.5 Z" fill="#0E4C5C"/>
         </g>
 
         <!-- A fielder, reused at every position and scaled by depth. Road
              greys, so the defense reads as the visiting club against the
-             Cotorras' home whites the batter and runners wear. -->
+             Cotorras' home whites the batter and runners wear.
+
+             Posed in the set position: feet wide and planted, knees flexed
+             through a hip-knee-foot chain, torso pitched forward with the
+             shoulders carrying wider than the waist, glove arm bent low and
+             out front, throwing arm cocked back. -->
         <g id="fielderFig">
-          <ellipse cy="2" rx="12" ry="3.5" fill="#0A3D24" opacity="0.3"/>
-          <path d="M-7,-21 q7,-4 14,0 l1,13 q-8,3 -16,0 Z" fill="#B9C2C0"/>
-          <path d="M-7,-21 q7,-4 14,0 l0.4,4 q-7,-3 -14.6,0 Z" fill="#1D3A46"/>
-          <g stroke="#B9C2C0" stroke-width="4" stroke-linecap="round" fill="none">
-            <path d="M-4,-8 L-7,1"/>
-            <path d="M4,-8 L8,1"/>
+          <ellipse cy="1.5" rx="14" ry="3.4" fill="#0A3D24" opacity="0.3"/>
+          <g stroke="#B9C2C0" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" fill="none">
+          <path d="M-4.5,-15.8 L-8.6,-8 L-11,0"/>
+          <path d="M4.5,-15.8 L8.6,-8 L11,0"/>
           </g>
-          <circle cy="-27" r="6" fill="#E8C9A6"/>
-          <path d="M-6,-30 q6,-9 12,0 Z" fill="#1D3A46"/>
-          <circle cx="-11" cy="-15" r="5" fill="#8A5A2B"/>
+          <g fill="#1D3A46">
+          <ellipse cx="-11.4" cy="0.6" rx="3.4" ry="1.9"/>
+          <ellipse cx="11.4" cy="0.6" rx="3.4" ry="1.9"/>
+          </g>
+          <path d="M-8,-28 Q0,-31 8,-28 L5.4,-15.4 Q0,-13.5 -5.4,-15.4 Z" fill="#B9C2C0"/>
+          <path d="M-8,-28 Q0,-31 8,-28 L7.6,-25.3 Q0,-28.3 -7.6,-25.3 Z" fill="#1D3A46"/>
+          <g stroke="#B9C2C0" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round" fill="none">
+          <path d="M-7,-26.4 L-12,-20.4 L-12.6,-13"/>
+          <path d="M7,-26.4 L11.6,-21.8 L9,-15.4"/>
+          </g>
+          <circle cx="0.4" cy="-33.4" r="5.4" fill="#E8C9A6"/>
+          <path d="M-5.2,-33.4 A5.6,5.6 0 0 1 6,-33.4 Z" fill="#1D3A46"/>
+          <ellipse cx="0.4" cy="-33" rx="6.1" ry="1.5" fill="#1D3A46"/>
+          <circle cx="-13.3" cy="-11.5" r="4.9" fill="#8A5A2B"/>
         </g>
 
         <!-- One palm, reused across the stadium rim at different sizes -->
