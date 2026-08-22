@@ -41,6 +41,8 @@ const el = {
   swingScreen:   document.getElementById('swing-screen'),
   dugoutPhrase:  document.getElementById('dugout-phrase'),
   dugoutGloss:   document.getElementById('dugout-gloss'),
+  coachPhrase:   document.getElementById('coach-phrase'),
+  coachGloss:    document.getElementById('coach-gloss'),
   swingFigure:   document.getElementById('swing-figure'),
   pitchBall:     document.getElementById('pitch-ball'),
   contactZone:   document.getElementById('contact-zone'),
@@ -312,11 +314,17 @@ function startSwing() {
   state.locked = true;
   if (frame) { cancelAnimationFrame(frame); frame = null; }   // the pitch clock stops
 
+  // One from each bank, drawn independently: the bench and the coach are
+  // two voices, not one shuffled list.
   const phrase = DUGOUT_PHRASES[Math.floor(Math.random() * DUGOUT_PHRASES.length)];
-  state.swing = { progress: 0, phrase: phrase.es, result: null, verdict: null };
+  const coach  = COACH_PHRASES[Math.floor(Math.random() * COACH_PHRASES.length)];
+  state.swing = { progress: 0, phrase: phrase.es, coach: coach.es,
+                  result: null, verdict: null };
 
   el.dugoutPhrase.textContent = phrase.es;
   el.dugoutGloss.textContent  = phrase.en;
+  el.coachPhrase.textContent  = coach.es;
+  el.coachGloss.textContent   = coach.en;
   el.swingFeedback.innerHTML  = '&nbsp;';
   el.swingFeedback.className  = 'feedback';
   el.swingGo.disabled         = false;

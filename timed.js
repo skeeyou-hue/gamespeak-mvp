@@ -296,7 +296,42 @@ const DUGOUT_PHRASES = [
   { es: '¡Métele!',            en: 'Give it a ride!' },
   { es: '¡Esa es tuya!',       en: "That one's yours!" },
   { es: '¡Sin miedo!',         en: 'No fear!' },
-  { es: '¡Vamos, campeón!',    en: "Let's go, champ!" }
+  { es: '¡Vamos, campeón!',    en: "Let's go, champ!" },
+  { es: '¡Rómpela!',           en: 'Crush it!' },
+  { es: '¡Enséñale!',          en: 'Show him what you have!' },
+  { es: '¡Esa va lejos!',      en: "That one's going a long way!" },
+  { es: '¡Suénala!',           en: 'Smack it!' },
+  { es: '¡Se puede!',          en: 'It can be done!' },
+  { es: '¡Ponle sabor!',       en: 'Put some flavour on it!' },
+  { es: '¡Nadie como tú!',     en: 'Nobody like you!' },
+  { es: '¡Aquí te esperamos!', en: "We'll be waiting for you at the plate!" }
+];
+
+
+/* -------------------------------------------------------------------------
+   9b. THE COACH
+   A separate voice, and deliberately not more of the same. The bench shouts
+   encouragement; the third-base coach gives an instruction — something to
+   actually do with your hands, your weight, or your eyes on this pitch.
+
+   Kept in its own bank rather than mixed into the dugout for two reasons:
+   the two are drawn together, one from each, so they must not collide; and
+   a directive read in a hype voice stops being a directive.
+   ------------------------------------------------------------------------- */
+
+const COACH_PHRASES = [
+  { es: '¡Espera tu pitcheo!', en: 'Wait for your pitch!' },
+  { es: '¡Ojo con la recta!',  en: 'Watch for the fastball!' },
+  { es: '¡Quédate atrás!',     en: 'Stay back on it!' },
+  { es: '¡No te abras!',       en: "Don't fly open!" },
+  { es: '¡Codo arriba!',       en: 'Elbow up!' },
+  { es: '¡Sigue la bola!',     en: 'Track the ball all the way in!' },
+  { es: '¡Suelta las manos!',  en: 'Let your hands go!' },
+  { es: '¡Al centro, nada más!', en: 'Up the middle, nothing more!' },
+  { es: '¡Mira la costura!',   en: 'Watch the seams!' },
+  { es: '¡Con calma, respira!', en: 'Easy — breathe!' },
+  { es: '¡No te adelantes!',   en: "Don't get out in front of it!" },
+  { es: '¡Manos rápidas!',     en: 'Quick hands!' }
 ];
 
 
@@ -347,7 +382,7 @@ if (typeof module !== 'undefined' && module.exports) {
     windowForTag, bucketForTag, hitForResponse, applyPitch,
     rollBonusLife, applyAtBatToBonus, newAtBat, newTimedState,
     HIT_ADVANCE,
-    DUGOUT_PHRASES,
+    DUGOUT_PHRASES, COACH_PHRASES,
     PITCH_WINDUP_MS, PITCH_FLIGHT_MS, PLATE_AT, CONTACT_WINDOW,
     ballProgressAt, isContact, swingVerdict, contactWindowMs,
     DIRECTIONS, pickDirection, promptFor,
