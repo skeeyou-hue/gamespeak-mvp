@@ -94,35 +94,45 @@
       <p class="dugout-es" id="dugout-phrase">¡Vamos!</p>
       <p class="dugout-en" id="dugout-gloss">Let's go!</p>
 
+      <!-- The batter, built the same way as the one out at the plate:
+           weight sunk into a bent back leg, front leg braced, near arm
+           carrying a high elbow. The bat keeps its own group so it can
+           leave on a home run — its pivot is the hands, which is where
+           the flip animation's transform-origin points. -->
       <svg class="swing-figure" id="swing-figure" viewBox="0 0 220 200" aria-hidden="true">
         <ellipse cx="96" cy="190" rx="46" ry="8" fill="#0a2a18" opacity="0.3"/>
-        <path d="M74,120 L96,120 L92,184 L70,184 Z" fill="#F4EDE0"/>
-        <path d="M102,120 L124,120 L130,184 L108,184 Z" fill="#F4EDE0"/>
-        <path d="M76,120 L82,120 L78,184 L72,184 Z" fill="#0E4C5C" opacity="0.8"/>
-        <path d="M118,120 L124,120 L128,184 L122,184 Z" fill="#0E4C5C" opacity="0.8"/>
-        <ellipse cx="80" cy="188" rx="17" ry="7" fill="#12313B"/>
-        <ellipse cx="120" cy="188" rx="17" ry="7" fill="#12313B"/>
 
-        <path d="M64,68 Q98,54 132,68 L138,124 Q98,136 58,124 Z" fill="#F4EDE0"/>
-        <path d="M64,68 Q98,54 132,68 L133,82 Q98,69 63,82 Z" fill="#0E4C5C"/>
-        <path d="M63,82 Q98,69 133,82 L133,87 Q98,74 63,87 Z" fill="#F2A73B"/>
-        <text x="98" y="116" text-anchor="middle" font-family="system-ui, sans-serif"
+        <g stroke="#F4EDE0" stroke-width="22" stroke-linecap="round" stroke-linejoin="round" fill="none">
+          <path d="M84,122 L70,158 L66,180"/>
+          <path d="M112,122 L128,156 L133,180"/>
+        </g>
+        <g stroke="#0E4C5C" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round"
+           fill="none" opacity="0.75">
+          <path d="M74,124 L58,158 L56,178"/>
+          <path d="M122,124 L138,156 L142,178"/>
+        </g>
+        <ellipse cx="64" cy="186" rx="18" ry="7" fill="#12313B" transform="rotate(-8 64 186)"/>
+        <ellipse cx="135" cy="186" rx="18" ry="7" fill="#12313B" transform="rotate(6 135 186)"/>
+
+        <path d="M65,66 Q98,52 133,68 L131,120 Q97,132 63,118 Z" fill="#F4EDE0"/>
+        <path d="M65,66 Q98,52 133,68 L134,82 Q98,66 64,80 Z" fill="#0E4C5C"/>
+        <path d="M64,80 Q98,66 134,82 L134,87 Q98,71 64,85 Z" fill="#F2A73B"/>
+        <text x="97" y="114" text-anchor="middle" font-family="system-ui, sans-serif"
               font-size="30" font-weight="800" fill="#0E4C5C"
               stroke="#F2A73B" stroke-width="1.2">21</text>
 
-        <g stroke="#E2D5BC" stroke-width="14" stroke-linecap="round" fill="none">
-          <path d="M72,86 Q110,84 146,64"/>
-          <path d="M126,74 Q140,74 150,65"/>
+        <g stroke="#F4EDE0" stroke-width="14" stroke-linecap="round" stroke-linejoin="round" fill="none">
+          <path d="M72,78 L86,50 L142,56"/>
         </g>
-        <g stroke="#0E4C5C" stroke-width="1.5" opacity="0.35" fill="none">
-          <path d="M72,79 Q110,77 145,57"/>
+        <g stroke="#E8DECA" stroke-width="12" stroke-linecap="round" stroke-linejoin="round" fill="none">
+          <path d="M126,74 L142,62 L145,57"/>
         </g>
-        <circle cx="152" cy="62" r="10" fill="#12313B"/>
+        <circle cx="148" cy="56" r="10" fill="#12313B"/>
 
-        <ellipse cx="98" cy="46" rx="22" ry="20" fill="#0E4C5C"/>
-        <path d="M78,48 Q72,62 82,69 Q92,70 95,59 Z" fill="#0E4C5C"/>
-        <path d="M77,39 Q98,28 119,39 Q98,33 77,39 Z" fill="#F2A73B" opacity="0.9"/>
-        <text x="99" y="54" text-anchor="middle" font-family="system-ui, sans-serif"
+        <ellipse cx="97" cy="46" rx="22" ry="20" fill="#0E4C5C"/>
+        <path d="M77,48 Q71,62 81,69 Q91,70 94,59 Z" fill="#0E4C5C"/>
+        <path d="M76,39 Q97,28 118,39 Q97,33 76,39 Z" fill="#F2A73B" opacity="0.9"/>
+        <text x="98" y="54" text-anchor="middle" font-family="system-ui, sans-serif"
               font-size="13" font-weight="800" fill="#F2A73B">SJ</text>
 
         <!-- The bat gets its own group so it can leave on its own -->
