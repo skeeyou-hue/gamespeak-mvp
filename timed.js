@@ -32,6 +32,46 @@ if (typeof require !== 'undefined' && typeof module !== 'undefined') {
 
 
 /* -------------------------------------------------------------------------
+   9c. THE UMPIRE
+   A third voice, and the only one that is not encouragement. The bench
+   hypes, the coach instructs, the umpire says what just happened.
+
+   These fire off outcomes the game already produces and already tests —
+   applyPitch's HIT / STRIKE / OUT, and whether the countdown ran out. No new
+   event exists for them; umpireCall is a lookup over results that were
+   already there, which is why it is a pure function of them.
+
+   NOTE on ¡Bola!: a timeout in this game charges a strike, by the rule that
+   a wrong answer and a timeout are treated the same. So the umpire calling
+   "ball" on a timeout is the one call here that does not match what the
+   scoreboard then does. It is wired that way because it was asked for, and
+   it is one line to change — see the note in the commit.
+   ------------------------------------------------------------------------- */
+
+const UMPIRE_CALLS = {
+  STRIKE: { es: '¡Strike!', en: 'Strike!' },
+  BALL:   { es: '¡Bola!',   en: 'Ball!' },
+  OUT:    { es: '¡Out!',    en: 'Out!' },
+  SAFE:   { es: '¡Safe!',   en: 'Safe!' }
+};
+
+// The countdown ran out rather than the player answering. Defined once here
+// so the pitch loop and the umpire cannot disagree about what a timeout is.
+function pitchTimedOut(elapsedMs, windowMs) {
+  return elapsedMs >= windowMs;
+}
+
+// What the umpire says about an outcome the game has already decided.
+// `result` is applyPitch's own result, unchanged and untouched.
+function umpireCall(result, timedOut = false) {
+  if (result === 'HIT')    return UMPIRE_CALLS.SAFE;
+  if (result === 'OUT')    return UMPIRE_CALLS.OUT;
+  if (result === 'STRIKE') return timedOut ? UMPIRE_CALLS.BALL : UMPIRE_CALLS.STRIKE;
+  return null;
+}
+
+
+/* -------------------------------------------------------------------------
    1. TIERS SET THE CLOCK
    In Classic, a word's tag is its hit type. Here the tag means something
    different: it picks the difficulty bucket, which sets how long you get.
@@ -446,6 +486,7 @@ if (typeof module !== 'undefined' && module.exports) {
     rollBonusLife, applyAtBatToBonus, newAtBat, newTimedState,
     HIT_ADVANCE,
     DUGOUT_PHRASES, COACH_PHRASES,
+    UMPIRE_CALLS, umpireCall, pitchTimedOut,
     PITCH_WINDUP_MS, PITCH_FLIGHT_MS, PLATE_AT, CONTACT_WINDOW,
     ballProgressAt, isContact, swingVerdict, contactWindowMs,
     SWING_LEAD_MS, contactProgress, leadProgress, pressWindow,
