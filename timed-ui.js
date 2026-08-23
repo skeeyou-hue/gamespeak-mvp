@@ -49,6 +49,7 @@ const el = {
   pressZone:     document.getElementById('press-zone'),
   pitchFlash:    document.getElementById('pitch-flash'),
   readyCue:      document.getElementById('ready-cue'),
+  umpCalls:      [...document.querySelectorAll('.ump-call')],
   swingGo:       document.getElementById('swing-go'),
   swingFeedback: document.getElementById('swing-feedback'),
 
@@ -96,6 +97,21 @@ function buildChoices(word, direction) {
 function say(text, tone) {
   el.feedback.textContent = text;
   el.feedback.className = 'feedback' + (tone ? ' ' + tone : '');
+}
+
+// The umpire. `call` is whatever umpireCall() returned for an outcome the
+// game had already decided; null clears the line. Written to both cards
+// because only one of them is ever on screen.
+function callUmpire(call) {
+  for (const node of el.umpCalls) {
+    const es = node.querySelector('.ump-es');
+    const en = node.querySelector('.ump-en');
+    if (!call) { es.textContent = ''; en.textContent = ''; node.className = 'ump-call'; continue; }
+    es.textContent = call.es;
+    en.textContent = call.en;
+    node.className = 'ump-call show ' +
+      (call === UMPIRE_CALLS.SAFE ? 'safe' : 'against');
+  }
 }
 
 /* ---------- drawing ---------- */
@@ -187,6 +203,7 @@ function startAtBat() {
 // fresh clock.
 function throwPitch() {
   say(' ', '');
+  callUmpire(null);          // last pitch's call goes with the last pitch
   renderChoices();
   renderStrikes();
   state.locked = false;
@@ -198,7 +215,9 @@ function throwPitch() {
     // also checks for itself and stops.
     if (state.swing) { frame = null; return; }
     const elapsed = now - startedAt;
-    if (elapsed >= state.atBat.windowMs) { renderClock(elapsed); resolvePitch(elapsed, false); return; }
+    if (pitchTimedOut(elapsed, state.atBat.windowMs)) {
+      renderClock(elapsed); resolvePitch(elapsed, false); return;
+    }
     renderClock(elapsed);
     frame = requestAnimationFrame(tick);
   };
@@ -216,6 +235,7 @@ function resolvePitch(elapsedMs, correct) {
   const word  = state.deck[state.index];
   const pitch = applyPitch(atBat.strikes, correct, elapsedMs, atBat.windowMs);
   atBat.strikes = pitch.strikes;
+  callUmpire(umpireCall(pitch.result, pitchTimedOut(elapsedMs, atBat.windowMs)));
 
   const face = promptFor(word, atBat.direction);
   el.choices.querySelectorAll('.choice').forEach(button => {
@@ -352,6 +372,7 @@ function startSwing() {
   el.coachGloss.textContent   = coach.en;
   el.swingFeedback.innerHTML  = '&nbsp;';
   el.swingFeedback.className  = 'feedback';
+  callUmpire(null);
   el.swingGo.disabled         = true;      // nothing to swing at yet
   el.swingFigure.classList.remove('bat-flip', 'swinging');
   el.pitchBall.classList.remove('struck');
@@ -435,6 +456,7 @@ function resolveSwing(pressProgress) {
   state.swing.verdict = swung ? swingVerdict(contact) : 'LOOKING';
   state.swing.result  = onTime ? 'HOMERUN' : 'MISS';
   state.bonus         = null;          // spent, hit or miss
+  callUmpire(umpireCall(onTime ? 'HIT' : 'OUT'));
 
   if (onTime) {
     state.hits.HOMERUN++;

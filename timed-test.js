@@ -182,6 +182,57 @@ assert(T.DUGOUT_PHRASES.every(p => p.es.length <= 22),
 /* ===================================================================
    G. WHICH WAY THE PITCH COMES
    =================================================================== */
+section('The umpire');
+
+const UMP = Object.values(T.UMPIRE_CALLS);
+assert(UMP.length === 4, `${UMP.length} calls in the umpire bank`);
+assert(UMP.every(c => c.es && c.en), 'every call has Spanish and English');
+assert(new Set(UMP.map(c => c.es)).size === UMP.length, 'no call is in the bank twice');
+
+// Three voices on one screen. Any shared line would read as one of them
+// echoing another.
+const benchSet = new Set(T.DUGOUT_PHRASES.map(p => p.es));
+const coachSet = new Set(T.COACH_PHRASES.map(p => p.es));
+const clash = UMP.filter(c => benchSet.has(c.es) || coachSet.has(c.es));
+assert(clash.length === 0,
+       `the umpire shares nothing with the bench or the coach${clash.length ? ': ' + clash.map(c => c.es).join(', ') : ''}`);
+
+section('What the umpire calls, and off what');
+
+// Every input below is an outcome applyPitch already produces. Nothing here
+// invents an event; this is a lookup over results that were already tested.
+assert(T.umpireCall('HIT')          === T.UMPIRE_CALLS.SAFE,   'a hit is ¡Safe!');
+assert(T.umpireCall('OUT')          === T.UMPIRE_CALLS.OUT,    'the third strike is ¡Out!');
+assert(T.umpireCall('STRIKE', false) === T.UMPIRE_CALLS.STRIKE, 'a wrong answer is ¡Strike!');
+assert(T.umpireCall('STRIKE', true)  === T.UMPIRE_CALLS.BALL,   'the countdown running out is ¡Bola!');
+assert(T.umpireCall('STRIKE')        === T.UMPIRE_CALLS.STRIKE, 'and it defaults to a swinging strike');
+assert(T.umpireCall('NOTHING') === null, 'anything else gets no call at all');
+
+// Wired to applyPitch's real output rather than to strings picked by hand.
+for (const [strikes, correct, ms, win, want, label] of [
+  [0, true,  100,  4000, 'SAFE',   'a fast right answer'],
+  [0, false, 100,  4000, 'STRIKE', 'a wrong answer on 0 strikes'],
+  [1, false, 100,  4000, 'STRIKE', 'a wrong answer on 1 strike'],
+  [2, false, 100,  4000, 'OUT',    'a wrong answer on 2 strikes'],
+  [0, false, 4000, 4000, 'BALL',   'the clock running out on 0 strikes'],
+  [2, false, 4000, 4000, 'OUT',    'the clock running out on 2 strikes']
+]) {
+  const r = T.applyPitch(strikes, correct, ms, win);
+  const c = T.umpireCall(r.result, T.pitchTimedOut(ms, win));
+  assert(c === T.UMPIRE_CALLS[want], `${label} -> ${T.UMPIRE_CALLS[want].es}`);
+}
+
+// The third strike is an out however it arrives: the out call outranks the
+// timeout, so a clock running out on 0-2 is never called a ball.
+assert(T.umpireCall(T.applyPitch(2, false, 9999, 4000).result, true) === T.UMPIRE_CALLS.OUT,
+       'a timeout that ends the at-bat is ¡Out!, not ¡Bola!');
+
+section('What counts as the clock running out');
+
+assert(T.pitchTimedOut(4000, 4000) === true, 'the moment the window closes counts');
+assert(T.pitchTimedOut(3999, 4000) === false, 'a millisecond inside it does not');
+assert(T.pitchTimedOut(9999, 4000) === true, 'and anything past it does');
+
 section('Picking a direction');
 
 for (const [roll, dir] of [[0, 'ES_TO_EN'], [0.25, 'ES_TO_EN'], [0.499, 'ES_TO_EN'],

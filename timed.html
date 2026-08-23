@@ -78,6 +78,11 @@
       </button>
 
       <div class="choices" id="choices"></div>
+      <!-- The umpire. Fires off outcomes the game already produces —
+           applyPitch's HIT / STRIKE / OUT — not off any new event. -->
+      <p class="ump-call">
+        <span class="ump-es"></span><span class="ump-en"></span>
+      </p>
       <p class="feedback" id="feedback">&nbsp;</p>
     </section>
 
@@ -248,6 +253,11 @@
       </div>
 
       <button class="swing-go" id="swing-go">SWING <span class="swing-key">or space</span></button>
+      <!-- The umpire. Fires off outcomes the game already produces —
+           applyPitch's HIT / STRIKE / OUT — not off any new event. -->
+      <p class="ump-call">
+        <span class="ump-es"></span><span class="ump-en"></span>
+      </p>
       <p class="feedback" id="swing-feedback">&nbsp;</p>
     </section>
 

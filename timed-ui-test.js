@@ -157,6 +157,58 @@ const section = title => console.log('\n# ' + title);
   assert((await page.locator('#missed-list li').count()) === 3, 'all three struck-out words are listed');
 
   /* =================================================================== */
+  /* =================================================================== */
+  section('The umpire calls it on the real events');
+
+  const ump = () => page.evaluate(() => {
+    const n = [...document.querySelectorAll('.ump-call')]
+      .find(x => x.closest('.card') && !x.closest('.card').classList.contains('hidden'));
+    return n ? { es: n.querySelector('.ump-es').textContent,
+                 en: n.querySelector('.ump-en').textContent,
+                 shown: n.classList.contains('show'),
+                 tone: n.classList.contains('safe') ? 'safe'
+                     : n.classList.contains('against') ? 'against' : '' } : null;
+  });
+
+  // A fresh pitch has nothing to call.
+  await stack(['DOUBLE', 'DOUBLE', 'DOUBLE', 'DOUBLE']);
+  let umpSays = await ump();
+  assert(umpSays.shown === false && umpSays.es === '', 'no call before anything has happened');
+
+  // A fast right answer: safe.
+  await page.evaluate(() => resolvePitch(100, true));
+  umpSays = await ump();
+  assert(umpSays.es === '¡Safe!' && umpSays.en === 'Safe!', `a hit is called ¡Safe! ("${umpSays.es}")`);
+  assert(umpSays.tone === 'safe', 'and it reads as the batter\'s call, not against him');
+  await page.waitForFunction(() =>
+    document.querySelector('#pitch-screen .ump-call').classList.contains('show') === false,
+    { timeout: 4000 });
+  assert(true, 'and it clears when the next pitch is thrown');
+
+  // A wrong answer: a swinging strike.
+  await page.evaluate(() => resolvePitch(200, false));
+  umpSays = await ump();
+  assert(umpSays.es === '¡Strike!' && umpSays.tone === 'against', 'a wrong answer is called ¡Strike!');
+  assert((await look()).strikes === 1, 'and the strike really was registered');
+
+  // resolvePitch locks the screen until the next pitch is thrown, so each
+  // one of these has to wait for the game to come back round.
+  const unlocked = () => page.waitForFunction(() => !state.locked, { timeout: 6000 });
+
+  // The clock running out: the ball call, off the same event the countdown
+  // itself uses to expire.
+  await unlocked();
+  await page.evaluate(() => resolvePitch(state.atBat.windowMs, false));
+  umpSays = await ump();
+  assert(umpSays.es === '¡Bola!' && umpSays.en === 'Ball!', 'the countdown running out is called ¡Bola!');
+
+  // The third strike outranks it: an at-bat that ends is an out either way.
+  await unlocked();
+  await page.evaluate(() => resolvePitch(state.atBat.windowMs, false));
+  umpSays = await ump();
+  assert(umpSays.es === '¡Out!', 'the third strike is called ¡Out! even on a timeout');
+  assert((await look()).outs >= 1, 'and the out really was charged');
+
   section('Spending a banked swing');
 
   // The pitch only goes live after the ready beat; tests that drive a swing
@@ -414,6 +466,9 @@ const section = title => console.log('\n# ' + title);
   assert(v.runs === 3, 'two on plus the batter scores three');
   assert(v.bases.every(x => !x), 'the bases are cleared');
   assert((await page.evaluate(() => state.swing.verdict)) === 'ON_TIME', 'the verdict is on time');
+  let swingCall = await ump();
+  assert(swingCall.es === '¡Safe!' && swingCall.tone === 'safe',
+         'the umpire calls the banked home run ¡Safe!');
   assert((await page.evaluate(() => state.bonus)) === null, 'the swing is spent');
   assert(await page.locator('#swing-figure').evaluate(e => e.classList.contains('bat-flip')),
          'the bat flip fires on the home run');
@@ -441,6 +496,9 @@ const section = title => console.log('\n# ' + title);
   v = await look();
   assert(v.outs === outsBefore + 1, 'a swing before the ball arrives is an out');
   assert((await page.evaluate(() => state.swing.verdict)) === 'EARLY', 'and it is scored early');
+  swingCall = await ump();
+  assert(swingCall.es === '¡Out!' && swingCall.tone === 'against',
+         'the umpire calls a missed swing ¡Out!');
   assert((await page.evaluate(() => state.bonus)) === null, 'the swing is spent either way');
   assert(!(await page.locator('#swing-figure').evaluate(e => e.classList.contains('bat-flip'))),
          'no bat flip on a miss');
