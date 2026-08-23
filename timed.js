@@ -41,11 +41,13 @@ if (typeof require !== 'undefined' && typeof module !== 'undefined') {
    event exists for them; umpireCall is a lookup over results that were
    already there, which is why it is a pure function of them.
 
-   NOTE on ¡Bola!: a timeout in this game charges a strike, by the rule that
-   a wrong answer and a timeout are treated the same. So the umpire calling
-   "ball" on a timeout is the one call here that does not match what the
-   scoreboard then does. It is wired that way because it was asked for, and
-   it is one line to change — see the note in the commit.
+   ¡Bola! IS DEFINED BUT NOT WIRED, deliberately. A timeout charges a strike
+   in this ruleset, by the rule that a wrong answer and a timeout are the
+   same thing, so an umpire calling "ball" would be contradicting the strike
+   pip lighting up beside him. There is no event here that is honestly a
+   ball. The call is kept ready for the day there is one, and a test asserts
+   that nothing currently reaches it — so if a real ball event ever lands,
+   that test fails and says to wire this up.
    ------------------------------------------------------------------------- */
 
 const UMPIRE_CALLS = {
@@ -63,10 +65,16 @@ function pitchTimedOut(elapsedMs, windowMs) {
 
 // What the umpire says about an outcome the game has already decided.
 // `result` is applyPitch's own result, unchanged and untouched.
+//
+// `timedOut` is still taken, and still describes something real — the
+// countdown expiring rather than the player answering — but a strike is a
+// strike either way, so it is a strike either way to the umpire too. That is
+// the whole reason the parameter is kept rather than dropped: the day a
+// timeout means something other than a strike, this is where it goes.
 function umpireCall(result, timedOut = false) {
   if (result === 'HIT')    return UMPIRE_CALLS.SAFE;
   if (result === 'OUT')    return UMPIRE_CALLS.OUT;
-  if (result === 'STRIKE') return timedOut ? UMPIRE_CALLS.BALL : UMPIRE_CALLS.STRIKE;
+  if (result === 'STRIKE') return UMPIRE_CALLS.STRIKE;
   return null;
 }
 
