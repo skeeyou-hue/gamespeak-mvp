@@ -31,6 +31,13 @@
 
     <span class="hud-bank hidden" id="hud-bank">SWING BANKED</span>
 
+    <!-- Stops whatever clock is running. Disabled when there is no clock to
+         stop, so it never looks live and does nothing. -->
+    <button class="pause-button" id="pause-button" type="button"
+            aria-label="Pause" title="Pause (P or Esc)">
+      <span class="pause-glyph" id="pause-glyph" aria-hidden="true">❚❚</span>
+    </button>
+
     <div class="hud-chip hud-bases">
       <svg class="diamond" viewBox="0 0 60 60" aria-hidden="true">
         <rect class="pip" id="pip-second" x="25" y="5"  width="10" height="10" transform="rotate(45 30 10)"/>
@@ -40,6 +47,18 @@
       </svg>
     </div>
   </section>
+
+  <!-- Paused. Covers the card on purpose: freezing the clock with the word
+       still on screen would just be free thinking time. -->
+  <div class="pause-veil hidden" id="pause-veil" role="dialog" aria-modal="true"
+       aria-labelledby="pause-title">
+    <div class="pause-panel">
+      <p class="pause-eyebrow">Tiempo</p>
+      <h2 class="pause-title" id="pause-title">Paused</h2>
+      <p class="pause-note" id="pause-note">The clock is stopped.</p>
+      <button class="pause-resume" id="pause-resume" type="button">Resume</button>
+    </div>
+  </div>
 
   <main class="field">
 
