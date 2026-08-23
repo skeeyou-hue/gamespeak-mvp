@@ -648,3 +648,82 @@ body {
 @media (prefers-reduced-motion: reduce) {
   .ump-call.show { animation: none; }
 }
+
+
+/* --- pause ----------------------------------------------------------------
+   The veil covers the card rather than sitting beside it. A pause that left
+   the word readable would not be a pause, it would be unlimited thinking
+   time on a mode whose whole point is the clock. */
+.pause-button {
+  flex: 0 0 auto;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-radius: 9px;
+  background: rgba(10, 40, 32, 0.55);
+  color: #EDE6D6;
+  font-size: 0.72rem;
+  line-height: 1;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+}
+
+.pause-button:hover:not(:disabled) { background: rgba(14, 60, 48, 0.75); }
+.pause-button:disabled { opacity: 0.35; cursor: default; }
+
+.pause-veil {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: rgba(6, 26, 20, 0.86);
+  backdrop-filter: blur(6px);
+}
+
+.pause-panel {
+  width: 100%;
+  max-width: 300px;
+  padding: 22px 20px 20px;
+  border-radius: 14px;
+  text-align: center;
+  background: var(--card);
+  border: 1px solid rgba(255, 233, 199, 0.7);
+  box-shadow: 0 18px 44px rgba(0, 0, 0, 0.45);
+}
+
+.pause-eyebrow {
+  margin: 0;
+  font-size: 0.64rem;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--medium);
+}
+
+.pause-title { margin: 4px 0 0; font-size: 1.5rem; }
+
+.pause-note {
+  margin: 6px 0 16px;
+  font-size: 0.82rem;
+  color: var(--muted);
+}
+
+.pause-resume {
+  font: inherit;
+  font-size: 0.95rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  width: 100%;
+  padding: 12px;
+  border: none;
+  border-radius: 9px;
+  background: #0E4C5C;
+  color: #fff;
+  cursor: pointer;
+}
+
+.pause-resume:hover { background: #12606f; }

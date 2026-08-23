@@ -50,6 +50,10 @@ const el = {
   pitchFlash:    document.getElementById('pitch-flash'),
   readyCue:      document.getElementById('ready-cue'),
   umpCalls:      [...document.querySelectorAll('.ump-call')],
+  pauseButton:   document.getElementById('pause-button'),
+  pauseVeil:     document.getElementById('pause-veil'),
+  pauseNote:     document.getElementById('pause-note'),
+  pauseResume:   document.getElementById('pause-resume'),
   swingGo:       document.getElementById('swing-go'),
   swingFeedback: document.getElementById('swing-feedback'),
 
@@ -117,6 +121,7 @@ function callUmpire(call) {
 /* ---------- drawing ---------- */
 
 function renderHud() {
+  renderPause();
   el.hudRuns.textContent = state.runs;
   el.hudOuts.querySelectorAll('.out-dot')
     .forEach((dot, i) => dot.classList.toggle('filled', i < state.outs));
@@ -208,12 +213,19 @@ function throwPitch() {
   renderStrikes();
   state.locked = false;
   startedAt = performance.now();
+  renderPause();             // a live clock means a live pause button
+  runClock();
+}
 
+// The countdown loop, named rather than closed over inside throwPitch, so
+// pause can stop it and resume can start it again against a rebased
+// startedAt. Nothing else about the clock changes.
+function runClock() {
   const tick = now => {
     // A banked swing can take over the at-bat mid-pitch. Cancelling the
     // handle can lose a race with a callback already in flight, so the loop
     // also checks for itself and stops.
-    if (state.swing) { frame = null; return; }
+    if (state.swing || state.paused) { frame = null; return; }
     const elapsed = now - startedAt;
     if (pitchTimedOut(elapsed, state.atBat.windowMs)) {
       renderClock(elapsed); resolvePitch(elapsed, false); return;
@@ -227,7 +239,7 @@ function throwPitch() {
 // Settle one pitch. Called by a click, or by the countdown hitting zero
 // with correct = false.
 function resolvePitch(elapsedMs, correct) {
-  if (state.locked || !state.atBat || state.atBat.over) return;
+  if (state.paused || state.locked || !state.atBat || state.atBat.over) return;
   state.locked = true;
   if (frame) { cancelAnimationFrame(frame); frame = null; }
 
@@ -291,6 +303,84 @@ function afterPitch() {
   }
   startAtBat();
 }
+
+
+/* ---------- pause ----------
+   Two clocks can be running: the countdown on a multiple-choice pitch, and
+   the flight of a banked swing. They stop differently.
+
+   The countdown just freezes — how long is left is all that matters, so the
+   elapsed time is banked and startedAt is rebased on the way back in.
+
+   The swing cannot freeze. Stopping the ball on the edge of the SWING band
+   and starting it again from there would hand the player a home run for
+   pressing a button, so a paused swing goes back to the mound and is thrown
+   again from the ready beat. Nothing is lost by that: the pitch is the same
+   speed down the same line every time, so a re-throw gives away nothing the
+   player did not already have.
+
+   Either way the veil covers the card. Freezing the clock with the word
+   still legible would be unlimited thinking time on a mode built around the
+   clock. ------------------------------------------------------------------ */
+
+let pausedElapsed = 0;
+
+// Only when there is actually a clock to stop.
+function canPause() {
+  if (state.paused) return true;
+  if (state.swing) return !state.swing.result;
+  return !!(state.atBat && !state.atBat.over && !state.locked);
+}
+
+function renderPause() {
+  el.pauseButton.disabled = !canPause();
+  el.pauseVeil.classList.toggle('hidden', !state.paused);
+}
+
+function pauseGame() {
+  if (state.paused || !canPause()) return;
+  state.paused = true;
+
+  if (state.swing) {
+    clearReady();
+    if (swingFrame) { cancelAnimationFrame(swingFrame); swingFrame = null; }
+    if (swingTimer) { clearTimeout(swingTimer); swingTimer = null; }
+    state.swing.live     = false;
+    state.swing.progress = 0;
+    state.swing.pressAt  = null;
+    placeBall(0);
+    el.pitchBall.classList.remove('struck');
+    el.pitchFlash.classList.remove('pop');
+    el.swingFigure.classList.remove('swinging');
+    el.swingGo.disabled = true;
+    el.readyCue.textContent = '\u00a0';
+    el.readyCue.className   = 'ready-cue';
+    el.pauseNote.textContent = 'The pitch goes back to the mound.';
+  } else {
+    pausedElapsed = performance.now() - startedAt;
+    if (frame) { cancelAnimationFrame(frame); frame = null; }
+    const left = Math.max(0, state.atBat.windowMs - pausedElapsed) / 1000;
+    el.pauseNote.textContent = `${left.toFixed(1)}s still on the clock.`;
+  }
+
+  renderPause();
+  el.pauseResume.focus();
+}
+
+function resumeGame() {
+  if (!state.paused) return;
+  state.paused = false;
+  renderPause();
+
+  if (state.swing) {
+    startReadyBeat();          // thrown again, from the top
+  } else {
+    startedAt = performance.now() - pausedElapsed;
+    runClock();
+  }
+}
+
+function togglePause() { state.paused ? resumeGame() : pauseGame(); }
 
 
 /* ---------- the power swing ----------
@@ -358,7 +448,7 @@ function clearReady() {
 }
 
 function startSwing() {
-  if (!state.bonus || state.locked || state.swing) return;
+  if (state.paused || !state.bonus || state.locked || state.swing) return;
   state.locked = true;
   if (frame) { cancelAnimationFrame(frame); frame = null; }   // the pitch clock stops
 
@@ -384,11 +474,17 @@ function startSwing() {
   placeBall(0);
   el.pitchScreen.classList.add('hidden');
   el.swingScreen.classList.remove('hidden');
+  renderPause();
 
   // The ready beat. Nothing about the pitch is live until it finishes: the
   // button is dead, the ball has not been released, and the clock has not
   // started. It only moves WHEN the flight begins — the flight itself, and
   // everything scored off it, is untouched.
+  startReadyBeat();
+}
+
+// Named so that resuming from a pause can run it again from the top.
+function startReadyBeat() {
   clearReady();
   el.readyCue.textContent = 'Read the bench…';
   el.readyCue.className   = 'ready-cue';
@@ -402,7 +498,7 @@ function startSwing() {
 }
 
 function startPitchClock() {
-  if (!state.swing || state.swing.result) return;
+  if (!state.swing || state.swing.result || state.paused) return;
   state.swing.live    = true;
   el.swingGo.disabled = false;
 
@@ -432,6 +528,7 @@ function startPitchClock() {
 // SWING_LEAD_MS to arrive; the ball keeps coming in the meantime. The outcome
 // is scored when the barrel gets there, on contactProgress().
 function takeSwing(progress) {
+  if (state.paused) return;
   if (!state.swing || state.swing.result || state.swing.pressAt !== null) return;
   if (!state.swing.live) return;   // the ready beat is still running
 
@@ -562,7 +659,16 @@ function startInning() {
 el.playAgain.addEventListener('click', startInning);
 el.bankButton.addEventListener('click', startSwing);
 el.swingGo.addEventListener('click', () => takeSwing(state.swing ? state.swing.progress : null));
+el.pauseButton.addEventListener('click', togglePause);
+el.pauseResume.addEventListener('click', resumeGame);
 document.addEventListener('keydown', event => {
+  // Space already swings, so pause takes P and Escape.
+  if (event.code === 'KeyP' || event.code === 'Escape') {
+    event.preventDefault();
+    togglePause();
+    return;
+  }
+  if (state.paused) return;   // nothing else reaches the game while it is stopped
   if (event.code === 'Space' && state.swing && !state.swing.result &&
       state.swing.pressAt === null && state.swing.live) {
     event.preventDefault();

@@ -243,6 +243,105 @@ const section = title => console.log('\n# ' + title);
   assert((await look()).outs >= 1, 'and the out really was charged');
 
   /* =================================================================== */
+  section('Pause');
+
+  // This section measures the clock across more than a second of wall time,
+  // so it has to start from a quiet game: a feedback timeout left in flight
+  // by an earlier section would land in the middle of it and re-throw the
+  // pitch, resetting the very clock being measured.
+  await page.waitForFunction(() => !state.locked, { timeout: 8000 });
+  await page.waitForTimeout(1700);          // longer than the feedback pause
+  await stack(['TRIPLE', 'TRIPLE', 'TRIPLE']);
+  assert(await page.locator('#pause-veil').isHidden(), 'no veil while play is live');
+  assert(!(await page.locator('#pause-button').isDisabled()), 'the pause button is live during a pitch');
+
+  await page.waitForTimeout(400);
+  await page.click('#pause-button');
+  assert(await page.locator('#pause-veil').isVisible(), 'the veil covers the card');
+  assert((await page.evaluate(() => state.paused)) === true, 'and the game knows it is paused');
+
+  // Really covered, not merely "visible: false" — the word is still in the
+  // layout, so the check has to be what is actually on top of it.
+  const covered = await page.evaluate(() => {
+    const w = document.getElementById('word').getBoundingClientRect();
+    const top = document.elementFromPoint(w.left + w.width / 2, w.top + w.height / 2);
+    return top && top.closest('#pause-veil') !== null;
+  });
+  assert(covered, 'the word cannot be read through it — a pause is not free thinking time');
+
+  // The clock is measured off state, not off a rendered string: the display
+  // only moves on a frame, and this has to be exact.
+  const held = await page.evaluate(() => Math.round(performance.now() - startedAt));
+  await page.waitForTimeout(900);
+  const stillHeld = await page.evaluate(() => Math.round(performance.now() - startedAt));
+  assert(stillHeld - held > 800,
+         'the raw clock keeps running while stopped — nothing is being faked');
+  assert((await page.evaluate(() => document.getElementById('clock-num').textContent)) ===
+         (await page.evaluate(() => document.getElementById('clock-num').textContent)),
+         'but the countdown on screen is frozen');
+  assert((await look()).strikes === 0, 'and it cannot expire into a strike while stopped');
+
+  await page.evaluate(() => resolvePitch(100, true));
+  assert((await look()).index === 0, 'a pitch cannot be resolved while paused');
+
+  // Resume rebases the clock so the pause costs the player nothing and gives
+  // them nothing: elapsed picks up within a frame of where it stopped.
+  await page.click('#pause-resume');
+  const resumed = await page.evaluate(() => Math.round(performance.now() - startedAt));
+  assert((await page.evaluate(() => state.paused)) === false, 'resume clears the pause');
+  assert(await page.locator('#pause-veil').isHidden(), 'and takes the veil away');
+  assert(Math.abs(resumed - held) < 120,
+         `the clock carries on from where it stopped (${held}ms -> ${resumed}ms, not ${stillHeld}ms)`);
+
+  await page.waitForTimeout(300);
+  const running = await page.evaluate(() => Math.round(performance.now() - startedAt));
+  assert(running > resumed + 200,
+         `and it is genuinely running again (${resumed}ms -> ${running}ms)`);
+
+  await page.keyboard.press('KeyP');
+  assert((await page.evaluate(() => state.paused)) === true, 'P pauses');
+  await page.keyboard.press('Escape');
+  assert((await page.evaluate(() => state.paused)) === false, 'Escape resumes');
+
+  section('Pause is only live when a clock is');
+
+  await stack(['TRIPLE', 'TRIPLE']);
+  await page.evaluate(() => resolvePitch(100, true));
+  assert(await page.locator('#pause-button').isDisabled(),
+         'the button is dead during the feedback pause, when no clock is running');
+  await page.evaluate(() => togglePause());
+  assert((await page.evaluate(() => state.paused)) === false,
+         'and pausing there does nothing rather than half-freezing the game');
+  await page.waitForFunction(() => !state.locked, { timeout: 6000 });
+  assert(!(await page.locator('#pause-button').isDisabled()), 'it comes back with the next pitch');
+
+  // The pause button joined a row that was already full. Nothing in the HUD
+  // may sit on top of anything else, with the bank badge showing or not.
+  let hudClash = [];
+  for (const w of [360, 390, 470, 768, 1440]) {
+    const sized = await browser.newPage({ viewport: { width: w, height: 900 } });
+    await sized.goto(URL);
+    await sized.waitForSelector('.choice');
+    await sized.evaluate(() => { state.bonus = { atBatsLeft: 2 }; renderHud(); });
+    const bad = await sized.evaluate(() => {
+      const items = [...document.querySelectorAll('.hud > *')]
+        .filter(e => getComputedStyle(e).display !== 'none')
+        .map(e => ({ id: e.id || e.className, r: e.getBoundingClientRect() }));
+      const hit = (a, b) => a.left < b.right && b.left < a.right &&
+                            a.top < b.bottom && b.top < a.bottom;
+      const out = [];
+      for (let i = 0; i < items.length; i++)
+        for (let j = i + 1; j < items.length; j++)
+          if (hit(items[i].r, items[j].r)) out.push(`${items[i].id}/${items[j].id}`);
+      return out;
+    });
+    await sized.close();
+    if (bad.length) hudClash.push(`${w}px: ${bad.join(', ')}`);
+  }
+  assert(hudClash.length === 0,
+         `nothing in the HUD overlaps, bank badge showing, across 5 widths${hudClash.length ? ' — ' + hudClash.join(' | ') : ''}`);
+
+  /* =================================================================== */
   section('Missing an easy word ends the at-bat');
 
   await stack(['WALK', 'DOUBLE', 'DOUBLE']);
@@ -682,6 +781,43 @@ const section = title => console.log('\n# ' + title);
   await page.evaluate(() => takeSwing(0.75));
   assert((await page.evaluate(() => state.swing.pressAt)) === 0.3,
          'a second press during the load is ignored — you only commit once');
+  await settled();
+
+  /* =================================================================== */
+  section('Pause cannot be used to win the swing');
+
+  await stack(['DOUBLE', 'DOUBLE', 'DOUBLE']);
+  await bank(2);
+  await page.click('#bank-button');
+  await live();
+  await page.waitForFunction(() => state.swing && state.swing.progress > 0.5, { timeout: 6000 });
+  const mid = await page.evaluate(() => state.swing.progress);
+  await page.click('#pause-button');
+  const stopped = await page.evaluate(() => ({
+    paused: state.paused, live: state.swing.live, progress: state.swing.progress,
+    btn: document.getElementById('swing-go').disabled
+  }));
+  assert(stopped.paused && stopped.progress === 0,
+         `a paused swing goes back to the mound (was ${mid.toFixed(2)}, now ${stopped.progress})`);
+  assert(stopped.live === false && stopped.btn === true,
+         'and nothing is swingable while it is stopped');
+  await page.evaluate(() => takeSwing(0.72));
+  assert((await page.evaluate(() => state.swing.pressAt)) === null,
+         'a press while paused does nothing at all');
+
+  await page.click('#pause-resume');
+  assert((await page.evaluate(() => state.swing.live)) === false,
+         'resuming restarts the ready beat rather than releasing the ball');
+  await live();
+  assert((await page.evaluate(() => state.swing.progress)) < 0.2,
+         'and the ball starts from the pitcher again');
+  await page.evaluate(() => {
+    const w = pressWindow();
+    takeSwing((w.opens + w.shuts) / 2);
+  });
+  await page.waitForTimeout(LEAD + 120);
+  assert((await page.evaluate(() => state.swing.result)) === 'HOMERUN',
+         'and the re-thrown pitch is a real one that can still be hit');
   await settled();
 
   /* =================================================================== */

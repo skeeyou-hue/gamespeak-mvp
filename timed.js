@@ -259,6 +259,7 @@ function newTimedState(inning) {
     bases: [false, false, false],
     hits: { WALK: 0, SINGLE: 0, DOUBLE: 0, TRIPLE: 0, HOMERUN: 0 },
     atBat: null,        // newAtBat(tag) while one is in progress
+    paused: false,      // a clock is stopped and the card is covered
     hitStreak: 0,       // at-bats ending in a hit, back to back
     bonus: null,        // { atBatsLeft } once a swing is banked
     swing: null,        // the power-swing moment, when one is being taken
