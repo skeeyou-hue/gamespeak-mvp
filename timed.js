@@ -302,11 +302,13 @@ const HIT_ADVANCE = { SINGLE: 1, DOUBLE: 2, TRIPLE: 3, HOMERUN: 4 };
 
 const PITCH_WINDUP_MS = 600;    // the set beat before release, so it reads
 // 1400ms is about a real fastball, and real hitters train for years to read
-// one. Filmed at 200ms, a new player got one 280ms slot to press and it was
-// nowhere near the plate. Slowing the flight leaves every fraction alone —
-// PLATE_AT, CONTACT_WINDOW and the bands are unchanged — while the wall
-// clock they land on stretches with it.
-const PITCH_FLIGHT_MS = 2400;   // release to the mitt
+// one; at that speed a new player got one 280ms slot to press and it was
+// nowhere near the plate. 2400ms fixed that, and once it was readable it was
+// also slow, so this is the step back toward a real pitch now that the ball
+// can actually be seen. Every fraction stays where it was — PLATE_AT,
+// CONTACT_WINDOW and the bands are untouched — only the wall clock they land
+// on moves with it.
+const PITCH_FLIGHT_MS = 2000;   // release to the mitt
 const PLATE_AT        = 0.80;   // where in the flight the ball crosses the plate
 // Half-width of the window around the plate. Tightened from 0.10 after
 // playtesting: on the slower 2400ms flight, 0.10 bought 480ms of contact and

@@ -455,6 +455,15 @@ assert(!T.isContact(T.ballProgressAt(openAt - 20)) && !T.isContact(T.ballProgres
 assert(T.contactWindowMs() >= 200,
        `the window is wide enough to be fair on one attempt (${T.contactWindowMs()}ms)`);
 
+// Speed and window width are separate levers that both make this harder, and
+// they multiply. This is the floor that stops a future speed-up from quietly
+// making the swing unhittable: the window is a fixed FRACTION of the flight,
+// so every millisecond off the flight comes straight off the window too.
+assert(T.PITCH_FLIGHT_MS >= 1600,
+       `the flight stays long enough for the window to survive it (${T.PITCH_FLIGHT_MS}ms)`);
+assert(T.contactWindowMs() === Math.round(2 * T.CONTACT_WINDOW * T.PITCH_FLIGHT_MS),
+       'and the window really is a fraction of the flight, not a number of its own');
+
 // Swinging before the ball is even released must never accidentally land.
 let earlyClean = true;
 for (let ms = 0; ms <= T.PITCH_WINDUP_MS; ms += 25) {
