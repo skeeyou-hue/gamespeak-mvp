@@ -327,7 +327,7 @@ assert(T.DUGOUT_PHRASES.every(p => p.es.length <= 22),
 section('The umpire');
 
 const UMP = Object.values(T.UMPIRE_CALLS);
-assert(UMP.length === 4, `${UMP.length} calls in the umpire bank`);
+assert(UMP.length === 3, `${UMP.length} calls in the umpire bank`);
 assert(UMP.every(c => c.es && c.en), 'every call has Spanish and English');
 assert(new Set(UMP.map(c => c.es)).size === UMP.length, 'no call is in the bank twice');
 
@@ -356,18 +356,16 @@ assert(T.applyPitch(0, false, 4000, 4000).result === 'STRIKE' &&
        T.umpireCall('STRIKE', true) === T.UMPIRE_CALLS.STRIKE,
        'a timeout charges a strike and is called one — no ball over a lit strike pip');
 
-// ¡Bola! is defined and deliberately unreachable: there is no event in this
-// ruleset that is honestly a ball. If one ever lands, this fails and says so.
-const reachable = [];
-for (const result of ['HIT', 'STRIKE', 'OUT', 'NOTHING', null, undefined]) {
-  for (const flag of [true, false]) {
-    if (T.umpireCall(result, flag) === T.UMPIRE_CALLS.BALL) reachable.push(`${result}/${flag}`);
-  }
-}
-assert(reachable.length === 0,
-       `nothing reaches ¡Bola! — wire it up if that changes${reachable.length ? ': ' + reachable.join(', ') : ''}`);
-assert(T.UMPIRE_CALLS.BALL && T.UMPIRE_CALLS.BALL.es === '¡Bola!',
-       'but the call is still there, ready for a ball event that means it');
+// Every call in the bank is reachable. A defined-but-unfired call is a dead
+// branch dressed up as content, and this is what stops one creeping back.
+const unreachable = Object.entries(T.UMPIRE_CALLS).filter(([, call]) => {
+  for (const result of ['HIT', 'STRIKE', 'OUT'])
+    for (const flag of [true, false])
+      if (T.umpireCall(result, flag) === call) return false;
+  return true;
+});
+assert(unreachable.length === 0,
+       `every call the umpire can make, he does make${unreachable.length ? ' — unreachable: ' + unreachable.map(([k]) => k).join(', ') : ''}`);
 assert(T.umpireCall('NOTHING') === null, 'anything else gets no call at all');
 
 // Wired to applyPitch's real output rather than to strings picked by hand.
@@ -485,8 +483,8 @@ section('What a swing at that position is worth');
 // Edges taken from the constants, not typed in: the window has been retuned
 // once already, and a hand-written 0.70 silently stops testing the edge the
 // moment that number moves.
-const OPENS = T.PLATE_AT - T.CONTACT_WINDOW;
-const SHUTS = T.PLATE_AT + T.CONTACT_WINDOW;
+const OPENS = T.PLATE_AT - T.contactWindowFraction();
+const SHUTS = T.PLATE_AT + T.contactWindowFraction();
 
 for (const [p, verdict] of [
   [0,             'EARLY'],   [OPENS / 2,  'EARLY'],   [OPENS - 0.001, 'EARLY'],
@@ -498,14 +496,14 @@ for (const [p, verdict] of [
 }
 assert(T.PLATE_AT === 0.8 && T.isContact(T.PLATE_AT),
        'the window is centred on the plate, not somewhere arbitrary in the flight');
-assert(T.PLATE_AT + T.CONTACT_WINDOW < 1,
+assert(T.PLATE_AT + T.contactWindowFraction() < 1,
        'the ball travels past the plate, so a late swing has something to be late against');
 
 section('The window in wall-clock terms');
 
 const release = T.PITCH_WINDUP_MS;
-const openAt  = release + (T.PLATE_AT - T.CONTACT_WINDOW) * T.PITCH_FLIGHT_MS;
-const shutAt  = release + (T.PLATE_AT + T.CONTACT_WINDOW) * T.PITCH_FLIGHT_MS;
+const openAt  = release + (T.PLATE_AT - T.contactWindowFraction()) * T.PITCH_FLIGHT_MS;
+const shutAt  = release + (T.PLATE_AT + T.contactWindowFraction()) * T.PITCH_FLIGHT_MS;
 assert(T.contactWindowMs() === Math.round(shutAt - openAt),
        `the window is ${T.contactWindowMs()}ms wide, from ${openAt}ms to ${shutAt}ms`);
 assert(T.isContact(T.ballProgressAt(openAt)) && T.isContact(T.ballProgressAt(shutAt)),
@@ -519,10 +517,30 @@ assert(T.contactWindowMs() >= 200,
 // they multiply. This is the floor that stops a future speed-up from quietly
 // making the swing unhittable: the window is a fixed FRACTION of the flight,
 // so every millisecond off the flight comes straight off the window too.
-assert(T.PITCH_FLIGHT_MS >= 1600,
-       `the flight stays long enough for the window to survive it (${T.PITCH_FLIGHT_MS}ms)`);
-assert(T.contactWindowMs() === Math.round(2 * T.CONTACT_WINDOW * T.PITCH_FLIGHT_MS),
-       'and the window really is a fraction of the flight, not a number of its own');
+// The invariant that replaces the old fairness floor: the window is a
+// budget for a human and the flight cannot touch it. Speed and difficulty
+// are separate levers now, so there is nothing left for a floor to protect.
+let holds = [];
+for (const flight of [1200, 1400, 2000, 2400, 3000, 4000]) {
+  const half = T.contactWindowFraction(flight);
+  const ms   = Math.round(2 * half * flight);
+  if (ms !== T.CONTACT_WINDOW_MS) holds.push(`${flight}ms flight -> ${ms}ms window`);
+}
+assert(holds.length === 0,
+       `the window holds ${T.CONTACT_WINDOW_MS}ms at every flight speed${holds.length ? ' — ' + holds.join(', ') : ''}`);
+
+// And the load holds its distance from it, in the only unit the player
+// experiences. This is the drift that used to be invisible: a fixed 180ms
+// lead against a fractional window moved from 0.015 to 0.03 of the flight
+// when the pitch sped up, with nobody editing either number.
+let gaps = [];
+for (const flight of [1400, 2000, 2400, 3000]) {
+  const gapMs = Math.round((T.leadProgress(T.SWING_LEAD_MS, flight) -
+                            T.contactWindowFraction(flight)) * flight);
+  if (gapMs !== T.SWING_LEAD_MS - T.CONTACT_WINDOW_MS / 2) gaps.push(`${flight}: ${gapMs}ms`);
+}
+assert(gaps.length === 0,
+       `the load leads the window by a flat ${T.SWING_LEAD_MS - T.CONTACT_WINDOW_MS / 2}ms at every speed${gaps.length ? ' — ' + gaps.join(', ') : ''}`);
 
 // Swinging before the ball is even released must never accidentally land.
 let earlyClean = true;
@@ -543,7 +561,7 @@ assert(T.READY_READ_MS > 0 && T.READY_CUE_MS > 0,
 assert(T.readyHoldMs(100, 50) === 150, 'the hold is adjustable for testing');
 // The hold is lead-in. It must not appear anywhere in how a swing is scored.
 assert(T.ballProgressAt(T.PITCH_WINDUP_MS + T.PITCH_FLIGHT_MS / 2) === 0.5 &&
-       T.contactWindowMs() === 2 * T.CONTACT_WINDOW * T.PITCH_FLIGHT_MS,
+       T.contactWindowMs() === T.CONTACT_WINDOW_MS,
        'and it changes nothing about the flight or the window');
 
 section('Where the ball is when the barrel arrives');
@@ -569,7 +587,7 @@ section('What the load costs at each end of the window');
 // actually does, and the player is not asked to read it off the plate: the
 // SWING band is drawn exactly on the press window, and that is what they aim
 // at.
-assert(T.leadProgress() > T.CONTACT_WINDOW,
+assert(T.leadProgress() > T.contactWindowFraction(),
        'the load is deeper than the window, so the press always leads the plate');
 assert(!T.isContact(T.contactProgress(T.PLATE_AT)),
        'pressing as the ball reaches the plate is late at this width');
@@ -580,17 +598,17 @@ assert(T.pressWindow().shuts < T.PLATE_AT,
 
 // The lead still costs something, and it costs it at the late edge: the last
 // frame the BALL is in the window is already too late to start the bat.
-assert(T.isContact(T.PLATE_AT + T.CONTACT_WINDOW),
+assert(T.isContact(T.PLATE_AT + T.contactWindowFraction()),
        'the ball at the far edge of the window is still contact');
-assert(!T.isContact(T.contactProgress(T.PLATE_AT + T.CONTACT_WINDOW)),
+assert(!T.isContact(T.contactProgress(T.PLATE_AT + T.contactWindowFraction())),
        'but committing there is a miss — the barrel arrives after the ball has gone');
 assert(T.contactProgress(0.5) > 0.5, 'the press always leads the contact, never trails it');
 
 section('The press window');
 
 const W = T.pressWindow();
-assert(Math.abs(W.opens - (T.PLATE_AT - T.CONTACT_WINDOW - LEAD)) < 1e-12 &&
-       Math.abs(W.shuts - (T.PLATE_AT + T.CONTACT_WINDOW - LEAD)) < 1e-12,
+assert(Math.abs(W.opens - (T.PLATE_AT - T.contactWindowFraction() - LEAD)) < 1e-12 &&
+       Math.abs(W.shuts - (T.PLATE_AT + T.contactWindowFraction() - LEAD)) < 1e-12,
        `the press window is the contact window shifted back by the load (${W.opens.toFixed(4)}..${W.shuts.toFixed(4)})`);
 
 // The load moves WHEN you have to act. It must not shrink HOW LONG you have.

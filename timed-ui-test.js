@@ -404,8 +404,8 @@ const section = title => console.log('\n# ' + title);
     return {
       top:    parseFloat(z.style.top),
       height: parseFloat(z.style.height),
-      opens:  laneY(PLATE_AT - CONTACT_WINDOW),
-      shuts:  laneY(PLATE_AT + CONTACT_WINDOW),
+      opens:  laneY(PLATE_AT - contactWindowFraction()),
+      shuts:  laneY(PLATE_AT + contactWindowFraction()),
       plateY: laneY(PLATE_AT),
       pressTop:    parseFloat(p.style.top),
       pressHeight: parseFloat(p.style.height),

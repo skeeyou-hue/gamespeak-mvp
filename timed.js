@@ -41,18 +41,15 @@ if (typeof require !== 'undefined' && typeof module !== 'undefined') {
    event exists for them; umpireCall is a lookup over results that were
    already there, which is why it is a pure function of them.
 
-   ¡Bola! IS DEFINED BUT NOT WIRED, deliberately. A timeout charges a strike
-   in this ruleset, by the rule that a wrong answer and a timeout are the
-   same thing, so an umpire calling "ball" would be contradicting the strike
-   pip lighting up beside him. There is no event here that is honestly a
-   ball. The call is kept ready for the day there is one, and a test asserts
-   that nothing currently reaches it — so if a real ball event ever lands,
-   that test fails and says to wire this up.
+   There is no ¡Bola!. A timeout charges a strike in this ruleset, by the
+   rule that a wrong answer and a timeout are the same thing, so nothing here
+   is honestly a ball. The call was carried for a while as defined-but-
+   unreachable; that is just a dead branch with a test guarding it. If a real
+   ball event ever exists, adding the call back is three lines.
    ------------------------------------------------------------------------- */
 
 const UMPIRE_CALLS = {
   STRIKE: { es: '¡Strike!', en: 'Strike!' },
-  BALL:   { es: '¡Bola!',   en: 'Ball!' },
   OUT:    { es: '¡Out!',    en: 'Out!' },
   SAFE:   { es: '¡Safe!',   en: 'Safe!' }
 };
@@ -328,13 +325,26 @@ const PITCH_WINDUP_MS = 600;    // the set beat before release, so it reads
 // on moves with it.
 const PITCH_FLIGHT_MS = 2000;   // release to the mitt
 const PLATE_AT        = 0.80;   // where in the flight the ball crosses the plate
-// Half-width of the window around the plate. Tightened from 0.10 after
-// playtesting: on the slower 2400ms flight, 0.10 bought 480ms of contact and
-// a banked home run was close to a formality. At 0.06 the window is 288ms —
-// back to roughly what the original 1400ms flight gave, but now on a pitch
-// you can actually see. It also brings the drawn target down to ~20px, which
-// is about the width of the ball at the plate: get the ball in the box.
-const CONTACT_WINDOW  = 0.06;
+// How long the window is open, in milliseconds. This is a budget for a
+// human, not a share of the pitch: 240ms is 240ms whether the ball takes two
+// seconds to arrive or one.
+//
+// It used to be a fraction of the flight, and that quietly coupled two levers
+// that should be independent. Speeding the pitch up from 2400ms to 2000ms
+// shrank the window from 288ms to 240ms without anyone touching it, and moved
+// SWING_LEAD_MS — a fixed 180ms — from 0.075 of the flight to 0.09, so the
+// gap between the load and the window's half-width doubled from 0.015 to 0.03
+// as a side effect of a speed change. Two levers, one knob, invisible drift.
+//
+// As a fraction it still has to be expressed somewhere, because progress is
+// a fraction. CONTACT_WINDOW is now derived from the budget and the flight
+// rather than being the source, which is the whole point: change the flight
+// and the window holds its length in the only unit the player experiences.
+const CONTACT_WINDOW_MS = 240;
+
+function contactWindowFraction(flight = PITCH_FLIGHT_MS, budgetMs = CONTACT_WINDOW_MS) {
+  return budgetMs / 2 / flight;
+}
 
 // Where the ball is, 0..1. Zero through the wind-up: the ball has not been
 // released yet, so swinging during it is as early as early gets.
@@ -349,22 +359,23 @@ function ballProgressAt(elapsedMs, windup = PITCH_WINDUP_MS, flight = PITCH_FLIG
 // miss by a rounding error the player can neither see nor avoid.
 const CONTACT_EDGE_EPSILON = 1e-9;
 
-function isContact(progress) {
-  return progress >= PLATE_AT - CONTACT_WINDOW - CONTACT_EDGE_EPSILON
-      && progress <= PLATE_AT + CONTACT_WINDOW + CONTACT_EDGE_EPSILON;
+function isContact(progress, flight = PITCH_FLIGHT_MS) {
+  const half = contactWindowFraction(flight);
+  return progress >= PLATE_AT - half - CONTACT_EDGE_EPSILON
+      && progress <= PLATE_AT + half + CONTACT_EDGE_EPSILON;
 }
 
 // Contact, or which side of it they missed on. Knowing whether you were
 // early or late is the difference between learning the timing and guessing.
-function swingVerdict(progress) {
-  if (isContact(progress)) return 'ON_TIME';
+function swingVerdict(progress, flight = PITCH_FLIGHT_MS) {
+  if (isContact(progress, flight)) return 'ON_TIME';
   return progress < PLATE_AT ? 'EARLY' : 'LATE';
 }
 
-// How long the window is open, in ms. Derived rather than written down, so
-// the two cannot drift apart.
-function contactWindowMs(flight = PITCH_FLIGHT_MS) {
-  return 2 * CONTACT_WINDOW * flight;
+// The budget itself. Kept as a function so every caller reads the same
+// number whatever the flight is doing.
+function contactWindowMs() {
+  return CONTACT_WINDOW_MS;
 }
 
 
@@ -421,8 +432,9 @@ function leadProgress(lead = SWING_LEAD_MS, flight = PITCH_FLIGHT_MS) {
 // only the contact window would be showing them a target they cannot aim at.
 function pressWindow(lead = SWING_LEAD_MS, flight = PITCH_FLIGHT_MS) {
   const shift = leadProgress(lead, flight);
-  return { opens: PLATE_AT - CONTACT_WINDOW - shift,
-           shuts: PLATE_AT + CONTACT_WINDOW - shift };
+  const half  = contactWindowFraction(flight);
+  return { opens: PLATE_AT - half - shift,
+           shuts: PLATE_AT + half - shift };
 }
 
 
@@ -532,7 +544,8 @@ if (typeof module !== 'undefined' && module.exports) {
     HIT_ADVANCE,
     DUGOUT_PHRASES, COACH_PHRASES,
     UMPIRE_CALLS, umpireCall, pitchTimedOut,
-    PITCH_WINDUP_MS, PITCH_FLIGHT_MS, PLATE_AT, CONTACT_WINDOW,
+    PITCH_WINDUP_MS, PITCH_FLIGHT_MS, PLATE_AT,
+    CONTACT_WINDOW_MS, contactWindowFraction,
     ballProgressAt, isContact, swingVerdict, contactWindowMs,
     SWING_LEAD_MS, contactProgress, leadProgress, pressWindow,
     READY_READ_MS, READY_CUE_MS, readyHoldMs,
