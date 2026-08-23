@@ -580,6 +580,38 @@ const section = title => console.log('\n# ' + title);
   assert((await page.evaluate(() => state.swing.result)) === 'HOMERUN', 'and it is a home run');
   await settled();
 
+  section('A spent swing does not seed the next one');
+
+  // The whole loop, through the real UI: bank, spend, and confirm the count
+  // starts from nothing rather than from one.
+  await stack(['DOUBLE', 'DOUBLE', 'DOUBLE', 'DOUBLE', 'DOUBLE']);
+  await bank(2);
+  await page.evaluate(() => { state.hitStreak = 0; });
+  await page.click('#bank-button');
+  await live();
+  await page.evaluate(() => takeSwing(PLATE_AT));
+  await page.waitForTimeout(LEAD + 120);
+  assert((await page.evaluate(() => state.swing.result)) === 'HOMERUN',
+         'the banked swing connects');
+  await settled();
+  assert((await page.evaluate(() => state.hitStreak)) === 0,
+         'and the streak is back at zero, not one');
+  assert((await page.evaluate(() => state.bonus)) === null, 'with nothing banked');
+
+  // Two more hits must not be enough to re-bank.
+  await page.evaluate(() => { resolvePitch(100, true); });
+  await page.waitForFunction(() => !state.locked, { timeout: 6000 });
+  await page.evaluate(() => { resolvePitch(100, true); });
+  await page.waitForFunction(() => !state.locked, { timeout: 6000 });
+  assert((await page.evaluate(() => state.hitStreak)) === 2, 'two hits later the streak is two');
+  assert((await page.evaluate(() => state.bonus)) === null,
+         'and no swing is banked yet — the spent one did not count toward it');
+
+  await page.evaluate(() => { resolvePitch(100, true); });
+  await page.waitForFunction(() => !state.locked, { timeout: 6000 });
+  assert((await page.evaluate(() => state.bonus)) !== null,
+         'the third hit banks the next one, a full three after the last');
+
   section('Swinging with the keyboard');
 
   await stack(['DOUBLE', 'DOUBLE']);

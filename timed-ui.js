@@ -491,11 +491,12 @@ function endSwing() {
   el.pitchScreen.classList.remove('hidden');
 
   // The swing was the whole at-bat, so it ages the bonus exactly once, the
-  // same as any other at-bat ending.
-  const result = state.swing.result === 'HOMERUN' ? 'HIT' : 'OUT';
+  // same as any other at-bat ending. It goes in as SPENT rather than as its
+  // own outcome: a banked home run is the payoff for the streak that earned
+  // it, not the first answer of the next one.
   state.swing = null;
 
-  const stepped = applyAtBatToBonus(state.bonus, state.hitStreak, result, Math.random());
+  const stepped = applyAtBatToBonus(state.bonus, state.hitStreak, 'SPENT', Math.random());
   state.bonus     = stepped.bonus;
   state.hitStreak = stepped.streak;
 

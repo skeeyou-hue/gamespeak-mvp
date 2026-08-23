@@ -157,6 +157,49 @@ assert(anyType.banked, 'a single, a homer and a double bank a swing just the sam
 assert(T.applyAtBatToBonus(null, 2, 'OUT', 0).streak === 0, 'an out breaks the streak');
 assert(!T.applyAtBatToBonus(null, 2, 'OUT', 0).banked, 'and banks nothing');
 
+section('Spending a swing does not seed the next one');
+
+// The bug this pins: a banked home run used to go back in as a HIT, so it
+// counted as the first of the next three and swings came round twice as
+// often as the rule says.
+{
+  let streak = 0, bonus = null, banked = [];
+  const step = result => {
+    const o = T.applyAtBatToBonus(bonus, streak, result, 0);
+    bonus = o.bonus; streak = o.streak; banked.push(o.banked);
+    return o;
+  };
+  step('HIT'); step('HIT');
+  assert(streak === 2, 'two hits in, the streak is two');
+  const third = step('HIT');
+  assert(third.banked === true && streak === 0, 'the third banks a swing and clears the count');
+
+  const spent = step('SPENT');
+  assert(spent.banked === false, 'spending the swing does not bank another');
+  assert(streak === 0, 'and leaves the streak at zero, not one');
+
+  step('HIT'); step('HIT');
+  assert(streak === 2, 'so it takes two more hits to get back to two');
+  assert(banked.filter(Boolean).length === 1, 'and only one swing has been banked so far');
+  const again = step('HIT');
+  assert(again.banked === true, 'the full three are needed again');
+}
+
+// Whatever the swing turned out to be, it never extends the streak.
+for (const carried of [0, 1, 2]) {
+  const o = T.applyAtBatToBonus(null, carried, 'SPENT', 0);
+  assert(o.streak === 0 && o.banked === false,
+         `a spent swing resets a streak of ${carried} rather than adding to it`);
+}
+
+// A spent swing can never bank one on its own, even from two in the bank.
+assert(T.applyAtBatToBonus(null, T.BONUS_STREAK - 1, 'SPENT', 0).banked === false,
+       'and it cannot bank a swing off the back of the streak it just spent');
+
+// An out still resets, exactly as before — this changed nothing about it.
+assert(T.applyAtBatToBonus(null, 2, 'OUT', 0).streak === 0, 'an out still clears the streak');
+assert(T.applyAtBatToBonus(null, 2, 'HIT', 0).banked === true, 'and a real hit still banks on three');
+
 section('Expiry');
 
 for (const life of [1, 2, 3]) {

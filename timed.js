@@ -191,10 +191,21 @@ function applyAtBatToBonus(bonus, streak, result, roll) {
   let nextBonus = bonus ? { atBatsLeft: bonus.atBatsLeft - 1 } : null;
   if (nextBonus && nextBonus.atBatsLeft <= 0) nextBonus = null;
 
-  // 2. Only a hit extends the streak.
+  // 2. Only a hit extends the streak, and only a hit the player answered for.
+  //    `result` is one of:
+  //      'HIT'    answered correctly inside the window
+  //      'OUT'    struck out
+  //      'SPENT'  the at-bat was settled by spending a banked swing
+  //
+  //    SPENT resets the count however the swing turned out. The swing IS the
+  //    reward for the last three in a row; letting it also count as the first
+  //    of the next three means a banked home run leaves you one answer short
+  //    of banking again, and swings arrive roughly twice as often as the rule
+  //    says they should.
   const nextStreak = result === 'HIT' ? streak + 1 : 0;
 
-  // 3. Three in a row banks a fresh swing, replacing any older one.
+  // 3. Three in a row banks a fresh swing, replacing any older one. A spent
+  //    swing can never bank one: its streak is already back at zero.
   if (nextStreak >= BONUS_STREAK) {
     return { bonus: { atBatsLeft: rollBonusLife(roll) }, streak: 0, banked: true };
   }
