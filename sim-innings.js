@@ -16,8 +16,8 @@
    ========================================================================= */
 
 const T = require('./timed.js');
-const { VOCAB, shuffle, applyPitch, bucketForTag, windowForTag, MAX_STRIKES } = T;
-const MAX_OUTS = 3;
+const { VOCAB, shuffle, applyPitch, bucketForTag, windowForTag,
+        MAX_OUTS, AT_BATS_PER_INNING, inningOver, BONUS_STREAK } = T;
 const RUNS = 4000;
 
 // A miss is a miss whether it is a wrong answer or the clock running out;
@@ -142,3 +142,151 @@ for (const a of [0.60, 0.70, 0.75, 0.80, 0.85]) {
 const mix = VOCAB.reduce((a, w) => { a[bucketForTag(w.tag)] = (a[bucketForTag(w.tag)] || 0) + 1; return a; }, {});
 console.log('\nDECK MIX: easy ' + mix.easy + ', medium ' + mix.medium + ', hard ' + mix.hard +
             '  (easy is ' + (mix.easy / VOCAB.length * 100).toFixed(0) + '% of the words)');
+
+
+/* =========================================================================
+   BONUS SWING — RISK/REWARD, modelled before it is built.
+
+   Two new out paths land in an inning that AT_BATS_PER_INNING = 40 was sized
+   against, so the cap has to be re-checked against them rather than assumed.
+
+   What is real here: the deck, the shuffle, the tiers, applyPitch, the
+   easy-out rule, hitForResponse and advanceOnHit. Runs are scored through
+   the real base-running, because runs are what the accept/decline choice is
+   actually played for — a model that zeroes them cannot say whether the
+   choice is live.
+
+   What is assumed, and therefore swept: the player.
+
+     pQuestion  chance of answering the HOMERUN-tier bonus question, taken as
+                hard-bucket accuracy plus a bonus for the longer clock.
+     sSwing     chance of connecting on ONE swing attempt. Three attempts, so
+                connecting at all is 1 - (1 - sSwing)^3.
+     answer time  uniform inside the window when the answer is right, which
+                is what turns a correct answer into a hit tier.
+   ========================================================================= */
+
+const { hitForResponse, advanceOnHit, HIT_ADVANCE } = T;
+const SWING_LONGER_CLOCK_BONUS = 0.10;
+const OFFERS_PER_BANK = 3;              // the offer, then two more
+
+// A correct answer lands somewhere in the window; where it lands is the hit.
+function hitFor(windowMs) {
+  const at = Math.random() * windowMs;
+  return hitForResponse(at, windowMs) || 'SINGLE';
+}
+
+function bonusInning(accuracy, sSwing, strategy, cap, featureOn) {
+  const deck = shuffle(VOCAB);
+  let outs = 0, atBats = 0, i = 0, runs = 0;
+  let bases = [false, false, false];
+  let streak = 0, offersLeft = 0;
+  let banks = 0, banksTaken = 0, offers = 0, homers = 0;
+  let questionOuts = 0, swingOuts = 0;
+
+  const connects = () => Math.random() < 1 - Math.pow(1 - sSwing, 3);
+  const pQuestion = Math.min(0.99, accuracy.hard + SWING_LONGER_CLOCK_BONUS);
+
+  while (!inningOver(outs, atBats, deck.length, cap)) {
+    if (featureOn && offersLeft > 0) {
+      offers++;
+      if (strategy(outs, bases)) {
+        banksTaken++;
+        atBats++;                        // the bonus replaces the at-bat
+        offersLeft = 0;
+        streak = 0;
+        if (Math.random() >= pQuestion)      { outs++; questionOuts++; }
+        else if (!connects())                { outs++; swingOuts++; }
+        else {
+          homers++;
+          const play = advanceOnHit(bases, HIT_ADVANCE.HOMERUN);
+          bases = play.bases; runs += play.runs;
+        }
+        i++;
+        continue;
+      }
+      offersLeft--;                      // declined; the at-bat still happens
+    }
+
+    const w = deck[i], bucket = bucketForTag(w.tag), win = windowForTag(w.tag);
+    atBats++;
+    let strikes = 0, hit = null;
+    for (;;) {
+      const ok = Math.random() < accuracy[bucket];
+      const p = applyPitch(strikes, ok, ok ? Math.random() * win : win, win, w.tag);
+      strikes = p.strikes;
+      if (p.result === 'HIT') { hit = p.hit || hitFor(win); break; }
+      if (p.result === 'OUT') { outs++; break; }
+    }
+    if (hit) {
+      const play = advanceOnHit(bases, HIT_ADVANCE[hit]);
+      bases = play.bases; runs += play.runs;
+      streak++;
+      if (featureOn && streak >= BONUS_STREAK && offersLeft === 0) {
+        offersLeft = OFFERS_PER_BANK; banks++; streak = 0;
+      }
+    } else {
+      streak = 0;
+    }
+    i++;
+  }
+  return { atBats, runs, banks, banksTaken, offers, homers,
+           bonusOuts: questionOuts + swingOuts, questionOuts, swingOuts,
+           endedBy: inningOver(outs, atBats, deck.length, cap) };
+}
+
+const STRATEGIES = {
+  'always accept':       () => true,
+  'accept under 2 outs': outs => outs < MAX_OUTS - 1,
+  'always decline':      () => false
+};
+
+function bonusSweep(sSwing) {
+  const N = 2500;
+  console.log(`\n\nSWING CONNECT ${Math.round(sSwing * 100)}% per attempt` +
+              ` — ${Math.round((1 - Math.pow(1 - sSwing, 3)) * 100)}% over three attempts`);
+  console.log('  acc    strategy              med  p90   banks  taken  bonus outs  RUNS   ends by cap');
+  console.log('  ' + '-'.repeat(92));
+  for (const a of [0.60, 0.70, 0.75, 0.85]) {
+    const acc = { easy: Math.min(0.99, a + 0.12), medium: a, hard: Math.max(0.05, a - 0.15) };
+    for (const [name, strategy] of Object.entries(STRATEGIES)) {
+      const lens = [], runs = [];
+      let banks = 0, taken = 0, bonusOuts = 0, byCap = 0;
+      for (let k = 0; k < N; k++) {
+        const r = bonusInning(acc, sSwing, strategy, AT_BATS_PER_INNING, true);
+        lens.push(r.atBats); runs.push(r.runs);
+        banks += r.banks; taken += r.banksTaken; bonusOuts += r.bonusOuts;
+        if (r.endedBy === 'CAP') byCap++;
+      }
+      lens.sort((x, y) => x - y);
+      const pct = p => lens[Math.floor(p * lens.length)];
+      const mean = xs => xs.reduce((s, x) => s + x, 0) / xs.length;
+      console.log('  ' + String(Math.round(a * 100) + '%').padEnd(7) +
+        name.padEnd(22) + String(pct(0.5)).padEnd(5) + String(pct(0.9)).padEnd(6) +
+        (banks / N).toFixed(1).padEnd(7) +
+        ((taken / Math.max(1, banks)) * 100).toFixed(0).padStart(3) + '%   ' +
+        (bonusOuts / N).toFixed(2).padEnd(12) +
+        mean(runs).toFixed(1).padEnd(7) +
+        (byCap / N * 100).toFixed(0) + '%');
+    }
+    // Today's game, for the row above to be read against.
+    const lens = [], runs = [];
+    let byCap = 0;
+    for (let k = 0; k < N; k++) {
+      const r = bonusInning(acc, sSwing, () => false, AT_BATS_PER_INNING, false);
+      lens.push(r.atBats); runs.push(r.runs);
+      if (r.endedBy === 'CAP') byCap++;
+    }
+    lens.sort((x, y) => x - y);
+    console.log('  ' + ' '.repeat(7) + 'FEATURE OFF (today)'.padEnd(22) +
+      String(lens[Math.floor(0.5 * N)]).padEnd(5) + String(lens[Math.floor(0.9 * N)]).padEnd(6) +
+      '-      -     -           ' +
+      (runs.reduce((s, x) => s + x, 0) / N).toFixed(1).padEnd(7) +
+      (byCap / N * 100).toFixed(0) + '%');
+    console.log('');
+  }
+}
+
+if (process.argv.includes('--bonus')) {
+  for (const s of [0.25, 0.50, 0.70]) bonusSweep(s);
+}
