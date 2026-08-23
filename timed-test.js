@@ -26,7 +26,7 @@ section('The shared word list');
 const TIERS = ['WALK', 'SINGLE', 'DOUBLE', 'TRIPLE', 'HOMERUN'];
 const mix = T.VOCAB.reduce((a, w) => { a[w.tag] = (a[w.tag] || 0) + 1; return a; }, {});
 
-assert(T.VOCAB.length >= 50, `${T.VOCAB.length} words in the list`);
+assert(T.VOCAB.length >= 100, `${T.VOCAB.length} words in the list`);
 assert(TIERS.every(t => mix[t] > 0), `every tier is populated (${JSON.stringify(mix)})`);
 assert(Object.keys(mix).every(t => TIERS.includes(t)),
        'and no word carries a tier the game does not know');
@@ -57,6 +57,23 @@ for (const field of ['es', 'en']) {
 // Every tier has to be able to fill a four-choice question from its own
 // language field, whichever way the prompt is facing.
 assert(T.VOCAB.length >= 4, 'the list can fill a four-choice question at all');
+
+// The hard tiers carry the phrases. A language stops being a list of nouns
+// at the point where it starts being how a thing is actually said, and that
+// is what TRIPLE and HOMERUN are for.
+const words = T.VOCAB.map(w => Object.assign({ n: w.es.trim().split(/\s+/).length }, w));
+const phrases = words.filter(w => w.n > 2);
+const phrasesByTier = phrases.reduce((a, w) => { a[w.tag] = (a[w.tag] || 0) + 1; return a; }, {});
+assert(phrases.length >= 15, `${phrases.length} multi-word phrases in the list`);
+assert((phrasesByTier.TRIPLE || 0) >= 5 && (phrasesByTier.HOMERUN || 0) >= 5,
+       `and they sit in the hard tiers (${JSON.stringify(phrasesByTier)})`);
+assert(!phrases.some(w => w.tag === 'WALK' || w.tag === 'SINGLE'),
+       'with none of them in the easy tiers, where a phrase would not be easy');
+
+// Nothing so long it cannot be read on a phone in the time the clock gives.
+const tooLong = words.filter(w => w.es.length > 32 || w.en.length > 32);
+assert(tooLong.length === 0,
+       `every prompt and answer fits on one line${tooLong.length ? ': ' + tooLong.map(w => w.es).join(', ') : ''}`);
 
 section('Tiers set the clock');
 
