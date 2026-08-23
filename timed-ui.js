@@ -48,6 +48,7 @@ const el = {
   contactZone:   document.getElementById('contact-zone'),
   pressZone:     document.getElementById('press-zone'),
   pitchFlash:    document.getElementById('pitch-flash'),
+  readyCue:      document.getElementById('ready-cue'),
   swingGo:       document.getElementById('swing-go'),
   swingFeedback: document.getElementById('swing-feedback'),
 
@@ -325,6 +326,12 @@ const MISS_TEXT = {
 
 let swingFrame = null;
 let swingTimer = null;
+let readyTimers = [];
+
+function clearReady() {
+  readyTimers.forEach(clearTimeout);
+  readyTimers = [];
+}
 
 function startSwing() {
   if (!state.bonus || state.locked || state.swing) return;
@@ -336,7 +343,8 @@ function startSwing() {
   const phrase = DUGOUT_PHRASES[Math.floor(Math.random() * DUGOUT_PHRASES.length)];
   const coach  = COACH_PHRASES[Math.floor(Math.random() * COACH_PHRASES.length)];
   state.swing = { progress: 0, phrase: phrase.es, coach: coach.es,
-                  pressAt: null, contactAt: null, result: null, verdict: null };
+                  live: false, pressAt: null, contactAt: null,
+                  result: null, verdict: null };
 
   el.dugoutPhrase.textContent = phrase.es;
   el.dugoutGloss.textContent  = phrase.en;
@@ -344,13 +352,34 @@ function startSwing() {
   el.coachGloss.textContent   = coach.en;
   el.swingFeedback.innerHTML  = '&nbsp;';
   el.swingFeedback.className  = 'feedback';
-  el.swingGo.disabled         = false;
+  el.swingGo.disabled         = true;      // nothing to swing at yet
   el.swingFigure.classList.remove('bat-flip', 'swinging');
   el.pitchBall.classList.remove('struck');
   el.pitchFlash.classList.remove('pop');
   placeBall(0);
   el.pitchScreen.classList.add('hidden');
   el.swingScreen.classList.remove('hidden');
+
+  // The ready beat. Nothing about the pitch is live until it finishes: the
+  // button is dead, the ball has not been released, and the clock has not
+  // started. It only moves WHEN the flight begins — the flight itself, and
+  // everything scored off it, is untouched.
+  clearReady();
+  el.readyCue.textContent = 'Read the bench…';
+  el.readyCue.className   = 'ready-cue';
+
+  readyTimers.push(setTimeout(() => {
+    el.readyCue.textContent = '¡Ahí viene!  —  here it comes';
+    el.readyCue.className   = 'ready-cue live';
+  }, READY_READ_MS));
+
+  readyTimers.push(setTimeout(startPitchClock, readyHoldMs()));
+}
+
+function startPitchClock() {
+  if (!state.swing || state.swing.result) return;
+  state.swing.live    = true;
+  el.swingGo.disabled = false;
 
   const startedSwingAt = performance.now();
   const tick = now => {
@@ -379,6 +408,7 @@ function startSwing() {
 // is scored when the barrel gets there, on contactProgress().
 function takeSwing(progress) {
   if (!state.swing || state.swing.result || state.swing.pressAt !== null) return;
+  if (!state.swing.live) return;   // the ready beat is still running
 
   const swung = progress !== null && progress !== undefined;
   el.swingGo.disabled = true;
@@ -394,6 +424,7 @@ function takeSwing(progress) {
 
 function resolveSwing(pressProgress) {
   if (!state.swing || state.swing.result) return;
+  clearReady();
   if (swingFrame) { cancelAnimationFrame(swingFrame); swingFrame = null; }
   if (swingTimer) { clearTimeout(swingTimer); swingTimer = null; }
 
@@ -428,6 +459,9 @@ function resolveSwing(pressProgress) {
 }
 
 function endSwing() {
+  clearReady();
+  el.readyCue.textContent = '\u00a0';
+  el.readyCue.className   = 'ready-cue';
   el.swingFigure.classList.remove('bat-flip', 'swinging');
   el.pitchBall.classList.remove('struck');
   placeBall(0);
@@ -503,7 +537,7 @@ el.bankButton.addEventListener('click', startSwing);
 el.swingGo.addEventListener('click', () => takeSwing(state.swing ? state.swing.progress : null));
 document.addEventListener('keydown', event => {
   if (event.code === 'Space' && state.swing && !state.swing.result &&
-      state.swing.pressAt === null) {
+      state.swing.pressAt === null && state.swing.live) {
     event.preventDefault();
     takeSwing(state.swing.progress);
   }

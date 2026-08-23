@@ -327,6 +327,32 @@ body {
   color: var(--muted);
 }
 
+.ready-cue {
+  margin: 10px 0 0;
+  min-height: 1.15em;
+  font-size: 0.82rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+  transition: color 140ms ease;
+}
+
+.ready-cue.live {
+  color: #C6472F;
+}
+
+@keyframes readyPulse {
+  0%, 100% { opacity: 0.55; }
+  50%      { opacity: 1; }
+}
+
+.ready-cue.live { animation: readyPulse 550ms ease-in-out 2; }
+
+@media (prefers-reduced-motion: reduce) {
+  .ready-cue.live { animation: none; }
+}
+
 /* --- the pitch -------------------------------------------------------------
    A fixed 200x210 box, so the pixel positions timed-ui.js computes for the
    ball line up with the field drawn underneath it at every screen size. The
