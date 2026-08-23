@@ -158,6 +158,36 @@ const section = title => console.log('\n# ' + title);
 
   /* =================================================================== */
   /* =================================================================== */
+  section('Timed reads the expanded word list');
+
+  // Every word has to be dealable in this mode too: a tier with no entry in
+  // TIMED_TIERS would leave an at-bat with no clock at all.
+  const noClock = await page.evaluate(() =>
+    VOCAB.filter(w => !TIMED_TIERS[w.tag] || !windowForTag(w.tag)).map(w => w.es));
+  assert(noClock.length === 0,
+         `every word maps to a real countdown${noClock.length ? ': ' + noClock.join(', ') : ''}`);
+
+  // A fresh inning, because earlier sections stack the deck on purpose.
+  const deck = await page.evaluate(() => {
+    startInning();
+    return { len: state.deck.length, vocab: VOCAB.length };
+  });
+  assert(deck.len === deck.vocab, `a fresh inning deals the whole list (${deck.len} words)`);
+
+  // Both prompt directions have to work on the new words specifically, not
+  // just on whichever ones happened to be dealt.
+  const newest = ['el camarero', 'el jardín', 'el abridor', 'la mascota', 'el ponche'];
+  const faces = await page.evaluate(list => list.map(es => {
+    const w = VOCAB.find(v => v.es === es);
+    if (!w) return { es, missing: true };
+    const a = promptFor(w, 'ES_TO_EN'), b = promptFor(w, 'EN_TO_ES');
+    return { es, ok: a.prompt === w.es && a.answer === w.en &&
+                      b.prompt === w.en && b.answer === w.es };
+  }), newest);
+  assert(faces.every(f => f.ok),
+         `the new words work in both directions (${faces.filter(f => f.ok).length}/${newest.length})`);
+
+  /* =================================================================== */
   section('The umpire calls it on the real events');
 
   const ump = () => page.evaluate(() => {

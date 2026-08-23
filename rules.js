@@ -21,7 +21,7 @@
    Add or edit entries here — everything else adapts automatically.
    ------------------------------------------------------------------------- */
 const VOCAB = [
-  // --- WALK: everyday words, close cognates, high frequency (7) ---
+  // --- WALK: everyday words, close cognates, high frequency (11) ---
   { es: 'el béisbol',     en: 'baseball',        tag: 'WALK'   },
   { es: 'la pelota',      en: 'the ball',        tag: 'WALK'   },
   { es: 'el bate',        en: 'the bat',         tag: 'WALK'   },
@@ -29,8 +29,12 @@ const VOCAB = [
   { es: 'el equipo',      en: 'the team',        tag: 'WALK'   },
   { es: 'el jugador',     en: 'the player',      tag: 'WALK'   },
   { es: 'correr',         en: 'to run',          tag: 'WALK'   },
+  { es: 'el estadio',     en: 'the stadium',     tag: 'WALK'   },
+  { es: 'el juego',       en: 'the game',        tag: 'WALK'   },
+  { es: 'batear',         en: 'to bat',          tag: 'WALK'   },
+  { es: 'perder',         en: 'to lose',         tag: 'WALK'   },
 
-  // --- SINGLE: common baseball terms, some verbs (7) ---
+  // --- SINGLE: common baseball terms, some verbs (11) ---
   { es: 'el lanzador',    en: 'the pitcher',     tag: 'SINGLE' },
   { es: 'el bateador',    en: 'the batter',      tag: 'SINGLE' },
   { es: 'la carrera',     en: 'the run (score)', tag: 'SINGLE' },
@@ -38,28 +42,48 @@ const VOCAB = [
   { es: 'atrapar',        en: 'to catch',        tag: 'SINGLE' },
   { es: 'lanzar',         en: 'to throw/pitch',  tag: 'SINGLE' },
   { es: 'ganar',          en: 'to win',          tag: 'SINGLE' },
+  { es: 'anotar',         en: 'to score',        tag: 'SINGLE' },
+  { es: 'el sencillo',    en: 'the single (hit)', tag: 'SINGLE' },
+  { es: 'la curva',       en: 'the curveball',   tag: 'SINGLE' },
+  { es: 'las gradas',     en: 'the stands',      tag: 'SINGLE' },
 
-  // --- DOUBLE: specialist vocabulary, false friends (6) ---
+  // --- DOUBLE: specialist vocabulary, false friends (11).
+  //     el jardín and el cuadro are the real traps: "the garden" and "the
+  //     square" are both perfectly good translations and both wrong here. ---
   { es: 'el receptor',    en: 'the catcher',             tag: 'DOUBLE' },
   { es: 'el jardinero',   en: 'the outfielder',          tag: 'DOUBLE' },
   { es: 'la entrada',     en: 'the inning',              tag: 'DOUBLE' },
   { es: 'el montículo',   en: "the pitcher's mound",     tag: 'DOUBLE' },
   { es: 'el árbitro',     en: 'the umpire',              tag: 'DOUBLE' },
   { es: 'ponchar',        en: 'to strike (someone) out', tag: 'DOUBLE' },
+  { es: 'el jardín',      en: 'the outfield',            tag: 'DOUBLE' },
+  { es: 'el cuadro',      en: 'the infield',             tag: 'DOUBLE' },
+  { es: 'el ponche',      en: 'the strikeout',           tag: 'DOUBLE' },
+  { es: 'el elevado',     en: 'the fly ball',            tag: 'DOUBLE' },
+  { es: 'el cambio',      en: 'the changeup',            tag: 'DOUBLE' },
 
-  // --- TRIPLE: positions and pitches you'd only know from the game (5) ---
+  // --- TRIPLE: positions and pitches you'd only know from the game (9) ---
   { es: 'el toletero',    en: 'the slugger',        tag: 'TRIPLE' },
   { es: 'el campocorto',  en: 'the shortstop',      tag: 'TRIPLE' },
   { es: 'la recta',       en: 'the fastball',       tag: 'TRIPLE' },
   { es: 'el relevista',   en: 'the relief pitcher', tag: 'TRIPLE' },
   { es: 'la antesala',    en: 'third base',         tag: 'TRIPLE' },
+  { es: 'el antesalista', en: 'the third baseman',  tag: 'TRIPLE' },
+  { es: 'el cerrador',    en: 'the closer',         tag: 'TRIPLE' },
+  { es: 'el abridor',     en: 'the starting pitcher', tag: 'TRIPLE' },
+  { es: 'la línea',       en: 'the line drive',     tag: 'TRIPLE' },
 
-  // --- HOME RUN: Caribbean broadcast vocabulary, the hardest tier (5) ---
+  // --- HOME RUN: Caribbean broadcast vocabulary, the hardest tier (8).
+  //     el camarero is "the waiter" and la mascota is "the pet". Neither is
+  //     guessable from the Spanish; you have to have heard the game called. ---
   { es: 'el cuadrangular',      en: 'the home run',           tag: 'HOMERUN' },
   { es: 'la carrera impulsada', en: 'the run batted in (RBI)', tag: 'HOMERUN' },
   { es: 'el emergente',         en: 'the pinch hitter',       tag: 'HOMERUN' },
   { es: 'el inicialista',       en: 'the first baseman',      tag: 'HOMERUN' },
-  { es: 'la almohadilla',       en: 'the base (bag)',         tag: 'HOMERUN' }
+  { es: 'la almohadilla',       en: 'the base (bag)',         tag: 'HOMERUN' },
+  { es: 'el camarero',          en: 'the second baseman',     tag: 'HOMERUN' },
+  { es: 'el imparable',         en: 'the base hit (safe hit)', tag: 'HOMERUN' },
+  { es: 'la mascota',           en: "the catcher's mitt",     tag: 'HOMERUN' }
 ];
 
 

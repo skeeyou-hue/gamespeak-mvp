@@ -19,6 +19,45 @@ const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
 /* ===================================================================
    A. TIERS SET THE CLOCK
    =================================================================== */
+section('The shared word list');
+
+// VOCAB lives in rules.js and both modes read it, so it is checked here
+// once rather than twice with two different opinions.
+const TIERS = ['WALK', 'SINGLE', 'DOUBLE', 'TRIPLE', 'HOMERUN'];
+const mix = T.VOCAB.reduce((a, w) => { a[w.tag] = (a[w.tag] || 0) + 1; return a; }, {});
+
+assert(T.VOCAB.length >= 50, `${T.VOCAB.length} words in the list`);
+assert(TIERS.every(t => mix[t] > 0), `every tier is populated (${JSON.stringify(mix)})`);
+assert(Object.keys(mix).every(t => TIERS.includes(t)),
+       'and no word carries a tier the game does not know');
+
+// The tiers are weighted by how hard the words actually are, not split
+// evenly. Easy outnumbers hard on purpose — this is a teaching app.
+const easy = mix.WALK + mix.SINGLE, medium = mix.DOUBLE, hard = mix.TRIPLE + mix.HOMERUN;
+assert(easy + medium + hard === T.VOCAB.length,
+       `the buckets account for every word (easy ${easy}, medium ${medium}, hard ${hard})`);
+assert(easy > hard, 'and the list leans easy rather than being balanced for its own sake');
+
+// Every entry is a complete bilingual pair. A blank half would render as an
+// empty prompt or an empty choice button rather than failing loudly.
+const broken = T.VOCAB.filter(w =>
+  typeof w.es !== 'string' || !w.es.trim() ||
+  typeof w.en !== 'string' || !w.en.trim() || !TIERS.includes(w.tag));
+assert(broken.length === 0,
+       `every word is a complete es/en/tag triple${broken.length ? ': ' + JSON.stringify(broken) : ''}`);
+
+// Duplicates across the WHOLE list, not just within any one tier or batch.
+for (const field of ['es', 'en']) {
+  const seen = new Set(), dupes = [];
+  for (const w of T.VOCAB) { if (seen.has(w[field])) dupes.push(w[field]); else seen.add(w[field]); }
+  assert(dupes.length === 0,
+         `no ${field} value appears twice anywhere in the list${dupes.length ? ': ' + dupes.join(', ') : ''}`);
+}
+
+// Every tier has to be able to fill a four-choice question from its own
+// language field, whichever way the prompt is facing.
+assert(T.VOCAB.length >= 4, 'the list can fill a four-choice question at all');
+
 section('Tiers set the clock');
 
 for (const [tag, bucket, ms] of [
