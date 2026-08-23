@@ -353,15 +353,29 @@ body {
 }
 
 /* Top and height come from the contact window, drawn by timed-ui.js. */
-.contact-zone {
+.contact-zone,
+.press-zone {
   position: absolute;
   left: 50%;
   width: 64px;
   margin-left: -32px;
   box-sizing: border-box;
+}
+
+/* Where the ball must be at contact. */
+.contact-zone {
   border-top: 2px solid rgba(250, 214, 110, 0.85);
   border-bottom: 2px solid rgba(250, 214, 110, 0.85);
   background: rgba(250, 214, 110, 0.14);
+}
+
+/* Where the ball must be when you commit. Dashed and cooler, so it reads as
+   "act here" rather than as a second contact window. */
+.press-zone {
+  border: 2px dashed rgba(255, 255, 255, 0.6);
+  border-left: none;
+  border-right: none;
+  background: rgba(255, 255, 255, 0.07);
 }
 
 /* The batter stands in the right-hand box, clear of the ball's line. Drawn
@@ -456,10 +470,26 @@ body {
    Only on a home run. The bat pivots at the hands and leaves the frame,
    and the batter gives a small hop, so the payoff reads as a beat of its
    own rather than another green feedback line. */
+/* The load: the bat coming through. Lasts exactly SWING_LEAD_MS, set from
+   the constant by timed-ui.js, so what the eye sees and what the rules
+   charge for the commitment are the same beat. */
+@keyframes batSwing {
+  0%   { transform: rotate(0deg); }
+  100% { transform: rotate(-95deg); }
+}
+
+#swing-figure.swinging #swing-bat {
+  transform-box: view-box;
+  transform-origin: 150px 58px;
+  animation: batSwing var(--swing-lead, 180ms) cubic-bezier(0.45, 0, 0.9, 1) forwards;
+}
+
+/* The flip starts where the swing ended, so contact does not snap the bat
+   back to the shoulder before launching it. */
 @keyframes batFlip {
-  0%   { transform: rotate(0deg)    translate(0, 0);       opacity: 1; }
-  60%  { transform: rotate(-260deg) translate(30px, -40px); opacity: 1; }
-  100% { transform: rotate(-420deg) translate(70px, -120px); opacity: 0; }
+  0%   { transform: rotate(-95deg)  translate(0, 0);        opacity: 1; }
+  60%  { transform: rotate(-300deg) translate(30px, -40px); opacity: 1; }
+  100% { transform: rotate(-460deg) translate(70px, -120px); opacity: 0; }
 }
 
 @keyframes batterHop {
@@ -480,6 +510,9 @@ body {
 @media (prefers-reduced-motion: reduce) {
   #swing-figure.bat-flip #swing-bat { animation: none; opacity: 0; }
   #swing-figure.bat-flip { animation: none; }
+  /* The load still has to be visible — it is the mechanic — but it can
+     snap to the finished position instead of sweeping there. */
+  #swing-figure.swinging #swing-bat { animation-duration: 1ms; }
   /* The ball still has to fly — that is the mechanic — but it can vanish
      on contact instead of being launched. */
   .pitch-ball.struck { animation: none; opacity: 0; }

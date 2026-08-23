@@ -279,6 +279,53 @@ function contactWindowMs(flight = PITCH_FLIGHT_MS) {
 
 
 /* -------------------------------------------------------------------------
+   8b. THE LOAD — why the press is not the contact
+
+   A hitter cannot decide to swing at the moment the bat meets the ball. The
+   hands go first and the barrel arrives afterwards; by the time it does, the
+   ball has kept coming. So pressing is a commitment made in advance, not a
+   button that stops the ball where it is.
+
+   That is a rule change, not a visual delay. The outcome is scored on where
+   the ball IS when the barrel gets there — press progress plus however far
+   the ball travels during the load — so the press has to lead the contact.
+
+   Timeline, with the numbers below:
+
+     ball    0.00 ............ 0.57 ....... 0.70 .. 0.80 .. 0.90 ...... 1.00
+                               ^press       [==== contact window ====]
+                               |____ 180ms load ____^
+                               [== press window ==]  (same 280ms, shifted)
+
+   The two windows are the same width — the load shifts when you have to act,
+   it does not shrink how long you have to act. Everything the player has to
+   aim at is derived from these two constants, never written down twice.
+   ------------------------------------------------------------------------- */
+
+const SWING_LEAD_MS = 180;   // press to barrel: the load, in wall-clock ms
+
+// The ball keeps travelling while the bat is on its way. This is where it
+// will be when the barrel arrives, and it is what the swing is scored on.
+function contactProgress(pressProgress, lead = SWING_LEAD_MS, flight = PITCH_FLIGHT_MS) {
+  return Math.min(1, pressProgress + lead / flight);
+}
+
+// How much of the flight the load eats.
+function leadProgress(lead = SWING_LEAD_MS, flight = PITCH_FLIGHT_MS) {
+  return lead / flight;
+}
+
+// The contact window expressed in press terms: where the ball has to be when
+// the player commits. This is what the UI draws as the press cue — showing
+// only the contact window would be showing them a target they cannot aim at.
+function pressWindow(lead = SWING_LEAD_MS, flight = PITCH_FLIGHT_MS) {
+  const shift = leadProgress(lead, flight);
+  return { opens: PLATE_AT - CONTACT_WINDOW - shift,
+           shuts: PLATE_AT + CONTACT_WINDOW - shift };
+}
+
+
+/* -------------------------------------------------------------------------
    9. THE DUGOUT
    Short shouts of the kind you would actually hear from a Caribbean dugout.
    One is picked at random for each swing. The English is there because this
@@ -385,6 +432,7 @@ if (typeof module !== 'undefined' && module.exports) {
     DUGOUT_PHRASES, COACH_PHRASES,
     PITCH_WINDUP_MS, PITCH_FLIGHT_MS, PLATE_AT, CONTACT_WINDOW,
     ballProgressAt, isContact, swingVerdict, contactWindowMs,
+    SWING_LEAD_MS, contactProgress, leadProgress, pressWindow,
     DIRECTIONS, pickDirection, promptFor,
     // shared, re-exported so timed-test.js has a single import
     VOCAB, shuffle, advanceOnHit
