@@ -47,6 +47,7 @@ const el = {
   pitchBall:     document.getElementById('pitch-ball'),
   contactZone:   document.getElementById('contact-zone'),
   pressZone:     document.getElementById('press-zone'),
+  pitchFlash:    document.getElementById('pitch-flash'),
   swingGo:       document.getElementById('swing-go'),
   swingFeedback: document.getElementById('swing-feedback'),
 
@@ -279,8 +280,12 @@ function afterPitch() {
 
 const LANE_RELEASE_Y = 26;     // px down the lane: the ball leaves the hand
 const LANE_MITT_Y    = 196;    // px down the lane: the ball is caught
-const LANE_SCALE_MIN = 0.32;   // far away
-const LANE_SCALE_MAX = 1.05;   // right on top of you
+// A ball that starts at 6.4px is invisible for the first half of the flight
+// — it sits on the pitcher's figure and is only findable once it has already
+// travelled. Perspective is worth less than being able to see the thing you
+// are timing, so the near end of the range gives up some of its spread.
+const LANE_SCALE_MIN = 0.65;   // ~13px: findable from the first frame
+const LANE_SCALE_MAX = 1.15;   // ~23px: filling the mitt
 
 function laneY(progress) {
   return LANE_RELEASE_Y + progress * (LANE_MITT_Y - LANE_RELEASE_Y);
@@ -297,6 +302,16 @@ function placeBall(progress) {
   el.pitchBall.style.top       = laneY(progress).toFixed(2) + 'px';
   el.pitchBall.style.transform =
     'translate(-50%, -50%) scale(' + laneScale(progress).toFixed(3) + ')';
+  el.pitchBall.classList.toggle('flying', progress > 0);
+}
+
+// The release: one flash at the pitcher's hand, on the frame the ball first
+// moves. Re-added rather than toggled, because an animation only replays if
+// the class actually leaves and comes back.
+function popRelease() {
+  el.pitchFlash.classList.remove('pop');
+  void el.pitchFlash.offsetWidth;
+  el.pitchFlash.classList.add('pop');
 }
 
 // Why the swing missed, in the batter's own terms. Being told which side of
@@ -332,6 +347,7 @@ function startSwing() {
   el.swingGo.disabled         = false;
   el.swingFigure.classList.remove('bat-flip', 'swinging');
   el.pitchBall.classList.remove('struck');
+  el.pitchFlash.classList.remove('pop');
   placeBall(0);
   el.pitchScreen.classList.add('hidden');
   el.swingScreen.classList.remove('hidden');
@@ -340,8 +356,10 @@ function startSwing() {
   const tick = now => {
     if (!state.swing || state.swing.result) { swingFrame = null; return; }
     const progress = ballProgressAt(now - startedSwingAt);
+    const wasHeld = state.swing.progress === 0;
     state.swing.progress = progress;
     placeBall(progress);
+    if (wasHeld && progress > 0) popRelease();
     // The ball is in the mitt and the bat never left the shoulder. One
     // pitch means one chance, so that settles it — unless a swing is
     // already committed and its barrel is still on the way.
@@ -505,6 +523,9 @@ band(el.contactZone, PLATE_AT - CONTACT_WINDOW, PLATE_AT + CONTACT_WINDOW);
 // already too late.
 const press = pressWindow();
 band(el.pressZone, press.opens, press.shuts);
+
+// The release flash belongs on the release point, not near it.
+el.pitchFlash.style.top = LANE_RELEASE_Y + 'px';
 
 // The bat's load animation lasts exactly as long as the rule says it does.
 document.documentElement.style.setProperty('--swing-lead', SWING_LEAD_MS + 'ms');

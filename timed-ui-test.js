@@ -287,6 +287,34 @@ const section = title => console.log('\n# ' + title);
   assert(sizes[0] < sizes[1] && sizes[1] < sizes[2],
          `the ball grows the whole way in (${sizes.map(s => s.toFixed(2)).join(' → ')})`);
 
+  // The bug a tester actually hit: a 6.4px ball on top of the pitcher's
+  // figure is not findable until it has already travelled half the flight.
+  const atRelease = await page.evaluate(() => {
+    placeBall(0);
+    const b = document.getElementById('pitch-ball').getBoundingClientRect();
+    return { px: b.width, flying: document.getElementById('pitch-ball').classList.contains('flying') };
+  });
+  assert(atRelease.px >= 12,
+         `the ball is findable the moment it appears (${atRelease.px.toFixed(1)}px at release)`);
+  assert(!atRelease.flying, 'and carries no motion trail while it is still in the hand');
+
+  const moving = await page.evaluate(() => {
+    placeBall(0.3);
+    return document.getElementById('pitch-ball').classList.contains('flying');
+  });
+  assert(moving, 'the trail appears once it is actually travelling');
+
+  // The release flash marks the one frame worth reacting to, and it has to
+  // sit on the release point rather than near it.
+  const flash = await page.evaluate(() => {
+    const f = document.getElementById('pitch-flash');
+    popRelease();
+    return { top: parseFloat(f.style.top), want: LANE_RELEASE_Y,
+             anim: getComputedStyle(f).animationName };
+  });
+  assert(flash.top === flash.want, `the release flash is on the release point (y=${flash.top})`);
+  assert(flash.anim === 'releaseFlash', 'and it actually fires');
+
   section('The load — the press is not the contact');
 
   // Pressing commits the swing; the barrel arrives SWING_LEAD_MS later and
