@@ -383,25 +383,44 @@ body {
 .press-zone {
   position: absolute;
   left: 50%;
-  width: 64px;
-  margin-left: -32px;
   box-sizing: border-box;
 }
 
-/* Where the ball must be at contact. */
-.contact-zone {
-  border-top: 2px solid rgba(250, 214, 110, 0.85);
-  border-bottom: 2px solid rgba(250, 214, 110, 0.85);
-  background: rgba(250, 214, 110, 0.14);
+/* The one thing to aim at. Pressing is the only action there is, so the
+   press window is the only thing drawn as a target — loud, filled, labelled.
+   It used to share the lane with an equally loud contact band that overlapped
+   it by 62% of its height, and the two read as one striped smear rather than
+   as two different instructions. */
+.press-zone {
+  width: 72px;
+  margin-left: -36px;
+  border-radius: 4px;
+  border: 2px solid rgba(250, 214, 110, 0.95);
+  background: linear-gradient(rgba(250, 214, 110, 0.34), rgba(224, 160, 34, 0.22));
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.2), 0 0 12px rgba(250, 214, 110, 0.28);
 }
 
-/* Where the ball must be when you commit. Dashed and cooler, so it reads as
-   "act here" rather than as a second contact window. */
-.press-zone {
-  border: 2px dashed rgba(255, 255, 255, 0.6);
-  border-left: none;
-  border-right: none;
-  background: rgba(255, 255, 255, 0.07);
+.press-zone::after {
+  content: 'SWING';
+  position: absolute;
+  right: calc(100% + 6px);
+  top: 50%;
+  transform: translateY(-50%);
+  font: 800 9px/1 system-ui, -apple-system, sans-serif;
+  letter-spacing: 0.14em;
+  color: rgba(252, 226, 150, 0.95);
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8);
+  white-space: nowrap;
+}
+
+/* Contact is marked, not banded. A hairline at the plate saying where the
+   barrel actually meets the ball — information worth having after the fact,
+   but never the thing you aim at. */
+.contact-zone {
+  width: 48px;
+  margin-left: -24px;
+  background: rgba(255, 255, 255, 0.6);
+  box-shadow: 0 0 4px rgba(0, 0, 0, 0.45);
 }
 
 /* The batter stands in the right-hand box, clear of the ball's line. Drawn

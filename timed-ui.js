@@ -572,13 +572,18 @@ const band = (el_, from, to) => {
   el_.style.top    = laneY(from) + 'px';
   el_.style.height = (laneY(to) - laneY(from)) + 'px';
 };
-band(el.contactZone, PLATE_AT - CONTACT_WINDOW, PLATE_AT + CONTACT_WINDOW);
-
-// The press cue. Drawing only the contact window would be showing the player
-// a target they cannot aim at — by the time the ball is in it, committing is
-// already too late.
+// The press window is the target, because pressing is the only thing the
+// player does. Drawing the contact window as a second band of equal weight
+// showed them something they cannot aim at, in a stripe that overlapped this
+// one — by the time the ball is in the contact window, committing is already
+// too late.
 const press = pressWindow();
 band(el.pressZone, press.opens, press.shuts);
+
+// Contact gets a hairline at the plate instead of a band. Still off PLATE_AT,
+// so it cannot drift away from where the rules put contact.
+el.contactZone.style.top    = (laneY(PLATE_AT) - 1) + 'px';
+el.contactZone.style.height = '2px';
 
 // The release flash belongs on the release point, not near it.
 el.pitchFlash.style.top = LANE_RELEASE_Y + 'px';
