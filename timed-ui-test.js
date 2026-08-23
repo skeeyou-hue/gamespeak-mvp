@@ -283,11 +283,11 @@ const section = title => console.log('\n# ' + title);
       lead:        SWING_LEAD_MS
     };
   });
-  assert(Math.abs(zone.top - zone.opens) < 0.01 &&
-         Math.abs(zone.top + zone.height - zone.shuts) < 0.01,
-         `the drawn contact zone is exactly the accepted window (${zone.top}px + ${zone.height}px)`);
-  assert(zone.plateY > zone.top && zone.plateY < zone.top + zone.height,
-         'and the plate sits inside it, not at one end');
+  // Contact is a hairline on the plate, not a band competing with the target.
+  assert(Math.abs(zone.top + zone.height / 2 - zone.plateY) < 0.6,
+         `the contact marker sits on PLATE_AT (${zone.top}px, plate at ${zone.plateY})`);
+  assert(zone.height <= 3,
+         `and it is a hairline, not a second band to aim at (${zone.height}px)`);
 
   // Home plate is drawn at 156-170.5 in the field art. The ball is over the
   // plate when the rules say it is, or the picture is lying about the timing.
@@ -300,9 +300,21 @@ const section = title => console.log('\n# ' + title);
          Math.abs(zone.pressTop + zone.pressHeight - zone.pressShuts) < 0.01,
          `the drawn press cue is exactly the press window (${zone.pressTop}px + ${zone.pressHeight}px)`);
   assert(zone.pressTop < zone.top,
-         'and it sits earlier in the flight than the contact band, as the load requires');
-  assert(Math.abs(zone.pressHeight - zone.height) < 0.01,
-         'the two bands are the same height — the load shifts the window, it does not narrow it');
+         'and it sits earlier in the flight than contact, as the load requires');
+
+  // The target has to be the loud one. If contact were drawn as heavily as
+  // the press cue the player would aim at the wrong one, which is exactly
+  // what the two-band version did.
+  const weight = await page.evaluate(() => ({
+    pressW:   parseFloat(getComputedStyle(document.getElementById('press-zone')).width),
+    contactW: parseFloat(getComputedStyle(document.getElementById('contact-zone')).width),
+    cue: getComputedStyle(document.getElementById('press-zone'), '::after').content
+  }));
+  assert(zone.pressHeight > zone.height * 5,
+         `the press target dominates the contact marker (${zone.pressHeight}px vs ${zone.height}px)`);
+  assert(weight.pressW > weight.contactW,
+         `and is the wider of the two (${weight.pressW}px vs ${weight.contactW}px)`);
+  assert(weight.cue.includes('SWING'), `the target is labelled (${weight.cue})`);
 
   await page.click('#bank-button');
   assert(await page.locator('#swing-screen').isVisible(), 'the swing screen takes over');
