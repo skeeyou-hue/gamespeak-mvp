@@ -727,3 +727,16 @@ body {
 }
 
 .pause-resume:hover { background: #12606f; }
+/* --- the question card, 20% smaller ---------------------------------------
+   Scoped to the pitch screen alone. The swing screen keeps its size, because
+   its lane is a fixed 200x210 box whose pixel geometry the rules are drawn
+   from — shrinking it would shrink the ball back below the size that made it
+   findable in the first place.
+
+   max-width is in zoomed pixels, so 460 here is 368 on screen: exactly 80%
+   of the 460px the field allows, centred, at every width above a phone. */
+#pitch-screen {
+  zoom: 0.8;
+  max-width: 460px;
+  margin-inline: auto;
+}
