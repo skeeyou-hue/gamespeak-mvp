@@ -225,12 +225,15 @@ const section = title => console.log('\n# ' + title);
   // one of these has to wait for the game to come back round.
   const unlocked = () => page.waitForFunction(() => !state.locked, { timeout: 6000 });
 
-  // The clock running out: the ball call, off the same event the countdown
-  // itself uses to expire.
+  // The clock running out charges a strike, so it is called one. The umpire
+  // and the strike pips have to agree about what just happened.
   await unlocked();
+  const strikesBefore = (await look()).strikes;
   await page.evaluate(() => resolvePitch(state.atBat.windowMs, false));
   umpSays = await ump();
-  assert(umpSays.es === '¡Bola!' && umpSays.en === 'Ball!', 'the countdown running out is called ¡Bola!');
+  assert(umpSays.es === '¡Strike!', 'the countdown running out is called ¡Strike!');
+  assert((await look()).strikes === strikesBefore + 1,
+         'and the strike it calls is the strike the scoreboard charged');
 
   // The third strike outranks it: an at-bat that ends is an out either way.
   await unlocked();

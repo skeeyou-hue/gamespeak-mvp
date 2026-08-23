@@ -243,8 +243,28 @@ section('What the umpire calls, and off what');
 assert(T.umpireCall('HIT')          === T.UMPIRE_CALLS.SAFE,   'a hit is ¡Safe!');
 assert(T.umpireCall('OUT')          === T.UMPIRE_CALLS.OUT,    'the third strike is ¡Out!');
 assert(T.umpireCall('STRIKE', false) === T.UMPIRE_CALLS.STRIKE, 'a wrong answer is ¡Strike!');
-assert(T.umpireCall('STRIKE', true)  === T.UMPIRE_CALLS.BALL,   'the countdown running out is ¡Bola!');
-assert(T.umpireCall('STRIKE')        === T.UMPIRE_CALLS.STRIKE, 'and it defaults to a swinging strike');
+assert(T.umpireCall('STRIKE', true)  === T.UMPIRE_CALLS.STRIKE,
+       'and so is the countdown running out — a strike is a strike either way');
+assert(T.umpireCall('STRIKE')        === T.UMPIRE_CALLS.STRIKE, 'with or without the flag');
+
+// The umpire must never contradict the scoreboard. Every outcome that
+// charges a strike has to be CALLED a strike.
+assert(T.applyPitch(0, false, 4000, 4000).result === 'STRIKE' &&
+       T.umpireCall('STRIKE', true) === T.UMPIRE_CALLS.STRIKE,
+       'a timeout charges a strike and is called one — no ball over a lit strike pip');
+
+// ¡Bola! is defined and deliberately unreachable: there is no event in this
+// ruleset that is honestly a ball. If one ever lands, this fails and says so.
+const reachable = [];
+for (const result of ['HIT', 'STRIKE', 'OUT', 'NOTHING', null, undefined]) {
+  for (const flag of [true, false]) {
+    if (T.umpireCall(result, flag) === T.UMPIRE_CALLS.BALL) reachable.push(`${result}/${flag}`);
+  }
+}
+assert(reachable.length === 0,
+       `nothing reaches ¡Bola! — wire it up if that changes${reachable.length ? ': ' + reachable.join(', ') : ''}`);
+assert(T.UMPIRE_CALLS.BALL && T.UMPIRE_CALLS.BALL.es === '¡Bola!',
+       'but the call is still there, ready for a ball event that means it');
 assert(T.umpireCall('NOTHING') === null, 'anything else gets no call at all');
 
 // Wired to applyPitch's real output rather than to strings picked by hand.
@@ -253,7 +273,7 @@ for (const [strikes, correct, ms, win, want, label] of [
   [0, false, 100,  4000, 'STRIKE', 'a wrong answer on 0 strikes'],
   [1, false, 100,  4000, 'STRIKE', 'a wrong answer on 1 strike'],
   [2, false, 100,  4000, 'OUT',    'a wrong answer on 2 strikes'],
-  [0, false, 4000, 4000, 'BALL',   'the clock running out on 0 strikes'],
+  [0, false, 4000, 4000, 'STRIKE', 'the clock running out on 0 strikes'],
   [2, false, 4000, 4000, 'OUT',    'the clock running out on 2 strikes']
 ]) {
   const r = T.applyPitch(strikes, correct, ms, win);
@@ -264,7 +284,7 @@ for (const [strikes, correct, ms, win, want, label] of [
 // The third strike is an out however it arrives: the out call outranks the
 // timeout, so a clock running out on 0-2 is never called a ball.
 assert(T.umpireCall(T.applyPitch(2, false, 9999, 4000).result, true) === T.UMPIRE_CALLS.OUT,
-       'a timeout that ends the at-bat is ¡Out!, not ¡Bola!');
+       'a timeout that ends the at-bat is ¡Out!, not a strike call');
 
 section('What counts as the clock running out');
 
