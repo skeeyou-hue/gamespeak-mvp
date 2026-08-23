@@ -233,7 +233,7 @@ function resolvePitch(elapsedMs, correct) {
 
   const atBat = state.atBat;
   const word  = state.deck[state.index];
-  const pitch = applyPitch(atBat.strikes, correct, elapsedMs, atBat.windowMs);
+  const pitch = applyPitch(atBat.strikes, correct, elapsedMs, atBat.windowMs, word.tag);
   atBat.strikes = pitch.strikes;
   callUmpire(umpireCall(pitch.result, pitchTimedOut(elapsedMs, atBat.windowMs)));
 
@@ -259,7 +259,11 @@ function resolvePitch(elapsedMs, correct) {
     atBat.over = true; atBat.result = 'OUT';
     state.outs++;
     state.missed.push(word);
-    say(`Strike three. "${word.es}" means "${word.en}".`, 'bad');
+    // An easy word missed does not get to "strike three" — it never had
+    // three to give.
+    say(pitch.instant
+      ? `That one you know. "${word.es}" means "${word.en}".`
+      : `Strike three. "${word.es}" means "${word.en}".`, 'bad');
   }
 
   renderStrikes();
