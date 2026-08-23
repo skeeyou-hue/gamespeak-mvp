@@ -428,6 +428,102 @@ section('The cap and the easy-out rule together');
          'and five at-bats deep with strikes on them, the inning is still live');
 }
 
+section('The bonus offer');
+
+assert(T.BONUS_STREAK_OFFERS === 3, 'a bank is offered three times in all');
+assert(T.BONUS_QUESTION_MS > T.windowForTag('HOMERUN'),
+       `the bonus question gets its own, longer clock (${T.BONUS_QUESTION_MS}ms)`);
+assert(T.BONUS_QUESTION_MS !== T.CONTACT_WINDOW_MS,
+       'and it is not the swing window wearing a different name');
+
+// Offers happen on streak completion, never once per at-bat.
+assert(T.streakOffer(T.BONUS_STREAK - 1, 0).offer === false,
+       'a streak short of three offers nothing');
+const opened = T.streakOffer(T.BONUS_STREAK, 0);
+assert(opened.offer === true && opened.offersLeft === T.BONUS_STREAK_OFFERS,
+       'the third in a row opens a bank with three offers on it');
+const reoffer = T.streakOffer(T.BONUS_STREAK, 2);
+assert(reoffer.offer === true && reoffer.offersLeft === 2,
+       'a later streak re-offers the bank being held rather than opening a new one');
+
+// Declining spends one offer, and three declines end it.
+let left = T.BONUS_STREAK_OFFERS;
+left = T.declineOffer(left); assert(left === 2, 'one decline leaves two');
+left = T.declineOffer(left); assert(left === 1, 'two leave one');
+left = T.declineOffer(left); assert(left === 0, 'the third decline expires the bank');
+assert(T.declineOffer(0) === 0, 'and it cannot go negative');
+
+section('Extending the inning');
+
+assert(T.extendInning(T.AT_BATS_PER_INNING) === T.AT_BATS_PER_INNING + T.BONUS_EXTRA_AT_BATS,
+       `a won question adds ${T.BONUS_EXTRA_AT_BATS} at-bats`);
+
+// The reward is paid in the resource the cap exists to bound, so it needs a
+// ceiling or it outgrows that bound: simulated, an uncapped +5 ran the median
+// inning to 74 at-bats at 90% accuracy against a cap of 40.
+let cap = T.AT_BATS_PER_INNING;
+for (let i = 0; i < 10; i++) cap = T.extendInning(cap);
+assert(cap === T.AT_BATS_PER_INNING + T.MAX_INNING_EXTENSION,
+       `ten wins cannot push the inning past +${T.MAX_INNING_EXTENSION} (${cap} at-bats)`);
+assert(Math.floor(T.MAX_INNING_EXTENSION / T.BONUS_EXTRA_AT_BATS) === 2,
+       'so exactly two bonuses pay, and later ones buy only the home run');
+assert(T.extendInning(T.AT_BATS_PER_INNING + T.MAX_INNING_EXTENSION + 5) >=
+       T.AT_BATS_PER_INNING + T.MAX_INNING_EXTENSION + 5,
+       'and the ceiling never pulls a cap back down, which would end an inning on a reward');
+
+section('The three attempts');
+
+assert(T.SWING_ATTEMPTS === 3, 'three attempts');
+assert(T.ATTEMPT_FLIGHT_MS.length === T.SWING_ATTEMPTS &&
+       T.ATTEMPT_WINDOW_MS.length === T.SWING_ATTEMPTS,
+       'and a flight and a window for each');
+assert(T.attemptFlightMs(0) === 2000 && T.attemptFlightMs(2) === 1600,
+       'the flight escalates 2000 to 1600');
+assert(Math.min(...T.ATTEMPT_FLIGHT_MS) >= 1600,
+       'and stops at 1600ms — 1400ms was measured unreadable');
+assert(T.attemptFlightMs(99) === T.attemptFlightMs(T.SWING_ATTEMPTS - 1),
+       'an attempt past the last one reads as the last one rather than undefined');
+
+// The escalation that matters is the window, not the speed. At a fixed
+// budget a faster ball gets a LARGER drawn band, so speed alone is decoration.
+const band = a => {
+  const w = T.pressWindow(T.SWING_LEAD_MS, T.attemptFlightMs(a), T.attemptWindowMs(a));
+  return (w.shuts - w.opens) * 170;
+};
+assert(band(1) > band(0),
+       `attempt two's band is BIGGER than attempt one's (${band(0).toFixed(1)}px vs ${band(1).toFixed(1)}px) — speed alone does not make it harder`);
+assert(T.attemptWindowMs(2) < T.attemptWindowMs(1),
+       `attempt three squeezes the window instead (${T.attemptWindowMs(1)}ms to ${T.attemptWindowMs(2)}ms)`);
+assert(band(2) < band(1), 'so its band really is the smallest of the three');
+
+// Fouling off: the first two misses cost nothing, the third ends it, and
+// none of them is an out — the extension was banked at the question.
+for (const attempt of [0, 1]) {
+  assert(T.resolveAttempt(attempt, 0.05) === 'FOUL',
+         `a miss on attempt ${attempt + 1} is a foul`);
+}
+assert(T.resolveAttempt(2, 0.05) === 'STRUCK_OUT_SWINGING',
+       'a miss on the third ends the at-bat');
+assert(!['OUT'].includes(T.resolveAttempt(2, 0.05)),
+       'and it is still not an out — the risk was on the question, not the swing');
+
+// Connecting on any attempt is a home run, at that attempt's own timing.
+for (let a = 0; a < T.SWING_ATTEMPTS; a++) {
+  const w = T.pressWindow(T.SWING_LEAD_MS, T.attemptFlightMs(a), T.attemptWindowMs(a));
+  assert(T.resolveAttempt(a, (w.opens + w.shuts) / 2) === 'HOMERUN',
+         `the centre of attempt ${a + 1}'s own band connects`);
+  assert(T.resolveAttempt(a, w.opens - 0.05) !== 'HOMERUN',
+         `  and pressing early on it does not`);
+}
+
+// An attempt scored against the wrong attempt's timing would connect where
+// it should not. This is the check that the per-attempt budget is really
+// being used rather than the global one.
+const third = T.pressWindow(T.SWING_LEAD_MS, T.attemptFlightMs(2), T.attemptWindowMs(2));
+const first = T.pressWindow(T.SWING_LEAD_MS, T.attemptFlightMs(0), T.attemptWindowMs(0));
+assert(Math.abs(third.shuts - first.shuts) > 0.005,
+       'the attempts really do have different press windows, not one window three times');
+
 section('The dugout');
 
 assert(T.DUGOUT_PHRASES.length >= 10, `${T.DUGOUT_PHRASES.length} phrases in the bank`);

@@ -359,16 +359,16 @@ function ballProgressAt(elapsedMs, windup = PITCH_WINDUP_MS, flight = PITCH_FLIG
 // miss by a rounding error the player can neither see nor avoid.
 const CONTACT_EDGE_EPSILON = 1e-9;
 
-function isContact(progress, flight = PITCH_FLIGHT_MS) {
-  const half = contactWindowFraction(flight);
+function isContact(progress, flight = PITCH_FLIGHT_MS, budgetMs = CONTACT_WINDOW_MS) {
+  const half = contactWindowFraction(flight, budgetMs);
   return progress >= PLATE_AT - half - CONTACT_EDGE_EPSILON
       && progress <= PLATE_AT + half + CONTACT_EDGE_EPSILON;
 }
 
 // Contact, or which side of it they missed on. Knowing whether you were
 // early or late is the difference between learning the timing and guessing.
-function swingVerdict(progress, flight = PITCH_FLIGHT_MS) {
-  if (isContact(progress, flight)) return 'ON_TIME';
+function swingVerdict(progress, flight = PITCH_FLIGHT_MS, budgetMs = CONTACT_WINDOW_MS) {
+  if (isContact(progress, flight, budgetMs)) return 'ON_TIME';
   return progress < PLATE_AT ? 'EARLY' : 'LATE';
 }
 
@@ -430,9 +430,10 @@ function leadProgress(lead = SWING_LEAD_MS, flight = PITCH_FLIGHT_MS) {
 // The contact window expressed in press terms: where the ball has to be when
 // the player commits. This is what the UI draws as the press cue — showing
 // only the contact window would be showing them a target they cannot aim at.
-function pressWindow(lead = SWING_LEAD_MS, flight = PITCH_FLIGHT_MS) {
+function pressWindow(lead = SWING_LEAD_MS, flight = PITCH_FLIGHT_MS,
+                     budgetMs = CONTACT_WINDOW_MS) {
   const shift = leadProgress(lead, flight);
-  const half  = contactWindowFraction(flight);
+  const half  = contactWindowFraction(flight, budgetMs);
   return { opens: PLATE_AT - half - shift,
            shuts: PLATE_AT + half - shift };
 }
@@ -493,6 +494,107 @@ const COACH_PHRASES = [
   { es: '¡No te adelantes!',   en: "Don't get out in front of it!" },
   { es: '¡Manos rápidas!',     en: 'Quick hands!' }
 ];
+
+
+/* -------------------------------------------------------------------------
+   9f. THE BONUS OFFER — risk on the language, reward on the timing
+
+   Three answers in a row no longer banks a swing outright. It OFFERS one,
+   and the offer is a real decision because both branches cost something.
+
+     accept -> a HOMERUN-tier word on a longer clock
+       miss it        an out. This is the only risk in the whole mechanic,
+                      and it is a language risk, which is the point.
+       answer it      the inning is extended, and the swing is earned.
+     decline -> the bank persists and is re-offered by the next two streaks.
+
+   WHY THE REWARD IS AT-BATS AND NOT RUNS. Simulated first, and the first
+   three designs all failed: a bonus at-bat was a WORSE home-run machine than
+   an ordinary one. At 85% accuracy an ordinary at-bat answered fast produces
+   a home run 97.9% of the time; the bonus produced one 70.0% of the time and
+   charged an out for failing. Paying in runs offers the player a worse
+   version of something they already get for free, so declining won at every
+   accuracy — even when the home run was made completely free of risk.
+
+   Under a cap, at-bats are the scarce resource. Paying in at-bats is paying
+   in something ordinary play cannot manufacture, and it is the only variant
+   of four that made accepting correct.
+
+   WHY THERE IS A CEILING. The reward is denominated in exactly the thing
+   AT_BATS_PER_INNING exists to bound, and it compounds with skill: at 90%
+   accuracy an uncapped +5 ran the median inning to 74 at-bats against a cap
+   of 40. MAX_INNING_EXTENSION stops the reward outgrowing the bound it is
+   paid in. At +10 the inning is hard-bounded at 50 and accepting is still
+   correct at 85% and above.
+
+   Measured at 4000 innings a cell, +5 per bonus, ceiling +10:
+
+     acc    runs declining   runs accepting under 2 outs   at-bats
+     75%        29.8              25.9  (decline)          28/50
+     85%        38.6              41.3  (accept)           50/50
+     90%        39.5              45.3  (accept)           50/50
+   ------------------------------------------------------------------------- */
+
+const BONUS_STREAK_OFFERS   = 3;      // the offer, then two more streaks
+const BONUS_QUESTION_MS     = 7000;   // its own clock, not the swing's
+const BONUS_EXTRA_AT_BATS   = 5;
+const MAX_INNING_EXTENSION  = 10;
+
+// A completed streak either opens a bank or re-offers the one being held.
+// Offers happen on streak completion only, never once per at-bat.
+function streakOffer(streak, offersLeft) {
+  if (streak < BONUS_STREAK) return { offer: false, offersLeft };
+  return { offer: true, offersLeft: offersLeft > 0 ? offersLeft : BONUS_STREAK_OFFERS };
+}
+
+function declineOffer(offersLeft) { return Math.max(0, offersLeft - 1); }
+
+// Winning the question extends the inning, up to a ceiling measured from the
+// base cap rather than from wherever the cap has already been pushed.
+function extendInning(cap, extra = BONUS_EXTRA_AT_BATS, ceiling = MAX_INNING_EXTENSION) {
+  // Never shrinks. A ceiling that could pull the cap back down would end an
+  // inning early on a reward, which is the opposite of the point.
+  return Math.max(cap, Math.min(AT_BATS_PER_INNING + ceiling, cap + extra));
+}
+
+/* -------------------------------------------------------------------------
+   9g. THE THREE ATTEMPTS
+
+   Fouling off pitches. The first two misses are fouls and cost nothing; the
+   third ends the at-bat.
+
+   Missing all three costs NO OUT. The extension was banked the moment the
+   question was answered, so the swing is pure upside — charging an out for
+   failing to collect a windfall already earned would undo the economics that
+   make accepting correct in the first place. The risk lives on the question.
+
+   The escalation is a window squeeze, not a speed-up. Flight speeds up for
+   the look of it, but at a fixed 240ms budget a faster ball gets a LARGER
+   drawn band — 20.4px at 2000ms against 25.5px at 1600ms — so speed alone
+   is decoration. Attempt three takes 200ms, which is a real 17% squeeze.
+   1600ms is the floor: 1400ms was measured unreadable.
+   ------------------------------------------------------------------------- */
+
+const SWING_ATTEMPTS      = 3;
+const ATTEMPT_FLIGHT_MS   = [2000, 1800, 1600];
+const ATTEMPT_WINDOW_MS   = [240, 240, 200];
+
+function attemptFlightMs(attempt) {
+  return ATTEMPT_FLIGHT_MS[Math.min(Math.max(attempt, 0), SWING_ATTEMPTS - 1)];
+}
+function attemptWindowMs(attempt) {
+  return ATTEMPT_WINDOW_MS[Math.min(Math.max(attempt, 0), SWING_ATTEMPTS - 1)];
+}
+
+// 'HOMERUN' | 'FOUL' | 'STRUCK_OUT_SWINGING'. Only the last attempt ends it,
+// and even that costs no out.
+function resolveAttempt(attempt, pressProgress) {
+  const flight = attemptFlightMs(attempt);
+  const budget = attemptWindowMs(attempt);
+  const contact = contactProgress(pressProgress, SWING_LEAD_MS, flight);
+  if (isContact(contact, flight, budget)) return 'HOMERUN';
+  return attempt >= SWING_ATTEMPTS - 1 ? 'STRUCK_OUT_SWINGING' : 'FOUL';
+}
 
 
 /* -------------------------------------------------------------------------
@@ -623,6 +725,10 @@ if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
     TIMED_TIERS, MAX_STRIKES, SPEED_BANDS,
     MAX_OUTS, AT_BATS_PER_INNING, inningOver, retireTheSide,
+    BONUS_STREAK_OFFERS, BONUS_QUESTION_MS, BONUS_EXTRA_AT_BATS,
+    MAX_INNING_EXTENSION, streakOffer, declineOffer, extendInning,
+    SWING_ATTEMPTS, ATTEMPT_FLIGHT_MS, ATTEMPT_WINDOW_MS,
+    attemptFlightMs, attemptWindowMs, resolveAttempt,
     BONUS_STREAK, BONUS_LIFE_MIN, BONUS_LIFE_MAX,
     windowForTag, bucketForTag, hitForResponse, applyPitch, isFreeSwingTier,
     rollBonusLife, applyAtBatToBonus, newAtBat, newTimedState,

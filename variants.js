@@ -1,16 +1,25 @@
-const T = require('/home/user/gamespeak-mvp/timed.js');
+/* Variant 2, additive, with the swing de-risked.
+
+   Question success  -> +N at-bats to this inning AND the swing is earned.
+   Question failure  -> an out. This is where the risk lives.
+   Swing connects    -> home run.
+   Swing misses all three -> nothing. The +N is already banked, so charging
+                        an out for failing to collect a windfall already
+                        earned would re-break the EV the +N just fixed.
+
+   Sweeps N, because the last time a number was picked by intuition it was
+   the inning cap at 15 and it was wrong by a factor of nearly three.        */
+const T = require('./timed.js');
 const { VOCAB, shuffle, applyPitch, bucketForTag, windowForTag, MAX_OUTS,
         AT_BATS_PER_INNING, inningOver, BONUS_STREAK, advanceOnHit, HIT_ADVANCE } = T;
-const N = 4000, CLOCK_BONUS = 0.10, S_SWING = 0.50, OFFERS = 3;
+const N_RUNS = 4000, CLOCK_BONUS = 0.10, S_SWING = 0.50, OFFERS = 3;
 const sloped = a => ({ easy: Math.min(0.99, a + 0.12), medium: a, hard: Math.max(0.05, a - 0.15) });
 
-// A declined bank persists and is re-offered by the next two 3-streaks.
-// Offers happen only on streak completion, never per at-bat.
-function inning(acc, accept, variant) {
+function inning(acc, accept, extraAtBats, maxExtension = Infinity) {
   const deck = shuffle(VOCAB);
   let outs = 0, ab = 0, i = 0, runs = 0, bases = [false, false, false];
   let streak = 0, offersLeft = 0, cap = AT_BATS_PER_INNING;
-  let offers = 0, taken = 0, homers = 0;
+  let offers = 0, taken = 0, homers = 0, questionOuts = 0;
   const pQ = Math.min(0.99, acc.hard + CLOCK_BONUS);
   const connects = () => Math.random() < 1 - Math.pow(1 - S_SWING, 3);
 
@@ -19,8 +28,7 @@ function inning(acc, accept, variant) {
     ab++;
     let strikes = 0, hit = null;
     for (;;) {
-      const ok = Math.random() < acc[b];
-      const p = applyPitch(strikes, ok, ok ? win * 0.10 : win, win, w.tag);  // chasing homers
+      const p = applyPitch(strikes, Math.random() < acc[b], win * 0.10, win, w.tag);
       strikes = p.strikes;
       if (p.result === 'HIT') { hit = p.hit; break; }
       if (p.result === 'OUT') { outs++; break; }
@@ -28,67 +36,99 @@ function inning(acc, accept, variant) {
     if (hit) {
       const p = advanceOnHit(bases, HIT_ADVANCE[hit]); bases = p.bases; runs += p.runs;
       streak++;
-    } else { streak = 0; }
+    } else streak = 0;
     i++;
 
-    // A completed streak either banks or re-offers an existing bank.
     if (hit && streak >= BONUS_STREAK) {
       streak = 0;
       if (offersLeft === 0) offersLeft = OFFERS;
       offers++;
-      if (accept(outs, bases)) {
-        taken++; offersLeft = 0;
-        if (inningOver(outs, ab, deck.length, cap)) break;
-        ab++;                                   // the bonus is its own at-bat
-        const wonQuestion = Math.random() < pQ;
-        if (!wonQuestion) { outs++; }
-        else {
-          if (variant === 'extraAtBats') cap += 5;
-          if (!connects()) outs++;
-          else {
-            homers++;
-            const adv = variant === 'triple' ? HIT_ADVANCE.TRIPLE : HIT_ADVANCE.HOMERUN;
-            const p = advanceOnHit(bases, adv); bases = p.bases; runs += p.runs;
-            if (variant === 'keepStreak') streak = BONUS_STREAK - 1;
-          }
+      if (!accept(outs, bases)) { offersLeft--; continue; }
+      taken++; offersLeft = 0;
+      if (inningOver(outs, ab, deck.length, cap)) break;
+      ab++;
+      if (Math.random() >= pQ) { outs++; questionOuts++; }     // the risk
+      else {
+        cap = Math.min(AT_BATS_PER_INNING + maxExtension, cap + extraAtBats);
+        if (connects()) {                                      // pure upside
+          homers++;
+          const p = advanceOnHit(bases, HIT_ADVANCE.HOMERUN); bases = p.bases; runs += p.runs;
         }
-      } else {
-        offersLeft--;
       }
     }
   }
-  return { runs, ab, offers, taken, homers };
+  return { runs, ab, offers, taken, homers, questionOuts };
 }
 
 const STRATS = {
-  'decline everything': () => false,
-  'accept at 0 outs only': o => o === 0,
-  'accept at 1 out only':  o => o === 1,
-  'accept under 2 outs':   o => o < MAX_OUTS - 1
+  decline:   () => false,
+  'at 0':    o => o === 0,
+  'at 1':    o => o === 1,
+  'under 2': o => o < MAX_OUTS - 1,
+  always:    () => true
 };
-const VARIANTS = {
-  'baseline (home run)':    'homer',
-  '1. bases-clearing triple': 'triple',
-  '2. +5 at-bats on question': 'extraAtBats',
-  '3. home run, streak kept': 'keepStreak'
-};
-
 const mean = xs => xs.reduce((a, b) => a + b, 0) / xs.length;
-for (const [vname, variant] of Object.entries(VARIANTS)) {
-  console.log('\n' + vname.toUpperCase());
-  console.log('  acc    decline   accept@0   accept@1   accept<2   best            offers/inn');
-  console.log('  ' + '-'.repeat(84));
+
+console.log('INNING LENGTH — the reward is denominated in the thing the cap bounds');
+console.log('  +N   acc     at-bats med/p90 (decline)   at-bats med/p90 (accept under 2)   accepts');
+console.log('  ' + '-'.repeat(84));
+for (const extra of [0, 3, 5, 7, 10]) {
+  for (const a of [0.75, 0.85, 0.90]) {
+    const acc = sloped(a);
+    const run = f => {
+      const L = [], tk = [];
+      for (let k = 0; k < N_RUNS; k++) { const r = inning(acc, f, extra); L.push(r.ab); tk.push(r.taken); }
+      L.sort((x, y) => x - y);
+      return { m: L[Math.floor(0.5 * L.length)], p: L[Math.floor(0.9 * L.length)], t: mean(tk) };
+    };
+    const d = run(() => false), u = run(o => o < MAX_OUTS - 1);
+    console.log('  ' + String('+' + extra).padEnd(5) + String(Math.round(a * 100) + '%').padEnd(8) +
+      (d.m + '/' + d.p).padEnd(26) + (u.m + '/' + u.p).padEnd(35) + u.t.toFixed(1));
+  }
+  console.log('');
+}
+
+console.log('MEAN RUNS PER INNING — variant 2 additive, swing miss costs nothing');
+console.log('  +N   acc     decline   at 0     at 1     under 2   always    best');
+console.log('  ' + '-'.repeat(80));
+for (const extra of [0, 2, 3, 4, 5, 6, 7, 10]) {
   for (const a of [0.60, 0.75, 0.85]) {
     const acc = sloped(a);
-    const res = Object.entries(STRATS).map(([n, f]) => {
-      const rs = [], os = [];
-      for (let k = 0; k < N; k++) { const r = inning(acc, f, variant); rs.push(r.runs); os.push(r.offers); }
-      return { n, runs: mean(rs), offers: mean(os) };
-    });
+    const res = Object.entries(STRATS).map(([n, f]) => ({
+      n, runs: mean(Array.from({ length: N_RUNS }, () => inning(acc, f, extra).runs))
+    }));
     const best = res.reduce((x, y) => y.runs > x.runs ? y : x);
-    console.log('  ' + String(Math.round(a * 100) + '%').padEnd(7) +
-      res.map(r => r.runs.toFixed(1).padEnd(11)).join('') +
-      (best.n + ' ' + best.runs.toFixed(1)).padEnd(16) +
-      res[0].offers.toFixed(1));
+    const margin = best.runs - res[0].runs;
+    console.log('  ' + String('+' + extra).padEnd(5) + String(Math.round(a * 100) + '%').padEnd(8) +
+      res.map(r => r.runs.toFixed(1).padEnd(9)).join('') +
+      best.n + (best.n === 'decline' ? '' : ` +${margin.toFixed(1)}`));
   }
+  console.log('');
+}
+
+
+/* A ceiling on the extension, so the reward cannot outgrow the bound it is
+   paid in. Without one the inning grows with skill, which is exactly what
+   the cap exists to stop. */
+console.log('\n\nWITH A CEILING ON TOTAL EXTENSION  (+5 per bonus won)');
+console.log('  ceiling  acc    runs decline   runs under 2   at-bats med/p90   accepts that pay');
+console.log('  ' + '-'.repeat(86));
+for (const ceiling of [5, 10, 15, 20, Infinity]) {
+  for (const a of [0.75, 0.85, 0.90]) {
+    const acc = sloped(a);
+    const gather = f => {
+      const R = [], L = [];
+      for (let k = 0; k < N_RUNS; k++) { const r = inning(acc, f, 5, ceiling); R.push(r.runs); L.push(r.ab); }
+      L.sort((x, y) => x - y);
+      return { runs: mean(R), m: L[Math.floor(0.5 * L.length)], p: L[Math.floor(0.9 * L.length)] };
+    };
+    const d = gather(() => false), u = gather(o => o < MAX_OUTS - 1);
+    const pays = ceiling === Infinity ? 'unlimited' : String(Math.floor(ceiling / 5));
+    console.log('  ' + String(ceiling === Infinity ? 'none' : '+' + ceiling).padEnd(9) +
+      String(Math.round(a * 100) + '%').padEnd(7) +
+      d.runs.toFixed(1).padEnd(15) + u.runs.toFixed(1).padEnd(15) +
+      (u.m + '/' + u.p).padEnd(18) + pays +
+      (u.runs > d.runs ? '   accept' : '   decline'));
+  }
+  console.log('');
 }
