@@ -150,6 +150,49 @@ assert(same(log, ['STRIKE', 'STRIKE', 'HIT']) && count === 2,
 /* ===================================================================
    D. BANKING A POWER SWING
    =================================================================== */
+section('Missing an easy word is an out on the spot');
+
+// If the easy tier costs nothing to miss it is not a tier, it is a free
+// pitch. WALK and SINGLE end the at-bat on the first miss; DOUBLE and above
+// keep the full count, because those are the ones worth a second look.
+for (const tag of ['WALK', 'SINGLE']) {
+  const first = T.applyPitch(0, false, 9999, 3000, tag);
+  assert(first.result === 'OUT', `a missed ${tag} is an out on the first pitch`);
+  assert(first.instant === true, `  and it is flagged as one, not as strike three`);
+  assert(first.strikes === 1, `  with the count where it really is, not fudged to three`);
+}
+for (const tag of ['DOUBLE', 'TRIPLE', 'HOMERUN']) {
+  assert(T.applyPitch(0, false, 9999, 4000, tag).result === 'STRIKE',
+         `a missed ${tag} is still only a strike`);
+  assert(T.applyPitch(1, false, 9999, 4000, tag).result === 'STRIKE',
+         `  and still only a strike on the second`);
+  const third = T.applyPitch(2, false, 9999, 4000, tag);
+  assert(third.result === 'OUT' && !third.instant,
+         `  the third one is the out, and it is strike three, not a snap call`);
+}
+
+// The rule keys off the bucket, not off a list of tags typed twice.
+assert(T.isFreeSwingTier('WALK') && T.isFreeSwingTier('SINGLE'), 'the easy bucket is the snap-out one');
+assert(!T.isFreeSwingTier('DOUBLE') && !T.isFreeSwingTier('TRIPLE') && !T.isFreeSwingTier('HOMERUN'),
+       'and nothing above it is');
+assert(!T.isFreeSwingTier(undefined) && !T.isFreeSwingTier(null),
+       'an unknown tier falls back to the old behaviour rather than guessing');
+
+// A right answer is untouched at every tier — this only ever costs a miss.
+for (const tag of ['WALK', 'SINGLE', 'DOUBLE', 'TRIPLE', 'HOMERUN']) {
+  const good = T.applyPitch(0, true, 10, T.windowForTag(tag), tag);
+  assert(good.result === 'HIT', `a fast right answer on ${tag} is still a hit`);
+}
+// Including on a full count: the easy rule must not turn 0-2 into an out
+// when the player actually answers.
+assert(T.applyPitch(2, true, 10, 3000, 'WALK').result === 'HIT',
+       'and an easy word answered right on 0-2 is still a hit');
+
+// A timeout is a miss like any other, so an easy word run out of clock is
+// an out too.
+assert(T.applyPitch(0, false, 3000, 3000, 'WALK').result === 'OUT',
+       'letting the clock run out on an easy word is an out as well');
+
 section('Banking — three hits in a row, any type');
 
 for (const [roll, life] of [[0, 1], [0.33, 1], [0.34, 2], [0.66, 2], [0.67, 3], [0.999, 3]]) {

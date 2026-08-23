@@ -146,7 +146,18 @@ function hitForResponse(elapsedMs, windowMs) {
      result 'STRIKE' - the at-bat continues, same word, one more strike
      result 'OUT'    - the third strike; the at-bat ends
    ------------------------------------------------------------------------- */
-function applyPitch(strikes, correct, elapsedMs, windowMs) {
+// Missing an easy word ends the at-bat on the spot. You do not get three
+// looks at "la pelota": if the easy tier does not cost anything to miss, it
+// is not really a tier, it is a free pitch. The medium and hard tiers keep
+// the full count, because those are the ones worth a second and third look.
+//
+// `tag` is optional. Without it every miss is a strike, which is the old
+// behaviour and what the rule tests that predate this still exercise.
+function isFreeSwingTier(tag) {
+  return tag !== undefined && tag !== null && bucketForTag(tag) === 'easy';
+}
+
+function applyPitch(strikes, correct, elapsedMs, windowMs, tag) {
   const hit = correct ? hitForResponse(elapsedMs, windowMs) : null;
 
   // Beat the clock with the right answer and the count no longer matters —
@@ -154,6 +165,12 @@ function applyPitch(strikes, correct, elapsedMs, windowMs) {
   if (hit) return { strikes, result: 'HIT', hit };
 
   const nextStrikes = strikes + 1;
+
+  // An easy word missed is an out however early in the count it happens.
+  if (isFreeSwingTier(tag)) {
+    return { strikes: nextStrikes, result: 'OUT', hit: null, instant: true };
+  }
+
   return {
     strikes: nextStrikes,
     result: nextStrikes >= MAX_STRIKES ? 'OUT' : 'STRIKE',
@@ -509,7 +526,7 @@ if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
     TIMED_TIERS, MAX_STRIKES, SPEED_BANDS,
     BONUS_STREAK, BONUS_LIFE_MIN, BONUS_LIFE_MAX,
-    windowForTag, bucketForTag, hitForResponse, applyPitch,
+    windowForTag, bucketForTag, hitForResponse, applyPitch, isFreeSwingTier,
     rollBonusLife, applyAtBatToBonus, newAtBat, newTimedState,
     HIT_ADVANCE,
     DUGOUT_PHRASES, COACH_PHRASES,

@@ -242,6 +242,35 @@ const section = title => console.log('\n# ' + title);
   assert(umpSays.es === '¡Out!', 'the third strike is called ¡Out! even on a timeout');
   assert((await look()).outs >= 1, 'and the out really was charged');
 
+  /* =================================================================== */
+  section('Missing an easy word ends the at-bat');
+
+  await stack(['WALK', 'DOUBLE', 'DOUBLE']);
+  let outsWas = (await look()).outs;
+  await page.evaluate(() => resolvePitch(500, false));
+  v = await look();
+  assert(v.outs === outsWas + 1, 'a missed WALK is an out on the first pitch');
+  assert((await page.locator('#feedback').textContent()).includes('That one you know'),
+         'and the feedback says so rather than claiming strike three');
+  assert((await page.evaluate(() => {
+    const n = [...document.querySelectorAll('.ump-call')]
+      .find(x => !x.closest('.card').classList.contains('hidden'));
+    return n.querySelector('.ump-es').textContent;
+  })) === '¡Out!', 'the umpire calls it an out, matching what the scoreboard did');
+  await page.waitForFunction(() => !state.locked, { timeout: 6000 });
+  assert((await look()).index === 1, 'and the at-bat is over — the deck moved on');
+
+  // The same miss on a medium word is only a strike, and the word comes back.
+  await stack(['DOUBLE', 'DOUBLE', 'DOUBLE']);
+  outsWas = (await look()).outs;
+  const wordWas = (await look()).word;
+  await page.evaluate(() => resolvePitch(500, false));
+  v = await look();
+  assert(v.outs === outsWas, 'a missed DOUBLE costs no out');
+  assert(v.strikes === 1, 'just a strike');
+  await page.waitForFunction(() => !state.locked, { timeout: 6000 });
+  assert((await look()).word === wordWas, 'and the same word comes back for another look');
+
   section('Spending a banked swing');
 
   // The pitch only goes live after the ready beat; tests that drive a swing
