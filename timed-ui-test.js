@@ -159,6 +159,11 @@ const section = title => console.log('\n# ' + title);
   /* =================================================================== */
   section('Spending a banked swing');
 
+  // The pitch only goes live after the ready beat; tests that drive a swing
+  // have to wait for it, the same as a player does.
+  const live = () => page.waitForFunction(() => state.swing && state.swing.live,
+                                          { timeout: 5000 });
+
   const bank = (life = 2) => page.evaluate(n => {
     state.bonus = { atBatsLeft: n };
     renderHud();
@@ -213,6 +218,22 @@ const section = title => console.log('\n# ' + title);
 
   await page.click('#bank-button');
   assert(await page.locator('#swing-screen').isVisible(), 'the swing screen takes over');
+
+  // The ready beat: nothing is live on the frame the screen changes.
+  const atOpen = await page.evaluate(() => ({
+    live: state.swing.live,
+    btn:  document.getElementById('swing-go').disabled,
+    cue:  document.getElementById('ready-cue').textContent,
+    hold: readyHoldMs()
+  }));
+  assert(atOpen.live === false, 'the pitch is not live on the frame the screen appears');
+  assert(atOpen.btn === true, 'and the swing button is dead until it is');
+  assert(atOpen.cue.trim().length > 0, `the ready cue is showing ("${atOpen.cue.trim()}")`);
+  const beforeLive = await page.evaluate(() => takeSwing(0.75) || state.swing.pressAt);
+  assert(beforeLive === null, 'a press during the ready beat does nothing at all');
+  await page.waitForFunction(() => state.swing && state.swing.live, { timeout: 4000 });
+  assert((await page.evaluate(() => state.swing.progress)) === 0,
+         'and the ball has not moved before the clock starts');
   assert(await page.locator('#pitch-screen').isHidden(), 'the question is set aside');
 
   // The abandoned pitch must not be able to charge a strike while the swing
@@ -354,6 +375,7 @@ const section = title => console.log('\n# ' + title);
   await bank(1);
   let outsBefore = (await look()).outs;
   await page.click('#bank-button');
+  await live();
   await page.waitForTimeout(2300);
   v = await look();
   assert((await page.evaluate(() => state.swing && state.swing.verdict)) === 'LOOKING' ||
@@ -369,6 +391,7 @@ const section = title => console.log('\n# ' + title);
   await stack(['DOUBLE', 'DOUBLE', 'DOUBLE']);
   await bank(2);
   await page.click('#bank-button');
+  await live();
   await page.evaluate(() => {
     state.bases = [true, true, false];
     takeSwing(PLATE_AT - leadProgress());   // commit one load ahead of the plate
@@ -400,6 +423,7 @@ const section = title => console.log('\n# ' + title);
   await bank(1);
   outsBefore = (await look()).outs;
   await page.click('#bank-button');
+  await live();
   await page.evaluate(() => takeSwing(0.05));
   await page.waitForTimeout(LEAD + 120);
   v = await look();
@@ -418,6 +442,7 @@ const section = title => console.log('\n# ' + title);
   await bank(1);
   outsBefore = (await look()).outs;
   await page.click('#bank-button');
+  await live();
   await page.evaluate(() => takeSwing(0.97));
   await page.waitForTimeout(LEAD + 120);
   assert((await look()).outs === outsBefore + 1, 'a swing after it has gone by is an out too');
@@ -431,6 +456,7 @@ const section = title => console.log('\n# ' + title);
   await bank(1);
   outsBefore = (await look()).outs;
   await page.click('#bank-button');
+  await live();
   await page.evaluate(() => takeSwing(PLATE_AT));
   await page.waitForTimeout(LEAD + 120);
   assert((await look()).outs === outsBefore + 1,
@@ -443,6 +469,7 @@ const section = title => console.log('\n# ' + title);
   await stack(['DOUBLE', 'DOUBLE']);
   await bank(2);
   await page.click('#bank-button');
+  await live();
   await page.evaluate(() => { state.swing.progress = PLATE_AT - leadProgress(); });
   await page.keyboard.press('Space');
   assert((await page.evaluate(() => state.swing && state.swing.pressAt)) !== null,
@@ -456,6 +483,7 @@ const section = title => console.log('\n# ' + title);
   await stack(['DOUBLE', 'DOUBLE']);
   await bank(1);
   await page.click('#bank-button');
+  await live();
   await page.evaluate(() => takeSwing(0.3));
   await page.evaluate(() => takeSwing(0.75));
   assert((await page.evaluate(() => state.swing.pressAt)) === 0.3,

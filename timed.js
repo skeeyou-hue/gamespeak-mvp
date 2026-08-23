@@ -302,6 +302,17 @@ function contactWindowMs(flight = PITCH_FLIGHT_MS) {
    aim at is derived from these two constants, never written down twice.
    ------------------------------------------------------------------------- */
 
+// Before any of that, the screen has to be readable. The dugout shout and
+// the coach's line arrive at the same instant the swing screen does; if the
+// clock starts on that frame, reading them costs the pitch. So the pitch is
+// held: the lines land, then a beat that says one is coming, then the clock.
+// This is lead-in only — it moves when the flight starts, never how it is
+// scored.
+const READY_READ_MS = 800;   // the shout and the coach's line land
+const READY_CUE_MS  = 550;   // "here it comes"
+
+function readyHoldMs(read = READY_READ_MS, cue = READY_CUE_MS) { return read + cue; }
+
 const SWING_LEAD_MS = 180;   // press to barrel: the load, in wall-clock ms
 
 // The ball keeps travelling while the bat is on its way. This is where it
@@ -433,6 +444,7 @@ if (typeof module !== 'undefined' && module.exports) {
     PITCH_WINDUP_MS, PITCH_FLIGHT_MS, PLATE_AT, CONTACT_WINDOW,
     ballProgressAt, isContact, swingVerdict, contactWindowMs,
     SWING_LEAD_MS, contactProgress, leadProgress, pressWindow,
+    READY_READ_MS, READY_CUE_MS, readyHoldMs,
     DIRECTIONS, pickDirection, promptFor,
     // shared, re-exported so timed-test.js has a single import
     VOCAB, shuffle, advanceOnHit

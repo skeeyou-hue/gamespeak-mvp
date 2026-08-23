@@ -306,6 +306,18 @@ assert(earlyClean, 'no swing during the wind-up can accidentally be contact');
 /* ===================================================================
    I. THE LOAD — the press has to lead the contact
    =================================================================== */
+section('The ready beat');
+
+assert(T.readyHoldMs() === T.READY_READ_MS + T.READY_CUE_MS,
+       `the hold is the reading beat plus the cue (${T.readyHoldMs()}ms)`);
+assert(T.READY_READ_MS > 0 && T.READY_CUE_MS > 0,
+       'both beats are real — the pitch never starts on the frame the screen changes');
+assert(T.readyHoldMs(100, 50) === 150, 'the hold is adjustable for testing');
+// The hold is lead-in. It must not appear anywhere in how a swing is scored.
+assert(T.ballProgressAt(T.PITCH_WINDUP_MS + T.PITCH_FLIGHT_MS / 2) === 0.5 &&
+       T.contactWindowMs() === 2 * T.CONTACT_WINDOW * T.PITCH_FLIGHT_MS,
+       'and it changes nothing about the flight or the window');
+
 section('Where the ball is when the barrel arrives');
 
 const LEAD = T.SWING_LEAD_MS / T.PITCH_FLIGHT_MS;
