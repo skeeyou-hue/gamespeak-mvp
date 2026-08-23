@@ -422,13 +422,19 @@ assert(monotonic, 'progress only ever moves forward — there is no second pass'
 
 section('What a swing at that position is worth');
 
+// Edges taken from the constants, not typed in: the window has been retuned
+// once already, and a hand-written 0.70 silently stops testing the edge the
+// moment that number moves.
+const OPENS = T.PLATE_AT - T.CONTACT_WINDOW;
+const SHUTS = T.PLATE_AT + T.CONTACT_WINDOW;
+
 for (const [p, verdict] of [
-  [0,     'EARLY'], [0.5,  'EARLY'], [0.699, 'EARLY'],
-  [0.70,  'ON_TIME'], [0.80, 'ON_TIME'], [0.90, 'ON_TIME'],
-  [0.901, 'LATE'], [1,    'LATE']
+  [0,             'EARLY'],   [OPENS / 2,  'EARLY'],   [OPENS - 0.001, 'EARLY'],
+  [OPENS,         'ON_TIME'], [T.PLATE_AT, 'ON_TIME'], [SHUTS,         'ON_TIME'],
+  [SHUTS + 0.001, 'LATE'],    [1,          'LATE']
 ]) {
-  assert(T.swingVerdict(p) === verdict, `progress ${p} is ${verdict}`);
-  assert(T.isContact(p) === (verdict === 'ON_TIME'), `  and isContact agrees at ${p}`);
+  assert(T.swingVerdict(p) === verdict, `progress ${p.toFixed(3)} is ${verdict}`);
+  assert(T.isContact(p) === (verdict === 'ON_TIME'), `  and isContact agrees at ${p.toFixed(3)}`);
 }
 assert(T.PLATE_AT === 0.8 && T.isContact(T.PLATE_AT),
        'the window is centred on the plate, not somewhere arbitrary in the flight');
@@ -487,16 +493,21 @@ assert(T.contactProgress(0.5, 700, 1400) === 1,
 
 section('What the load costs at each end of the window');
 
-// The load is a fixed 180ms of hitter, not a fraction of the pitch, so how
-// much of the window it eats depends on how fast the pitch is. On the 2400ms
-// flight it is 7.5%, and pressing as the ball crosses the plate still lands
-// inside the window — which is the point: what looks right IS right.
-assert(T.isContact(T.contactProgress(T.PLATE_AT)),
-       'pressing as the ball crosses the plate connects');
-assert(T.swingVerdict(T.contactProgress(T.PLATE_AT)) === 'ON_TIME',
-       'and it is scored on time');
+// The load is a fixed 180ms of hitter, not a fraction of the pitch. At the
+// tightened window it is 0.075 of the flight against a half-width of 0.06 —
+// the load is now DEEPER than the window, so every press that connects
+// happens strictly before the ball reaches the plate. That is what a hitter
+// actually does, and the player is not asked to read it off the plate: the
+// SWING band is drawn exactly on the press window, and that is what they aim
+// at.
+assert(T.leadProgress() > T.CONTACT_WINDOW,
+       'the load is deeper than the window, so the press always leads the plate');
+assert(!T.isContact(T.contactProgress(T.PLATE_AT)),
+       'pressing as the ball reaches the plate is late at this width');
 assert(T.isContact(T.contactProgress(T.PLATE_AT - LEAD)),
-       'pressing one load ahead of the plate connects too');
+       'pressing one load ahead of the plate is dead centre');
+assert(T.pressWindow().shuts < T.PLATE_AT,
+       'so the whole press window sits above the plate, which is where the band is drawn');
 
 // The lead still costs something, and it costs it at the late edge: the last
 // frame the BALL is in the window is already too late to start the bat.

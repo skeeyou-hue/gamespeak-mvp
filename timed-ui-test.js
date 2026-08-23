@@ -503,7 +503,7 @@ const section = title => console.log('\n# ' + title);
   await live();
   await page.evaluate(() => {
     state.bases = [true, true, false];
-    takeSwing(PLATE_AT - leadProgress());   // commit one load ahead of the plate
+    takeSwing(PLATE_AT - leadProgress());   // one load ahead: the band's centre
   });
   await page.waitForTimeout(LEAD + 120);
   v = await look();
@@ -566,17 +566,31 @@ const section = title => console.log('\n# ' + title);
          'the feedback says so');
   await settled();
 
-  // On a 2400ms flight the 180ms load is 7.5% of the pitch, so committing as
-  // the ball crosses the plate now lands inside the window. What looks right
-  // is right — which is the whole reason the flight was slowed.
+  // With the tightened window the load is deeper than the window, so pressing
+  // as the ball reaches the plate is late. The band is drawn on the press
+  // window, above the plate, and that is what the player aims at — so the
+  // check is that the band's own centre connects.
   await stack(['DOUBLE', 'DOUBLE']);
   await bank(1);
   await page.click('#bank-button');
   await live();
   await page.evaluate(() => takeSwing(PLATE_AT));
   await page.waitForTimeout(LEAD + 120);
+  assert((await page.evaluate(() => state.swing.verdict)) === 'LATE',
+         'pressing as the ball reaches the plate is late at this window width');
+  await settled();
+
+  await stack(['DOUBLE', 'DOUBLE']);
+  await bank(1);
+  await page.click('#bank-button');
+  await live();
+  await page.evaluate(() => {
+    const w = pressWindow();
+    takeSwing((w.opens + w.shuts) / 2);      // dead centre of the drawn band
+  });
+  await page.waitForTimeout(LEAD + 120);
   assert((await page.evaluate(() => state.swing.verdict)) === 'ON_TIME',
-         'pressing as the ball crosses the plate is on time');
+         'pressing at the centre of the drawn SWING band is on time');
   assert((await page.evaluate(() => state.swing.result)) === 'HOMERUN', 'and it is a home run');
   await settled();
 
@@ -589,7 +603,10 @@ const section = title => console.log('\n# ' + title);
   await page.evaluate(() => { state.hitStreak = 0; });
   await page.click('#bank-button');
   await live();
-  await page.evaluate(() => takeSwing(PLATE_AT));
+  await page.evaluate(() => {
+    const w = pressWindow();
+    takeSwing((w.opens + w.shuts) / 2);
+  });
   await page.waitForTimeout(LEAD + 120);
   assert((await page.evaluate(() => state.swing.result)) === 'HOMERUN',
          'the banked swing connects');
