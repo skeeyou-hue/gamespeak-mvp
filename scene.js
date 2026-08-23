@@ -25,7 +25,7 @@
    ========================================================================= */
 
 const BALLPARK_SVG = String.raw`
-    <svg viewBox="0 0 1200 800" preserveAspectRatio="xMidYMax slice"
+    <svg viewBox="0 0 1200 800" preserveAspectRatio="xMidYMax meet"
          xmlns="http://www.w3.org/2000/svg">
       <defs>
         <!-- Golden hour: dusky blue overhead falling through rose into
@@ -367,10 +367,10 @@ const BALLPARK_SVG = String.raw`
         <ellipse cx="870" cy="520" rx="40" ry="15"/>
       </g>
       <g fill="#FBF6EA">
-        <rect x="592" y="584" width="17" height="5" rx="1"/>
-        <rect x="593" y="460" width="15" height="8" rx="1"/>
-        <rect x="323" y="515" width="15" height="8" rx="1"/>
-        <rect x="863" y="515" width="15" height="8" rx="1"/>
+        <rect id="rubber"     x="592" y="584" width="17" height="5" rx="1"/>
+        <rect id="bag-second" x="593" y="460" width="15" height="8" rx="1"/>
+        <rect id="bag-third"  x="323" y="515" width="15" height="8" rx="1"/>
+        <rect id="bag-first"  x="863" y="515" width="15" height="8" rx="1"/>
       </g>
 
       <!-- ================= THE DEFENSE =================
@@ -420,7 +420,7 @@ const BALLPARK_SVG = String.raw`
         <path d="M484,700 L576,700 L562,772 L464,772 Z"/>
         <path d="M624,700 L716,700 L738,772 L642,772 Z"/>
       </g>
-      <polygon points="588,716 612,716 612,726 600,735 588,726" fill="#FBF6EA"/>
+      <polygon id="home-plate-bag" points="588,716 612,716 612,726 600,735 588,726" fill="#FBF6EA"/>
 
       <!-- ================= THE BATTER =================
            Cotorras home whites: cream uniform, teal trim, gold accents.

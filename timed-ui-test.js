@@ -492,10 +492,12 @@ const section = title => console.log('\n# ' + title);
 
   const FIELDERS = ['fielder-p', 'fielder-c', 'fielder-1b', 'fielder-2b', 'fielder-3b',
                     'fielder-ss', 'fielder-lf', 'fielder-cf', 'fielder-rf'];
-  const SIZES = [[760, 900], [900, 900], [1024, 768], [1180, 860],
-                 [1290, 940], [1440, 900], [1600, 800], [480, 900]];
+  // Phone sizes are in the matrix on purpose: the framing bug a tester hit
+  // only ever showed up on tall, narrow screens.
+  const SIZES = [[390, 844], [375, 667], [412, 915], [768, 1024],
+                 [760, 900], [1024, 768], [1290, 940], [1440, 900], [1600, 700]];
 
-  let hudClean = true, edgeClean = true, signClean = true;
+  let hudClean = true, edgeClean = true, signClean = true, diamondClean = true;
   for (const [w, h] of SIZES) {
     const sized = await browser.newPage({ viewport: { width: w, height: h } });
     await sized.goto(URL);
@@ -510,9 +512,18 @@ const section = title => console.log('\n# ' + title);
       for (const id of ids) {
         const f = R(document.getElementById(id));
         if (chrome.some(c => hit(f, c))) hud.push(id);
-        const off = f.right < 0 || f.left > innerWidth;
-        const inside = f.left >= 0 && f.right <= innerWidth;
-        if (!off && !inside) sliced.push(id);
+        // Fully on screen, or it counts as cropped. The old rule let a
+        // fielder pass by being entirely off the side, which is how nine
+        // fielders went missing on a phone without a single test failing.
+        //
+        // The bottom edge is the one exception, and only for the catcher:
+        // he is the nearest figure to the camera and is composed to sit in
+        // the frame's bottom edge, the way a shot from behind the plate
+        // actually looks. Every other edge is a hard bound for all nine.
+        const bottomCut = f.bottom > innerHeight && id !== 'fielder-c';
+        if (f.left < 0 || f.right > innerWidth || f.top < 0 || bottomCut) {
+          sliced.push(id);
+        }
       }
       // Signage is either fully on screen or hidden outright, never sliced.
       for (const id of ['scorebug', 'wall-sign']) {
@@ -521,15 +532,28 @@ const section = title => console.log('\n# ' + title);
         const b = R(el);
         if (b.left < 0 || b.right > innerWidth) clipped.push(id);
       }
-      return { hud, sliced, clipped };
+      // The diamond itself: every bag, the rubber, the plate. This is the
+      // check the tester's complaint was really about.
+      const diamond = [];
+      for (const id of ['bag-first', 'bag-second', 'bag-third', 'rubber', 'home-plate-bag']) {
+        const b = R(document.getElementById(id));
+        if (b.left < 0 || b.right > innerWidth || b.top < 0 || b.bottom > innerHeight) {
+          diamond.push(id);
+        }
+      }
+      return { hud, sliced, clipped, diamond };
     }, FIELDERS);
     await sized.close();
+    if (r.diamond.length) { diamondClean = false;
+      console.error(`     ${w}x${h} off screen: ${r.diamond.join(',')}`); }
     if (r.hud.length)     { hudClean = false;  console.error(`     ${w}x${h} HUD: ${r.hud.join(',')}`); }
     if (r.sliced.length)  { edgeClean = false; console.error(`     ${w}x${h} sliced: ${r.sliced.join(',')}`); }
     if (r.clipped.length) { signClean = false; console.error(`     ${w}x${h} clipped: ${r.clipped.join(',')}`); }
   }
+  assert(diamondClean,
+         `every base, the rubber and the plate are on screen, across ${SIZES.length} window sizes`);
   assert(hudClean,  `no fielder collides with Timed's HUD chips, across ${SIZES.length} window sizes`);
-  assert(edgeClean, `no fielder is cut in half by the screen edge, across ${SIZES.length} window sizes`);
+  assert(edgeClean, `all nine fielders are fully on screen, across ${SIZES.length} window sizes`);
   assert(signClean, `the scorebug and wall sign are never sliced, across ${SIZES.length} window sizes`);
 
   assert(errors.length === 0, 'no console/page errors (' + errors.join('; ') + ')');
