@@ -81,6 +81,17 @@ const show = state => state.map((on, i) => on ? ['1B', '2B', '3B'][i] : null)
   assert(new Set(await page.evaluate(() => VOCAB.map(w => w.en))).size === vocabCount,
          'every English meaning is unique, so choices can never duplicate');
 
+  // Classic has to be able to read every word the shared list now holds:
+  // a tier with no DIFFICULTY entry would throw the moment it was dealt.
+  const unreadable = await page.evaluate(() =>
+    VOCAB.filter(w => !DIFFICULTY[w.tag] || !DIFFICULTY[w.tag].label).map(w => w.es));
+  assert(unreadable.length === 0,
+         `Classic can label every word in the list${unreadable.length ? ': ' + unreadable.join(', ') : ''}`);
+
+  const deckLen = await page.evaluate(() => state.deck.length);
+  assert(deckLen === vocabCount,
+         `and its deck is the whole expanded list (${deckLen} words)`);
+
   section('HUD');
 
   assert((await page.locator('.tally').count()) === 0,
