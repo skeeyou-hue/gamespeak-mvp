@@ -331,22 +331,28 @@ const show = state => state.map((on, i) => on ? ['1B', '2B', '3B'][i] : null)
     const R = id => document.getElementById(id).getBoundingClientRect();
     const gap = (a, c) => Math.max(Math.max(a.left - c.right, c.left - a.right),
                                    Math.max(a.top - c.bottom, c.top - a.bottom));
+    // Measured in SVG units, not screen pixels. A screen-pixel floor is a
+    // floor on the browser window as much as on the drawing: the same art
+    // clears by 4px at one zoom and 2px at another without a line moving.
+    const scale = document.querySelector('.scene svg').getScreenCTM().a;
     let worst = { gap: Infinity, pair: '' };
     for (const f of ids) {
       for (const rn of ['runner-first', 'runner-second', 'runner-third']) {
-        const g = gap(R(f), R(rn));
-        if (g < worst.gap) worst = { gap: Math.round(g), pair: `${f}/${rn}` };
+        const g = gap(R(f), R(rn)) / scale;
+        if (g < worst.gap) worst = { gap: Math.round(g * 10) / 10, pair: `${f}/${rn}` };
       }
     }
     return worst;
   }, FIELDERS);
   assert(tightest.gap >= 4,
-         `every fielder clears every runner by at least 4px (tightest: ${tightest.pair} at ${tightest.gap}px)`);
+         `every fielder clears every runner by at least 4 SVG units (tightest: ${tightest.pair} at ${tightest.gap})`);
 
   // HUD collision and edge slicing, at every supported window size.
-  const SIZES = [[760, 900], [900, 900], [1024, 768], [1180, 860],
-                 [1290, 940], [1440, 900], [1600, 800], [480, 900]];
-  let hudClean = true, edgeClean = true;
+  // Phone sizes are in the matrix on purpose: the framing bug a tester hit
+  // only ever showed up on tall, narrow screens.
+  const SIZES = [[390, 844], [375, 667], [412, 915], [768, 1024],
+                 [760, 900], [1024, 768], [1290, 940], [1440, 900], [1600, 700]];
+  let hudClean = true, edgeClean = true, diamondClean = true;
   for (const [w, h] of SIZES) {
     const sized = await browser.newPage({ viewport: { width: w, height: h } });
     await sized.goto(URL);
@@ -361,18 +367,40 @@ const show = state => state.map((on, i) => on ? ['1B', '2B', '3B'][i] : null)
         const f = R(document.getElementById(id));
         if (chips.some(c => hit(f, c))) hud.push(id);
         // Either fully on screen or fully off it — never cut by the edge.
-        const off = f.right < 0 || f.left > innerWidth;
-        const inside = f.left >= 0 && f.right <= innerWidth;
-        if (!off && !inside) sliced.push(id);
+        // Fully on screen, or it counts as cropped. The old rule let a
+        // fielder pass by being entirely off the side, which is how nine
+        // fielders went missing on a phone without a single test failing.
+        //
+        // The bottom edge is the one exception, and only for the catcher:
+        // he is the nearest figure to the camera and is composed to sit in
+        // the frame's bottom edge, the way a shot from behind the plate
+        // actually looks. Every other edge is a hard bound for all nine.
+        const bottomCut = f.bottom > innerHeight && id !== 'fielder-c';
+        if (f.left < 0 || f.right > innerWidth || f.top < 0 || bottomCut) {
+          sliced.push(id);
+        }
       }
-      return { hud, sliced };
+      // The diamond itself: every bag, the rubber, the plate. This is the
+      // check the tester's complaint was really about.
+      const diamond = [];
+      for (const id of ['bag-first', 'bag-second', 'bag-third', 'rubber', 'home-plate-bag']) {
+        const b = R(document.getElementById(id));
+        if (b.left < 0 || b.right > innerWidth || b.top < 0 || b.bottom > innerHeight) {
+          diamond.push(id);
+        }
+      }
+      return { hud, sliced, diamond };
     }, FIELDERS);
     await sized.close();
+    if (r.diamond.length) { diamondClean = false;
+      console.error(`     ${w}x${h} off screen: ${r.diamond.join(',')}`); }
     if (r.hud.length)    { hudClean = false;  console.error(`     ${w}x${h} HUD: ${r.hud.join(',')}`); }
     if (r.sliced.length) { edgeClean = false; console.error(`     ${w}x${h} sliced: ${r.sliced.join(',')}`); }
   }
+  assert(diamondClean,
+         `every base, the rubber and the plate are on screen, across ${SIZES.length} window sizes`);
   assert(hudClean, `no fielder collides with a HUD chip, across ${SIZES.length} window sizes`);
-  assert(edgeClean, `no fielder is cut in half by the screen edge, across ${SIZES.length} window sizes`);
+  assert(edgeClean, `all nine fielders are fully on screen, across ${SIZES.length} window sizes`);
 
   /* ===================================================================
      F. THE OUTFIELD SCOREBUG

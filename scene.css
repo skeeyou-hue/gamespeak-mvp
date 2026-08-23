@@ -13,13 +13,32 @@
   position: fixed;
   inset: 0;
   z-index: -1;
+  overflow: hidden;
   pointer-events: none;
+  /* Continues the top of the sky gradient upward. On a tall screen the park
+     is shorter than the viewport, and this is what fills the gap — without
+     it the page background shows through above the sky. */
+  background: #17375F;
 }
 
+/* The park is as wide as the viewport and its height follows from the
+   1200x800 aspect, pinned to the bottom of the screen.
+
+   This is deliberately NOT `height: 100%` with a slicing viewBox. That
+   scales the park to cover the viewport, which on any portrait screen means
+   cropping the sides — and the sides are where third base, first base and
+   the corner outfielders live. Measured on a 390x844 phone, the old framing
+   showed SVG x 415..785 out of 1200: the whole diamond except second base
+   and the mound was off screen. Letting the height fall out of the width
+   instead means the only thing that can ever be cut is sky off the top,
+   because the field sits at the bottom of the viewBox. */
 .scene svg {
   display: block;
+  position: absolute;
+  left: 0;
+  bottom: 0;
   width: 100%;
-  height: 100%;
+  height: auto;
 }
 
 /* Runners on the field: hidden until app.js adds .on to the group */
@@ -34,9 +53,10 @@
   .runner, .pip { transition: none; }
 }
 
-/* The scene crops from the sides as the window narrows. Below this width
-   the wall signage and video board would be sliced by the screen edge, so
-   hide them outright — a bare wall beats a half-cut sign. */
+/* Nothing is sliced any more — the whole viewBox is always on screen — so
+   this is now purely about legibility. Below this width the video board and
+   the wall sign are scaled down to a few dozen pixels and their text is
+   unreadable, and an unreadable sign is worse than a bare wall. */
 @media (max-width: 899px) {
   #scorebug, #wall-sign { display: none; }
 }
