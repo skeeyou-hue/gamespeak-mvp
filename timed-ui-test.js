@@ -162,7 +162,13 @@ const section = title => console.log('\n# ' + title);
   // The pitch only goes live after the ready beat; tests that drive a swing
   // have to wait for it, the same as a player does.
   const live = () => page.waitForFunction(() => state.swing && state.swing.live,
-                                          { timeout: 5000 });
+                                          { timeout: 8000 });
+  // Wait for a swing to be fully put away rather than guessing at how long
+  // the feedback pause plus the bat flip takes.
+  const settled = () => page.waitForFunction(
+    () => state.swing === null &&
+          !document.getElementById('pitch-screen').classList.contains('hidden'),
+    { timeout: 8000 });
 
   const bank = (life = 2) => page.evaluate(n => {
     state.bonus = { atBatsLeft: n };
@@ -360,11 +366,14 @@ const section = title => console.log('\n# ' + title);
     verdict: state.swing.verdict,
     result:  state.swing.result
   }));
-  assert(Math.abs(landed.contact - 0.4) > 0.1,
+  // Derived, not a hand-picked threshold: how far the ball travels during
+  // the load depends on how fast the pitch is, and both are constants.
+  const want = await page.evaluate(() => contactProgress(0.4));
+  assert(Math.abs(landed.contact - want) < 1e-9 && landed.contact > 0.4,
          `the ball moved on during the load (pressed 0.4, met at ${landed.contact.toFixed(3)})`);
   assert(landed.result !== null, 'and the swing settles once the barrel arrives');
 
-  await page.waitForTimeout(1800);
+  await settled();
 
   section('Letting it go by');
 
@@ -376,14 +385,17 @@ const section = title => console.log('\n# ' + title);
   let outsBefore = (await look()).outs;
   await page.click('#bank-button');
   await live();
-  await page.waitForTimeout(2300);
+  // The whole flight plus a margin, taken from the constants so a retune of
+  // the pitch speed cannot leave this waiting too little.
+  await page.waitForTimeout(await page.evaluate(
+    () => PITCH_WINDUP_MS + PITCH_FLIGHT_MS + 300));
   v = await look();
   assert((await page.evaluate(() => state.swing && state.swing.verdict)) === 'LOOKING' ||
          v.outs === outsBefore + 1,
          'a pitch nobody swings at is an out');
   assert((await page.locator('#swing-feedback').textContent()).toLowerCase().includes('called strike'),
          'and the feedback says it was taken');
-  await page.waitForTimeout(1700);
+  await settled();
   assert(await page.locator('#pitch-screen').isVisible(), 'play returns after a called strike');
 
   section('Connecting');
@@ -409,7 +421,7 @@ const section = title => console.log('\n# ' + title);
          'and the ball is sent back up the middle');
   assert((await page.locator('#swing-feedback').textContent()).includes('JONRÓN'), 'and the dugout gets its payoff');
 
-  await page.waitForTimeout(2600);
+  await settled();
   assert(await page.locator('#pitch-screen').isVisible(), 'play returns to the next at-bat');
   assert(!(await page.locator('#swing-figure').evaluate(e => e.classList.contains('bat-flip'))),
          'the bat flip is cleared before the next one');
@@ -434,7 +446,7 @@ const section = title => console.log('\n# ' + title);
          'no bat flip on a miss');
   assert((await page.locator('#swing-feedback').textContent()).toLowerCase().includes('in front'),
          'the feedback says which side of it they were on');
-  await page.waitForTimeout(1700);
+  await settled();
   assert(await page.locator('#pitch-screen').isVisible(), 'and play moves on');
 
   // Under it late.
@@ -449,20 +461,21 @@ const section = title => console.log('\n# ' + title);
   assert((await page.evaluate(() => state.swing.verdict)) === 'LATE', 'and it is scored late');
   assert((await page.locator('#swing-feedback').textContent()).toLowerCase().includes('late'),
          'the feedback says so');
-  await page.waitForTimeout(1700);
+  await settled();
 
-  // The timing that used to be perfect is now a swing behind the ball.
+  // On a 2400ms flight the 180ms load is 7.5% of the pitch, so committing as
+  // the ball crosses the plate now lands inside the window. What looks right
+  // is right — which is the whole reason the flight was slowed.
   await stack(['DOUBLE', 'DOUBLE']);
   await bank(1);
-  outsBefore = (await look()).outs;
   await page.click('#bank-button');
   await live();
   await page.evaluate(() => takeSwing(PLATE_AT));
   await page.waitForTimeout(LEAD + 120);
-  assert((await look()).outs === outsBefore + 1,
-         'pressing exactly as the ball crosses the plate is now an out, not a home run');
-  assert((await page.evaluate(() => state.swing.verdict)) === 'LATE', 'and it is scored late');
-  await page.waitForTimeout(1700);
+  assert((await page.evaluate(() => state.swing.verdict)) === 'ON_TIME',
+         'pressing as the ball crosses the plate is on time');
+  assert((await page.evaluate(() => state.swing.result)) === 'HOMERUN', 'and it is a home run');
+  await settled();
 
   section('Swinging with the keyboard');
 
@@ -479,7 +492,7 @@ const section = title => console.log('\n# ' + title);
          'and it settles the same way a click does');
 
   // A second press mid-load must not start a second swing.
-  await page.waitForTimeout(2600);
+  await settled();
   await stack(['DOUBLE', 'DOUBLE']);
   await bank(1);
   await page.click('#bank-button');
@@ -488,7 +501,7 @@ const section = title => console.log('\n# ' + title);
   await page.evaluate(() => takeSwing(0.75));
   assert((await page.evaluate(() => state.swing.pressAt)) === 0.3,
          'a second press during the load is ignored — you only commit once');
-  await page.waitForTimeout(LEAD + 1900);
+  await settled();
 
   /* =================================================================== */
   section('Both prompt directions');
