@@ -308,7 +308,13 @@ const PITCH_WINDUP_MS = 600;    // the set beat before release, so it reads
 // clock they land on stretches with it.
 const PITCH_FLIGHT_MS = 2400;   // release to the mitt
 const PLATE_AT        = 0.80;   // where in the flight the ball crosses the plate
-const CONTACT_WINDOW  = 0.10;   // half-width of the window around the plate
+// Half-width of the window around the plate. Tightened from 0.10 after
+// playtesting: on the slower 2400ms flight, 0.10 bought 480ms of contact and
+// a banked home run was close to a formality. At 0.06 the window is 288ms —
+// back to roughly what the original 1400ms flight gave, but now on a pitch
+// you can actually see. It also brings the drawn target down to ~20px, which
+// is about the width of the ball at the plate: get the ball in the box.
+const CONTACT_WINDOW  = 0.06;
 
 // Where the ball is, 0..1. Zero through the wind-up: the ball has not been
 // released yet, so swinging during it is as early as early gets.
