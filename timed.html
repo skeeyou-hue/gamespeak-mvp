@@ -233,6 +233,11 @@
         </g>
       </svg>
 
+        <!-- Fires once as the ball leaves the hand, so there is a moment to
+             catch rather than a dot that was already moving by the time you
+             found it. Placed on the release point by timed-ui.js. -->
+        <div class="pitch-flash" id="pitch-flash"></div>
+
         <!-- The ball. Positioned and scaled by timed-ui.js from the same
              progress value the rules score the swing on. -->
         <div class="pitch-ball" id="pitch-ball"></div>

@@ -434,9 +434,50 @@ body {
   border-radius: 50%;
   background: radial-gradient(circle at 34% 28%, #ffffff 0%, #f4f1e6 52%, #c9c0aa 100%);
   box-shadow: 0 2px 7px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(30, 24, 14, 0.35);
-  transform: translate(-50%, -50%) scale(0.32);
+  transform: translate(-50%, -50%) scale(0.65);
   will-change: top, transform;
 }
+
+/* The tail. Sits entirely above the ball — the flight is straight down the
+   centre, so a fixed upward streak is a true motion trail and costs nothing
+   per frame. It is a child, so it scales with the ball. */
+.pitch-ball::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  bottom: 100%;
+  width: 100%;
+  height: 220%;
+  margin-left: -50%;
+  background: linear-gradient(to top, rgba(255, 255, 255, 0.5), rgba(255, 255, 255, 0));
+  clip-path: polygon(50% 0%, 92% 100%, 8% 100%);
+  opacity: 0;
+  transition: opacity 140ms linear;
+  pointer-events: none;
+}
+
+/* Only once it is actually travelling — a tail on a ball sitting in the
+   pitcher's hand reads as a glitch. */
+.pitch-ball.flying::after { opacity: 1; }
+
+.pitch-flash {
+  position: absolute;
+  left: 50%;
+  width: 26px;
+  height: 26px;
+  margin: -13px 0 0 -13px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.9);
+  opacity: 0;
+  pointer-events: none;
+}
+
+@keyframes releaseFlash {
+  0%   { opacity: 0.95; transform: scale(0.3); }
+  100% { opacity: 0;    transform: scale(2.8); }
+}
+
+.pitch-flash.pop { animation: releaseFlash 420ms ease-out; }
 
 /* Struck: back up the middle, over the pitcher, gone. */
 @keyframes ballGone {
@@ -516,4 +557,5 @@ body {
   /* The ball still has to fly — that is the mechanic — but it can vanish
      on contact instead of being launched. */
   .pitch-ball.struck { animation: none; opacity: 0; }
+  .pitch-flash.pop { animation: none; }
 }
