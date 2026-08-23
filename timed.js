@@ -258,7 +258,10 @@ function newTimedState(inning) {
     atBat: null,        // newAtBat(tag) while one is in progress
     paused: false,      // a clock is stopped and the card is covered
     hitStreak: 0,       // at-bats ending in a hit, back to back
-    bonus: null,        // { atBatsLeft } once a swing is banked
+    offersLeft: 0,      // chances left on a bank that is being held
+    cap: AT_BATS_PER_INNING,   // grows when a bonus question is answered
+    bonusQ: null,       // the bonus question, while one is on screen
+    offerUp: false,     // an offer is on screen waiting on the player
     swing: null,        // the power-swing moment, when one is being taken
     missed: [],
     locked: false

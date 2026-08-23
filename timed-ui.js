@@ -34,8 +34,14 @@ const el = {
   choices:     document.getElementById('choices'),
   feedback:    document.getElementById('feedback'),
 
-  bankButton: document.getElementById('bank-button'),
-  bankLife:   document.getElementById('bank-life'),
+  offerScreen: document.getElementById('offer-screen'),
+  offerTerms:  document.getElementById('offer-terms'),
+  offerReward: document.getElementById('offer-reward'),
+  offerLeft:   document.getElementById('offer-left'),
+  offerTake:   document.getElementById('offer-take'),
+  offerPass:   document.getElementById('offer-pass'),
+  foulPips:    document.getElementById('foul-pips'),
+  swingEyebrow: document.getElementById('swing-eyebrow-text'),
 
   swingScreen:   document.getElementById('swing-screen'),
   dugoutPhrase:  document.getElementById('dugout-phrase'),
@@ -138,11 +144,9 @@ function renderHud() {
 
   // The banked swing is only shown here for now — spending it is the next
   // step, and it will use the sweeping marker we already agreed on.
-  el.hudBank.classList.toggle('hidden', !state.bonus);
-  el.bankButton.classList.toggle('hidden', !state.bonus);
-  if (state.bonus) {
-    el.hudBank.textContent  = `SWING BANKED · ${state.bonus.atBatsLeft}`;
-    el.bankLife.textContent = `· ${state.bonus.atBatsLeft} at-bat${state.bonus.atBatsLeft > 1 ? 's' : ''} left`;
+  el.hudBank.classList.toggle('hidden', state.offersLeft <= 0);
+  if (state.offersLeft > 0) {
+    el.hudBank.textContent = `SHOT BANKED · ${state.offersLeft}`;
   }
 }
 
@@ -244,6 +248,23 @@ function resolvePitch(elapsedMs, correct) {
 
   const atBat = state.atBat;
   const word  = state.deck[state.index];
+
+  // The bonus question is one shot on its own clock — no count, no re-pitch.
+  if (state.bonusQ) {
+    const face = promptFor(word, atBat.direction);
+    el.choices.querySelectorAll('.choice').forEach(button => {
+      button.disabled = true;
+      if (button.textContent === face.answer) button.classList.add('correct');
+    });
+    atBat.over = true;
+    atBat.result = correct ? 'HIT' : 'OUT';
+    const earned = settleBonusQuestion(correct);
+    renderStrikes();
+    renderHud();
+    setTimeout(earned ? startSwing : afterBonusOut, 1800);
+    return;
+  }
+
   const pitch = applyPitch(atBat.strikes, correct, elapsedMs, atBat.windowMs, word.tag);
   atBat.strikes = pitch.strikes;
   callUmpire(umpireCall(pitch.result, pitchTimedOut(elapsedMs, atBat.windowMs)));
@@ -286,18 +307,21 @@ function afterPitch() {
   // Still alive in this at-bat: same word comes back, one strike worse.
   if (!state.atBat.over) { throwPitch(); return; }
 
-  // The at-bat is finished, so the banked swing ages exactly once here —
-  // not once per pitch.
-  const stepped = applyAtBatToBonus(
-    state.bonus, state.hitStreak, state.atBat.result, Math.random());
-  state.bonus     = stepped.bonus;
-  state.hitStreak = stepped.streak;
-
+  state.hitStreak = state.atBat.result === 'HIT' ? state.hitStreak + 1 : 0;
   state.index++;
   renderHud();
 
-  const over = inningOver(state.outs, state.index, state.deck.length);
+  const over = inningOver(state.outs, state.index, state.deck.length, state.cap);
   if (over) return finishInning(over);
+
+  // Three in a row offers a shot rather than banking one. A bank already
+  // being held is re-offered by this streak rather than replaced.
+  const step = streakOffer(state.hitStreak, state.offersLeft);
+  if (step.offer) {
+    state.hitStreak  = 0;
+    state.offersLeft = step.offersLeft;
+    return showOffer();
+  }
   startAtBat();
 }
 
@@ -380,6 +404,118 @@ function resumeGame() {
 function togglePause() { state.paused ? resumeGame() : pauseGame(); }
 
 
+/* ---------- the offer ----------
+   Both branches cost something, which is the whole feature. The reward is
+   stated in at-bats rather than in the home run, because at-bats are what it
+   actually pays in — simulated, a bonus at-bat is a WORSE home-run machine
+   than an ordinary one, so a player who takes it for the home run is taking
+   it for the wrong reason. ------------------------------------------------- */
+
+function showOffer() {
+  state.locked = true;
+  const room = (AT_BATS_PER_INNING + MAX_INNING_EXTENSION) - state.cap;
+  const extra = Math.min(BONUS_EXTRA_AT_BATS, room);
+
+  el.offerTerms.textContent =
+    `One hard word, ${(BONUS_QUESTION_MS / 1000).toFixed(0)} seconds.`;
+  el.offerReward.textContent = extra > 0
+    ? `${extra} more at-bats this inning, and a swing at the fences.`
+    : 'a swing at the fences. The inning is already as long as it goes.';
+  el.offerLeft.textContent = state.offersLeft > 1
+    ? `· ${state.offersLeft - 1} chance${state.offersLeft > 2 ? 's' : ''} after this`
+    : '· last chance';
+
+  state.offerUp = true;
+  renderHud();                     // the HUD says how many chances are left
+  el.pitchScreen.classList.add('hidden');
+  el.offerScreen.classList.remove('hidden');
+  renderPause();
+}
+
+function passOffer() {
+  if (!state.offerUp || state.paused) return;
+  state.offerUp = false;
+  state.offersLeft = declineOffer(state.offersLeft);
+  el.offerScreen.classList.add('hidden');
+  el.pitchScreen.classList.remove('hidden');
+  state.locked = false;
+  renderHud();
+  startAtBat();
+}
+
+function takeOffer() {
+  if (!state.offerUp || state.paused) return;
+  state.offerUp = false;
+  state.offersLeft = 0;
+  el.offerScreen.classList.add('hidden');
+  el.pitchScreen.classList.remove('hidden');
+  startBonusQuestion();
+}
+
+
+function afterBonusOut() {
+  state.hitStreak = 0;
+  state.index++;
+  state.locked = false;
+  renderHud();
+  const over = inningOver(state.outs, state.index, state.deck.length, state.cap);
+  if (over) return finishInning(over);
+  startAtBat();
+}
+
+
+/* ---------- the bonus question ----------
+   A HOMERUN-tier word on its own clock. This is the only risk in the whole
+   mechanic and it is a language risk, which for a vocabulary app is where
+   the risk should be. Miss it and it is an out; answer it and the inning
+   grows and the swing is earned. ------------------------------------------ */
+
+function startBonusQuestion() {
+  const word = pickBonusWord();
+  state.bonusQ = { word, direction: pickDirection(Math.random()) };
+  state.atBat  = newAtBat('HOMERUN', state.bonusQ.direction);
+  state.atBat.windowMs = BONUS_QUESTION_MS;
+  state.deck[state.index] = word;          // the bonus word IS this at-bat
+
+  renderQuestion();
+  el.tierBadge.textContent = `BONUS · ${(BONUS_QUESTION_MS / 1000).toFixed(0)}s`;
+  el.tierBadge.className   = 'tier-badge tier-bonus';
+  throwPitch();
+}
+
+// A hard word that has not already been seen this inning, so the bonus is
+// never a word the player answered thirty seconds ago.
+function pickBonusWord() {
+  const seen = new Set(state.deck.slice(0, state.index).map(w => w.es));
+  const pool = VOCAB.filter(w => w.tag === 'HOMERUN' && !seen.has(w.es));
+  const from = pool.length ? pool : VOCAB.filter(w => w.tag === 'HOMERUN');
+  return from[Math.floor(Math.random() * from.length)];
+}
+
+// Called from resolvePitch when the at-bat on screen is the bonus one.
+function settleBonusQuestion(correct) {
+  const word = state.bonusQ.word;
+  state.bonusQ = null;
+
+  if (!correct) {
+    state.outs++;
+    state.missed.push(word);
+    callUmpire(umpireCall('OUT'));
+    say(`No shot. "${word.es}" means "${word.en}".`, 'bad');
+    return false;
+  }
+
+  const before = state.cap;
+  state.cap = extendInning(state.cap);
+  const gained = state.cap - before;
+  callUmpire(umpireCall('HIT'));
+  say(gained > 0
+    ? `¡Sí señor! The pitcher is rattled — ${gained} more at-bats, and you are swinging.`
+    : '¡Sí señor! You are swinging.', 'good');
+  return true;
+}
+
+
 /* ---------- the power swing ----------
    Spending a banked swing replaces the whole at-bat. The word on screen is
    set aside, the countdown stops, and the at-bat is settled by one swing at
@@ -445,7 +581,7 @@ function clearReady() {
 }
 
 function startSwing() {
-  if (state.paused || !state.bonus || state.locked || state.swing) return;
+  if (state.paused || state.swing) return;
   state.locked = true;
   if (frame) { cancelAnimationFrame(frame); frame = null; }   // the pitch clock stops
 
@@ -455,7 +591,7 @@ function startSwing() {
   const coach  = COACH_PHRASES[Math.floor(Math.random() * COACH_PHRASES.length)];
   state.swing = { progress: 0, phrase: phrase.es, coach: coach.es,
                   live: false, pressAt: null, contactAt: null,
-                  result: null, verdict: null };
+                  attempt: 0, result: null, verdict: null };
 
   el.dugoutPhrase.textContent = phrase.es;
   el.dugoutGloss.textContent  = phrase.en;
@@ -464,6 +600,8 @@ function startSwing() {
   el.swingFeedback.innerHTML  = '&nbsp;';
   el.swingFeedback.className  = 'feedback';
   callUmpire(null);
+  renderFouls();
+  drawCues();
   el.swingGo.disabled         = true;      // nothing to swing at yet
   el.swingFigure.classList.remove('bat-flip', 'swinging');
   el.pitchBall.classList.remove('struck');
@@ -502,7 +640,8 @@ function startPitchClock() {
   const startedSwingAt = performance.now();
   const tick = now => {
     if (!state.swing || state.swing.result) { swingFrame = null; return; }
-    const progress = ballProgressAt(now - startedSwingAt);
+    const progress = ballProgressAt(now - startedSwingAt, PITCH_WINDUP_MS,
+                                    attemptFlightMs(state.swing.attempt));
     const wasHeld = state.swing.progress === 0;
     state.swing.progress = progress;
     placeBall(progress);
@@ -547,14 +686,32 @@ function resolveSwing(pressProgress) {
   if (swingFrame) { cancelAnimationFrame(swingFrame); swingFrame = null; }
   if (swingTimer) { clearTimeout(swingTimer); swingTimer = null; }
 
+  const attempt = state.swing.attempt;
+  const flight  = attemptFlightMs(attempt);
+  const budget  = attemptWindowMs(attempt);
   const swung   = pressProgress !== null && pressProgress !== undefined;
-  const contact = swung ? contactProgress(pressProgress) : null;
-  const onTime  = swung && isContact(contact);
+  const contact = swung ? contactProgress(pressProgress, SWING_LEAD_MS, flight) : null;
+  const outcome = swung ? resolveAttempt(attempt, pressProgress)
+                        : (attempt >= SWING_ATTEMPTS - 1 ? 'STRUCK_OUT_SWINGING' : 'FOUL');
+  const onTime  = outcome === 'HOMERUN';
   state.swing.contactAt = contact;
-  state.swing.verdict = swung ? swingVerdict(contact) : 'LOOKING';
-  state.swing.result  = onTime ? 'HOMERUN' : 'MISS';
-  state.bonus         = null;          // spent, hit or miss
-  callUmpire(umpireCall(onTime ? 'HIT' : 'OUT'));
+  state.swing.verdict = swung ? swingVerdict(contact, flight, budget) : 'LOOKING';
+
+  // Fouled off. Costs nothing, the way fouling one off costs nothing.
+  if (outcome === 'FOUL') {
+    state.swing.attempt++;
+    renderFouls();
+    el.swingFeedback.textContent = swung
+      ? `Fouled it off — ${MISS_TEXT[state.swing.verdict].replace(/ — that is an out\.$/, '.')}`
+      : 'Took it. Still alive.';
+    el.swingFeedback.className = 'feedback';
+    el.swingFigure.classList.remove('swinging');
+    setTimeout(nextAttempt, 1200);
+    return;
+  }
+
+  state.swing.result = onTime ? 'HOMERUN' : 'MISS';
+  callUmpire(onTime ? umpireCall('HIT') : null);
 
   if (onTime) {
     state.hits.HOMERUN++;
@@ -569,13 +726,50 @@ function resolveSwing(pressProgress) {
     el.swingFigure.classList.add('bat-flip');
     el.pitchBall.classList.add('struck');
   } else {
-    state.outs++;
-    el.swingFeedback.textContent = MISS_TEXT[state.swing.verdict];
+    // No out. The extension was banked when the question was answered, so
+    // failing to collect the rest of the windfall costs only the windfall.
+    el.swingFeedback.textContent = 'Struck out swinging — but the inning is still yours.';
     el.swingFeedback.className   = 'feedback bad';
+    renderFouls(true);
   }
 
   renderHud();
-  setTimeout(endSwing, onTime ? 2400 : 1500);   // longer, to let the bat land
+  setTimeout(endSwing, onTime ? 2400 : 1800);   // longer, to let the bat land
+}
+
+// Reset the pitch and throw the next one. The at-bat is not over; the
+// batter just fouled one off.
+function nextAttempt() {
+  if (!state.swing || state.swing.result) return;
+  state.swing.live     = false;
+  state.swing.progress = 0;
+  state.swing.pressAt  = null;
+  state.swing.verdict  = null;
+  el.swingFeedback.innerHTML = '&nbsp;';
+  el.swingFeedback.className = 'feedback';
+  el.pitchBall.classList.remove('struck');
+  el.pitchFlash.classList.remove('pop');
+  el.swingFigure.classList.remove('swinging');
+  placeBall(0);
+  drawCues();
+  startReadyBeat();
+}
+
+// One pip per attempt used, so three fouls read as a count rather than as
+// the same pitch arriving again for no reason.
+function renderFouls(allUsed) {
+  const used = allUsed ? SWING_ATTEMPTS : state.swing ? state.swing.attempt : 0;
+  el.foulPips.innerHTML = '';
+  for (let i = 0; i < SWING_ATTEMPTS; i++) {
+    const pip = document.createElement('span');
+    pip.className = 'foul-pip' + (i < used ? ' used' : '');
+    el.foulPips.appendChild(pip);
+  }
+  if (el.swingEyebrow) {
+    el.swingEyebrow.textContent = used === 0 ? 'Swinging for it'
+      : used >= SWING_ATTEMPTS ? 'Struck out swinging'
+      : `Fouled off ${used}`;
+  }
 }
 
 function endSwing() {
@@ -588,22 +782,17 @@ function endSwing() {
   el.swingScreen.classList.add('hidden');
   el.pitchScreen.classList.remove('hidden');
 
-  // The swing was the whole at-bat, so it ages the bonus exactly once, the
-  // same as any other at-bat ending. It goes in as SPENT rather than as its
-  // own outcome: a banked home run is the payoff for the streak that earned
-  // it, not the first answer of the next one.
-  state.swing = null;
-
-  const stepped = applyAtBatToBonus(state.bonus, state.hitStreak, 'SPENT', Math.random());
-  state.bonus     = stepped.bonus;
-  state.hitStreak = stepped.streak;
-
-  state.atBat = null;
+  // The bonus was the whole at-bat. It never seeds the next streak: the
+  // shot was the reward for the three that earned it, not the first of the
+  // next three.
+  state.swing     = null;
+  state.hitStreak = 0;
+  state.atBat     = null;
   state.index++;
   state.locked = false;
   renderHud();
 
-  const over = inningOver(state.outs, state.index, state.deck.length);
+  const over = inningOver(state.outs, state.index, state.deck.length, state.cap);
   if (over) return finishInning(over);
   startAtBat();
 }
@@ -621,7 +810,7 @@ function finishInning(reason) {
     state.bases = play.bases;
     renderHud();                       // the board agrees before the summary
     return endInning(play.call.es,
-      `${play.call.en} ${AT_BATS_PER_INNING} at-bats — that is the inning.`);
+      `${play.call.en} ${state.cap} at-bats — that is the inning.`);
   }
   if (reason === 'DECK') {
     return endInning('Through the lineup!',
@@ -674,7 +863,8 @@ function startInning() {
 }
 
 el.playAgain.addEventListener('click', startInning);
-el.bankButton.addEventListener('click', startSwing);
+el.offerTake.addEventListener('click', takeOffer);
+el.offerPass.addEventListener('click', passOffer);
 el.swingGo.addEventListener('click', () => takeSwing(state.swing ? state.swing.progress : null));
 el.pauseButton.addEventListener('click', togglePause);
 el.pauseResume.addEventListener('click', resumeGame);
@@ -700,18 +890,25 @@ const band = (el_, from, to) => {
   el_.style.top    = laneY(from) + 'px';
   el_.style.height = (laneY(to) - laneY(from)) + 'px';
 };
-// The press window is the target, because pressing is the only thing the
-// player does. Drawing the contact window as a second band of equal weight
-// showed them something they cannot aim at, in a stripe that overlapped this
-// one — by the time the ball is in the contact window, committing is already
-// too late.
-const press = pressWindow();
-band(el.pressZone, press.opens, press.shuts);
 
-// Contact gets a hairline at the plate instead of a band. Still off PLATE_AT,
-// so it cannot drift away from where the rules put contact.
-el.contactZone.style.top    = (laneY(PLATE_AT) - 1) + 'px';
-el.contactZone.style.height = '2px';
+// Redrawn for every attempt, because every attempt has its own flight and
+// its own window. The press window is the target, because pressing is the
+// only thing the player does — drawing the contact window as a second band
+// of equal weight showed them something they cannot aim at, in a stripe
+// that overlapped this one.
+function drawCues() {
+  const attempt = state && state.swing ? state.swing.attempt : 0;
+  const flight  = attemptFlightMs(attempt);
+  const budget  = attemptWindowMs(attempt);
+  const press   = pressWindow(SWING_LEAD_MS, flight, budget);
+  band(el.pressZone, press.opens, press.shuts);
+
+  // Contact gets a hairline at the plate instead of a band. Still off
+  // PLATE_AT, so it cannot drift from where the rules put contact.
+  el.contactZone.style.top    = (laneY(PLATE_AT) - 1) + 'px';
+  el.contactZone.style.height = '2px';
+}
+drawCues();
 
 // The release flash belongs on the release point, not near it.
 el.pitchFlash.style.top = LANE_RELEASE_Y + 'px';

@@ -123,24 +123,55 @@ const section = title => console.log('\n# ' + title);
   assert(v.word === before.word, 'and the same word is still up');
 
   /* =================================================================== */
-  section('Banking rides on top of the at-bats');
+  section('Three in a row offers a shot, it does not bank one');
 
-  await stack(['DOUBLE', 'DOUBLE', 'DOUBLE', 'DOUBLE']);
-  await page.evaluate(() => { Math.random = () => 0.5; });   // pin the life to 2
-  assert((await page.evaluate(() => state.bonus)) === null, 'nothing banked at the start');
+  // A long deck: this section plays a dozen at-bats and must not run out.
+  await stack(Array.from({ length: 24 }, () => 'DOUBLE'));
+  assert((await page.evaluate(() => state.offersLeft)) === 0, 'nothing held at the start');
 
   for (let i = 0; i < 3; i++) {
     await page.evaluate(() => resolvePitch(400, true));
     await page.waitForTimeout(1700);
   }
-  const bonus = await page.evaluate(() => state.bonus);
-  assert(bonus && bonus.atBatsLeft === 2, 'three at-bats ending in hits bank a swing');
-  assert(!(await page.locator('#hud-bank').isHidden()), 'and the HUD says so');
-  assert((await page.evaluate(() => state.hitStreak)) === 0, 'the streak resets on banking');
+  assert(await page.locator('#offer-screen').isVisible(),
+         'three at-bats ending in hits put an offer on screen');
+  assert((await page.evaluate(() => state.offersLeft)) === 3,
+         'and the bank it opens carries three chances');
+  assert((await page.evaluate(() => state.hitStreak)) === 0, 'the streak is spent on the offer');
+  assert((await page.locator('#hud-bank').textContent()).includes('3'),
+         'the HUD says how many chances are left');
 
-  // The mix matters: it is any hit, not three singles.
-  const mix = await page.evaluate(() => state.hits);
-  assert(mix.HOMERUN === 3, 'those three were all home runs, and still banked a swing');
+  // Declining spends one chance and hands the at-bat straight back.
+  await page.click('#offer-pass');
+  assert((await page.evaluate(() => state.offersLeft)) === 2, 'declining spends one chance');
+  assert(await page.locator('#offer-screen').isHidden(), 'and the offer goes away');
+  assert(await page.locator('#pitch-screen').isVisible(), 'play carries straight on');
+
+  // It is re-offered by the NEXT streak, not by the next at-bat.
+  await page.waitForFunction(() => !state.locked, { timeout: 6000 });
+  await page.evaluate(() => resolvePitch(400, true));
+  await page.waitForTimeout(1700);
+  assert(await page.locator('#offer-screen').isHidden(),
+         'one hit later there is no offer — it takes another three');
+  for (let i = 0; i < 2; i++) {
+    await page.waitForFunction(() => !state.locked, { timeout: 6000 });
+    await page.evaluate(() => resolvePitch(400, true));
+    await page.waitForTimeout(1700);
+  }
+  assert(await page.locator('#offer-screen').isVisible(), 'the next streak re-offers it');
+  assert((await page.evaluate(() => state.offersLeft)) === 2,
+         'and it is the same bank, not a fresh one');
+
+  // Three declines and it is gone.
+  await page.click('#offer-pass');
+  assert((await page.evaluate(() => state.offersLeft)) === 1, 'two declines leave one');
+  for (let i = 0; i < 3; i++) {
+    await page.waitForFunction(() => !state.locked, { timeout: 6000 });
+    await page.evaluate(() => resolvePitch(400, true));
+    await page.waitForTimeout(1700);
+  }
+  await page.click('#offer-pass');
+  assert((await page.evaluate(() => state.offersLeft)) === 0, 'the third decline expires it');
 
   /* =================================================================== */
   section('End of the inning');
@@ -457,427 +488,242 @@ const section = title => console.log('\n# ' + title);
   await page.waitForFunction(() => !state.locked, { timeout: 6000 });
   assert((await look()).word === wordWas, 'and the same word comes back for another look');
 
-  section('Spending a banked swing');
+  section('Taking the shot');
 
-  // The pitch only goes live after the ready beat; tests that drive a swing
-  // have to wait for it, the same as a player does.
+  // A helper that gets an offer on screen the way the game does.
+  const toOffer = async () => {
+    await stack(Array.from({ length: 30 }, () => 'DOUBLE'));
+    for (let i = 0; i < 3; i++) {
+      await page.waitForFunction(() => !state.locked, { timeout: 8000 });
+      await page.evaluate(() => resolvePitch(400, true));
+      await page.waitForTimeout(1700);
+    }
+    await page.waitForSelector('#offer-screen:not(.hidden)', { timeout: 8000 });
+  };
   const live = () => page.waitForFunction(() => state.swing && state.swing.live,
-                                          { timeout: 8000 });
-  // Wait for a swing to be fully put away rather than guessing at how long
-  // the feedback pause plus the bat flip takes.
+                                          { timeout: 9000 });
   const settled = () => page.waitForFunction(
     () => state.swing === null &&
           !document.getElementById('pitch-screen').classList.contains('hidden'),
-    { timeout: 8000 });
-
-  const bank = (life = 2) => page.evaluate(n => {
-    state.bonus = { atBatsLeft: n };
-    renderHud();
-  }, life);
-
-  await stack(['DOUBLE', 'DOUBLE', 'DOUBLE']);
-  assert(await page.locator('#bank-button').isHidden(), 'no swing button without a banked swing');
-  await bank(2);
-  assert(await page.locator('#bank-button').isVisible(), 'the swing button appears once one is banked');
-  assert((await page.locator('#bank-life').textContent()).includes('2 at-bats'),
-         'and says how long it lasts');
-
-  // The band drawn over the plate must be exactly the stretch of flight the
-  // rules accept — aiming at a lie is the one bug this screen cannot have.
-  const zone = await page.evaluate(() => {
-    const z = document.getElementById('contact-zone');
-    const p = document.getElementById('press-zone');
-    const w = pressWindow();
-    return {
-      top:    parseFloat(z.style.top),
-      height: parseFloat(z.style.height),
-      opens:  laneY(PLATE_AT - contactWindowFraction()),
-      shuts:  laneY(PLATE_AT + contactWindowFraction()),
-      plateY: laneY(PLATE_AT),
-      pressTop:    parseFloat(p.style.top),
-      pressHeight: parseFloat(p.style.height),
-      pressOpens:  laneY(w.opens),
-      pressShuts:  laneY(w.shuts),
-      lead:        SWING_LEAD_MS
-    };
-  });
-  // Contact is a hairline on the plate, not a band competing with the target.
-  assert(Math.abs(zone.top + zone.height / 2 - zone.plateY) < 0.6,
-         `the contact marker sits on PLATE_AT (${zone.top}px, plate at ${zone.plateY})`);
-  assert(zone.height <= 3,
-         `and it is a hairline, not a second band to aim at (${zone.height}px)`);
-
-  // Home plate is drawn at 156-170.5 in the field art. The ball is over the
-  // plate when the rules say it is, or the picture is lying about the timing.
-  assert(zone.plateY > 156 && zone.plateY < 170.5,
-         `the ball crosses the drawn plate at PLATE_AT (y=${zone.plateY})`);
-
-  // The press cue has to be drawn where the rules say to commit, not where
-  // contact happens — otherwise the screen is showing an unreachable target.
-  assert(Math.abs(zone.pressTop - zone.pressOpens) < 0.01 &&
-         Math.abs(zone.pressTop + zone.pressHeight - zone.pressShuts) < 0.01,
-         `the drawn press cue is exactly the press window (${zone.pressTop}px + ${zone.pressHeight}px)`);
-  assert(zone.pressTop < zone.top,
-         'and it sits earlier in the flight than contact, as the load requires');
-
-  // The target has to be the loud one. If contact were drawn as heavily as
-  // the press cue the player would aim at the wrong one, which is exactly
-  // what the two-band version did.
-  const weight = await page.evaluate(() => ({
-    pressW:   parseFloat(getComputedStyle(document.getElementById('press-zone')).width),
-    contactW: parseFloat(getComputedStyle(document.getElementById('contact-zone')).width),
-    cue: getComputedStyle(document.getElementById('press-zone'), '::after').content
-  }));
-  assert(zone.pressHeight > zone.height * 5,
-         `the press target dominates the contact marker (${zone.pressHeight}px vs ${zone.height}px)`);
-  assert(weight.pressW > weight.contactW,
-         `and is the wider of the two (${weight.pressW}px vs ${weight.contactW}px)`);
-  assert(weight.cue.includes('SWING'), `the target is labelled (${weight.cue})`);
-
-  await page.click('#bank-button');
-  assert(await page.locator('#swing-screen').isVisible(), 'the swing screen takes over');
-
-  // The ready beat: nothing is live on the frame the screen changes.
-  const atOpen = await page.evaluate(() => ({
-    live: state.swing.live,
-    btn:  document.getElementById('swing-go').disabled,
-    cue:  document.getElementById('ready-cue').textContent,
-    hold: readyHoldMs()
-  }));
-  assert(atOpen.live === false, 'the pitch is not live on the frame the screen appears');
-  assert(atOpen.btn === true, 'and the swing button is dead until it is');
-  assert(atOpen.cue.trim().length > 0, `the ready cue is showing ("${atOpen.cue.trim()}")`);
-  const beforeLive = await page.evaluate(() => takeSwing(0.75) || state.swing.pressAt);
-  assert(beforeLive === null, 'a press during the ready beat does nothing at all');
-  await page.waitForFunction(() => state.swing && state.swing.live, { timeout: 4000 });
-  assert((await page.evaluate(() => state.swing.progress)) === 0,
-         'and the ball has not moved before the clock starts');
-  assert(await page.locator('#pitch-screen').isHidden(), 'the question is set aside');
-
-  // The abandoned pitch must not be able to charge a strike while the swing
-  // is up. Squeeze its window down to nothing and wait well past it.
-  await page.evaluate(() => { state.atBat.windowMs = 200; });
-  await page.waitForTimeout(650);
-  assert((await page.evaluate(() => state.atBat.strikes)) === 0,
-         'the abandoned pitch cannot charge a strike during the swing');
-  assert(await page.locator('#swing-screen').isVisible(),
-         'and the swing is still the thing on screen');
-
-  const shout = await page.evaluate(() => ({
-    es: document.getElementById('dugout-phrase').textContent,
-    en: document.getElementById('dugout-gloss').textContent
-  }));
-  const known = await page.evaluate(() => DUGOUT_PHRASES);
-  assert(known.some(p => p.es === shout.es && p.en === shout.en),
-         `the dugout shouts a real phrase from the bank ("${shout.es}" / "${shout.en}")`);
-
-  const call = await page.evaluate(() => ({
-    es: document.getElementById('coach-phrase').textContent,
-    en: document.getElementById('coach-gloss').textContent
-  }));
-  const orders = await page.evaluate(() => COACH_PHRASES);
-  assert(orders.some(p => p.es === call.es && p.en === call.en),
-         `the coach calls a real instruction ("${call.es}" / "${call.en}")`);
-  assert(!known.some(p => p.es === call.es),
-         'and it came from the coach bank, not the bench one');
-  assert(call.es !== shout.es, 'the two voices are not saying the same thing');
-  assert((await page.evaluate(() => state.swing.coach)) === call.es,
-         'the coach line on screen is the one the swing recorded');
-
-  // Both banks are really being drawn from, not stuck on their first entry.
-  const spread = { bench: new Set(), coach: new Set() };
-  for (let i = 0; i < 40; i++) {
-    const pair = await page.evaluate(() => {
-      const rnd = window.__realRandom;
-      const b = DUGOUT_PHRASES[Math.floor(rnd() * DUGOUT_PHRASES.length)];
-      const c = COACH_PHRASES[Math.floor(rnd() * COACH_PHRASES.length)];
-      return [b.es, c.es];
-    });
-    spread.bench.add(pair[0]);
-    spread.coach.add(pair[1]);
-  }
-  assert(spread.bench.size > 5 && spread.coach.size > 4,
-         `both banks vary across draws (${spread.bench.size} bench, ${spread.coach.size} coach)`);
-
-  section('The ball in flight');
-
-  // The ball is really travelling, and the element really follows it.
-  const frameA = await page.evaluate(() => ({
-    progress: state.swing.progress,
-    top:      parseFloat(document.getElementById('pitch-ball').style.top)
-  }));
-  await page.waitForTimeout(240);
-  const frameB = await page.evaluate(() => ({
-    progress: state.swing.progress,
-    top:      parseFloat(document.getElementById('pitch-ball').style.top)
-  }));
-  assert(frameB.progress > frameA.progress, 'the ball is closing while the swing is live');
-  assert(frameB.top > frameA.top, 'and the drawn ball comes down the lane with it');
-
-  const drawn = await page.evaluate(p => {
-    placeBall(p);
-    const b = document.getElementById('pitch-ball');
-    return { top: parseFloat(b.style.top), transform: b.style.transform, want: laneY(p) };
-  }, 0.5);
-  assert(Math.abs(drawn.top - drawn.want) < 0.01,
-         'the ball is drawn at exactly the height its progress says');
-
-  const sizes = await page.evaluate(() => [0, 0.5, 1].map(p => laneScale(p)));
-  assert(sizes[0] < sizes[1] && sizes[1] < sizes[2],
-         `the ball grows the whole way in (${sizes.map(s => s.toFixed(2)).join(' → ')})`);
-
-  // The bug a tester actually hit: a 6.4px ball on top of the pitcher's
-  // figure is not findable until it has already travelled half the flight.
-  const atRelease = await page.evaluate(() => {
-    placeBall(0);
-    const b = document.getElementById('pitch-ball').getBoundingClientRect();
-    return { px: b.width, flying: document.getElementById('pitch-ball').classList.contains('flying') };
-  });
-  assert(atRelease.px >= 12,
-         `the ball is findable the moment it appears (${atRelease.px.toFixed(1)}px at release)`);
-  assert(!atRelease.flying, 'and carries no motion trail while it is still in the hand');
-
-  const moving = await page.evaluate(() => {
-    placeBall(0.3);
-    return document.getElementById('pitch-ball').classList.contains('flying');
-  });
-  assert(moving, 'the trail appears once it is actually travelling');
-
-  // The release flash marks the one frame worth reacting to, and it has to
-  // sit on the release point rather than near it.
-  const flash = await page.evaluate(() => {
-    const f = document.getElementById('pitch-flash');
-    popRelease();
-    return { top: parseFloat(f.style.top), want: LANE_RELEASE_Y,
-             anim: getComputedStyle(f).animationName };
-  });
-  assert(flash.top === flash.want, `the release flash is on the release point (y=${flash.top})`);
-  assert(flash.anim === 'releaseFlash', 'and it actually fires');
-
-  section('The load — the press is not the contact');
-
-  // Pressing commits the swing; the barrel arrives SWING_LEAD_MS later and
-  // the ball keeps coming in between. Nothing is settled at the press.
+    { timeout: 12000 });
   const LEAD = await page.evaluate(() => SWING_LEAD_MS);
-  await page.evaluate(() => { for (let i = 1; i < 99999; i++) cancelAnimationFrame(i); });
-  await page.evaluate(() => { state.swing.progress = 0.4; placeBall(0.4); takeSwing(0.4); });
-  const midLoad = await page.evaluate(() => ({
-    press:   state.swing.pressAt,
-    result:  state.swing.result,
-    verdict: state.swing.verdict,
-    loading: document.getElementById('swing-figure').classList.contains('swinging')
+  // Dead centre of the band drawn for a given attempt.
+  const centre = a => page.evaluate(n => {
+    const w = pressWindow(SWING_LEAD_MS, attemptFlightMs(n), attemptWindowMs(n));
+    return (w.opens + w.shuts) / 2;
+  }, a);
+
+  await toOffer();
+  // The offer states the reward in at-bats, because that is what it pays in.
+  const terms = await page.evaluate(() => ({
+    reward: document.getElementById('offer-reward').textContent,
+    clock:  document.getElementById('offer-terms').textContent,
+    extra:  BONUS_EXTRA_AT_BATS
   }));
-  assert(midLoad.press === 0.4, 'the press is recorded where the ball was');
-  assert(midLoad.result === null && midLoad.verdict === null,
-         'and nothing is settled yet — the barrel is still on its way');
-  assert(midLoad.loading, 'the bat is visibly coming through during the load');
+  assert(terms.reward.includes(String(terms.extra)),
+         `the offer says what it pays in at-bats ("${terms.reward.trim()}")`);
+  assert(terms.clock.includes('7'), 'and how long the question gives you');
 
-  await page.waitForTimeout(LEAD + 120);
-  const landed = await page.evaluate(() => ({
-    contact: state.swing.contactAt,
-    verdict: state.swing.verdict,
-    result:  state.swing.result
+  await page.click('#offer-take');
+  await page.waitForTimeout(300);
+  const q = await page.evaluate(() => ({
+    tag: state.deck[state.index].tag,
+    windowMs: state.atBat.windowMs,
+    bonusWindow: BONUS_QUESTION_MS,
+    offersLeft: state.offersLeft,
+    badge: document.getElementById('tier-badge').textContent
   }));
-  // Derived, not a hand-picked threshold: how far the ball travels during
-  // the load depends on how fast the pitch is, and both are constants.
-  const want = await page.evaluate(() => contactProgress(0.4));
-  assert(Math.abs(landed.contact - want) < 1e-9 && landed.contact > 0.4,
-         `the ball moved on during the load (pressed 0.4, met at ${landed.contact.toFixed(3)})`);
-  assert(landed.result !== null, 'and the swing settles once the barrel arrives');
+  assert(q.tag === 'HOMERUN', 'accepting puts a HOMERUN-tier word up');
+  assert(q.windowMs === q.bonusWindow,
+         `on its own clock, not the swing's (${q.windowMs}ms)`);
+  assert(q.offersLeft === 0, 'and the bank is spent whichever way the question goes');
+  assert(q.badge.includes('BONUS'), 'the badge says it is the bonus');
 
+  section('Missing the question is the only out in the mechanic');
+
+  const outsBeforeQ = (await look()).outs;
+  const capBeforeQ = await page.evaluate(() => state.cap);
+  await page.evaluate(() => resolvePitch(200, false));
+  await page.waitForTimeout(300);
+  assert((await look()).outs === outsBeforeQ + 1, 'missing the bonus word is an out');
+  assert((await page.evaluate(() => state.cap)) === capBeforeQ,
+         'and the inning does not grow — the reward was never earned');
+  assert((await page.locator('#feedback').textContent()).includes('No shot'),
+         'the feedback says the shot is gone');
+  await page.waitForFunction(() => !state.locked, { timeout: 9000 });
+  assert(await page.locator('#pitch-screen').isVisible(), 'and play carries on');
+
+  section('Winning the question extends the inning');
+
+  await toOffer();
+  const capBefore = await page.evaluate(() => state.cap);
+  await page.click('#offer-take');
+  await page.waitForTimeout(300);
+  await page.evaluate(() => resolvePitch(200, true));
+  await page.waitForTimeout(2300);
+  const won = await page.evaluate(() => ({
+    cap: state.cap, extra: BONUS_EXTRA_AT_BATS,
+    swingUp: !document.getElementById('swing-screen').classList.contains('hidden'),
+    attempt: state.swing && state.swing.attempt
+  }));
+  assert(won.cap === capBefore + won.extra,
+         `the inning grows by ${won.extra} at-bats (${capBefore} to ${won.cap})`);
+  assert(won.swingUp, 'and the swing is earned');
+  assert(won.attempt === 0, 'starting on the first of three attempts');
+
+  section('Fouling them off');
+
+  const pips = () => page.evaluate(() =>
+    [...document.querySelectorAll('.foul-pip')].filter(p => p.classList.contains('used')).length);
+  assert((await pips()) === 0, 'no fouls yet');
+
+  for (let a = 0; a < 2; a++) {
+    await live();
+    const outsWas = (await look()).outs;
+    await page.evaluate(() => takeSwing(0.02));
+    await page.waitForTimeout(LEAD + 200);
+    assert((await page.evaluate(() => state.swing.attempt)) === a + 1,
+           `a miss on attempt ${a + 1} moves to the next one`);
+    assert((await look()).outs === outsWas, '  and costs no out');
+    assert((await page.evaluate(() => state.swing.result)) === null,
+           '  the at-bat is still alive');
+    assert((await pips()) === a + 1, `  ${a + 1} foul pip(s) lit`);
+    assert((await page.locator('#swing-feedback').textContent()).toLowerCase().includes('foul'),
+           '  and it is called a foul');
+    await page.waitForTimeout(1300);
+  }
+
+  // The third attempt is the one that ends it — and still is not an out.
+  await live();
+  const outsBeforeThird = (await look()).outs;
+  await page.evaluate(() => takeSwing(0.02));
+  await page.waitForTimeout(LEAD + 250);
+  assert((await page.evaluate(() => state.swing.result)) === 'MISS',
+         'a miss on the third ends the at-bat');
+  assert((await look()).outs === outsBeforeThird,
+         'and it STILL costs no out — the risk was on the question');
+  assert((await page.locator('#swing-feedback').textContent()).toLowerCase().includes('inning is still yours'),
+         'the feedback says so rather than charging one');
   await settled();
 
-  section('Letting it go by');
+  section('Connecting on the third, at its own timing');
 
-  // Nobody swung. One pitch means one chance, so the ball reaching the mitt
-  // has to settle the at-bat by itself. Needs its own live pitch: the load
-  // section above spent the previous one.
-  await stack(['DOUBLE', 'DOUBLE']);
-  await bank(1);
-  let outsBefore = (await look()).outs;
-  await page.click('#bank-button');
+  await toOffer();
+  await page.click('#offer-take');
+  await page.waitForTimeout(300);
+  await page.evaluate(() => { state.bases = [true, true, false]; resolvePitch(200, true); });
+  await page.waitForTimeout(2300);
+
+  // Foul two off, then connect on the third band — which is a different band.
+  for (let a = 0; a < 2; a++) {
+    await live();
+    await page.evaluate(() => takeSwing(0.02));
+    await page.waitForTimeout(LEAD + 200);
+    await page.waitForTimeout(1300);
+  }
   await live();
-  // The whole flight plus a margin, taken from the constants so a retune of
-  // the pitch speed cannot leave this waiting too little.
-  await page.waitForTimeout(await page.evaluate(
-    () => PITCH_WINDUP_MS + PITCH_FLIGHT_MS + 300));
-  v = await look();
-  assert((await page.evaluate(() => state.swing && state.swing.verdict)) === 'LOOKING' ||
-         v.outs === outsBefore + 1,
-         'a pitch nobody swings at is an out');
-  assert((await page.locator('#swing-feedback').textContent()).toLowerCase().includes('called strike'),
-         'and the feedback says it was taken');
-  await settled();
-  assert(await page.locator('#pitch-screen').isVisible(), 'play returns after a called strike');
-
-  section('Connecting');
-
-  await stack(['DOUBLE', 'DOUBLE', 'DOUBLE']);
-  await bank(2);
-  await page.click('#bank-button');
-  await live();
-  await page.evaluate(() => {
-    state.bases = [true, true, false];
-    takeSwing(PLATE_AT - leadProgress());   // one load ahead: the band's centre
+  const bands = await page.evaluate(() => {
+    const w0 = pressWindow(SWING_LEAD_MS, attemptFlightMs(0), attemptWindowMs(0));
+    const w2 = pressWindow(SWING_LEAD_MS, attemptFlightMs(2), attemptWindowMs(2));
+    const z = document.getElementById('press-zone');
+    return { first: (w0.shuts - w0.opens) * 170, third: (w2.shuts - w2.opens) * 170,
+             drawn: parseFloat(z.style.height), want: (w2.shuts - w2.opens) * 170 };
   });
-  await page.waitForTimeout(LEAD + 120);
-  v = await look();
-  assert(v.hits.HOMERUN >= 1, 'committing one load ahead of the plate is a home run');
-  assert(v.runs === 3, 'two on plus the batter scores three');
-  assert(v.bases.every(x => !x), 'the bases are cleared');
-  assert((await page.evaluate(() => state.swing.verdict)) === 'ON_TIME', 'the verdict is on time');
-  let swingCall = await ump();
-  assert(swingCall.es === '¡Safe!' && swingCall.tone === 'safe',
-         'the umpire calls the banked home run ¡Safe!');
-  assert((await page.evaluate(() => state.bonus)) === null, 'the swing is spent');
-  assert(await page.locator('#swing-figure').evaluate(e => e.classList.contains('bat-flip')),
-         'the bat flip fires on the home run');
-  assert(await page.locator('#pitch-ball').evaluate(e => e.classList.contains('struck')),
-         'and the ball is sent back up the middle');
-  assert((await page.locator('#swing-feedback').textContent()).includes('JONRÓN'), 'and the dugout gets its payoff');
+  assert(Math.abs(bands.drawn - bands.want) < 0.01,
+         `the drawn band is the THIRD attempt's, not the first's (${bands.drawn.toFixed(1)}px)`);
+  const times = await page.evaluate(() => [0, 1, 2].map(a => attemptWindowMs(a)));
+  assert(times[2] < times[0],
+         `and it is tighter in time than attempt one (${times[0]}ms to ${times[2]}ms)`);
+  assert(bands.third > bands.first,
+         `though still WIDER in pixels than attempt one (${bands.third.toFixed(1)}px against ${bands.first.toFixed(1)}px) — the speed-up enlarges the band and eats most of the squeeze`);
 
-  await settled();
-  assert(await page.locator('#pitch-screen').isVisible(), 'play returns to the next at-bat');
-  assert(!(await page.locator('#swing-figure').evaluate(e => e.classList.contains('bat-flip'))),
-         'the bat flip is cleared before the next one');
-  assert(!(await page.locator('#pitch-ball').evaluate(e => e.classList.contains('struck'))),
-         'and the ball is back on the mound for the next one');
-
-  section('Missing early and late');
-
-  // Out in front of it.
-  await stack(['DOUBLE', 'DOUBLE']);
-  await bank(1);
-  outsBefore = (await look()).outs;
-  await page.click('#bank-button');
-  await live();
-  await page.evaluate(() => takeSwing(0.05));
-  await page.waitForTimeout(LEAD + 120);
-  v = await look();
-  assert(v.outs === outsBefore + 1, 'a swing before the ball arrives is an out');
-  assert((await page.evaluate(() => state.swing.verdict)) === 'EARLY', 'and it is scored early');
-  swingCall = await ump();
-  assert(swingCall.es === '¡Out!' && swingCall.tone === 'against',
-         'the umpire calls a missed swing ¡Out!');
-  assert((await page.evaluate(() => state.bonus)) === null, 'the swing is spent either way');
-  assert(!(await page.locator('#swing-figure').evaluate(e => e.classList.contains('bat-flip'))),
-         'no bat flip on a miss');
-  assert((await page.locator('#swing-feedback').textContent()).toLowerCase().includes('in front'),
-         'the feedback says which side of it they were on');
-  await settled();
-  assert(await page.locator('#pitch-screen').isVisible(), 'and play moves on');
-
-  // Under it late.
-  await stack(['DOUBLE', 'DOUBLE']);
-  await bank(1);
-  outsBefore = (await look()).outs;
-  await page.click('#bank-button');
-  await live();
-  await page.evaluate(() => takeSwing(0.97));
-  await page.waitForTimeout(LEAD + 120);
-  assert((await look()).outs === outsBefore + 1, 'a swing after it has gone by is an out too');
-  assert((await page.evaluate(() => state.swing.verdict)) === 'LATE', 'and it is scored late');
-  assert((await page.locator('#swing-feedback').textContent()).toLowerCase().includes('late'),
-         'the feedback says so');
-  await settled();
-
-  // With the tightened window the load is deeper than the window, so pressing
-  // as the ball reaches the plate is late. The band is drawn on the press
-  // window, above the plate, and that is what the player aims at — so the
-  // check is that the band's own centre connects.
-  await stack(['DOUBLE', 'DOUBLE']);
-  await bank(1);
-  await page.click('#bank-button');
-  await live();
-  await page.evaluate(() => takeSwing(PLATE_AT));
-  await page.waitForTimeout(LEAD + 120);
-  assert((await page.evaluate(() => state.swing.verdict)) === 'LATE',
-         'pressing as the ball reaches the plate is late at this window width');
-  await settled();
-
-  await stack(['DOUBLE', 'DOUBLE']);
-  await bank(1);
-  await page.click('#bank-button');
-  await live();
-  await page.evaluate(() => {
-    const w = pressWindow();
-    takeSwing((w.opens + w.shuts) / 2);      // dead centre of the drawn band
-  });
-  await page.waitForTimeout(LEAD + 120);
-  assert((await page.evaluate(() => state.swing.verdict)) === 'ON_TIME',
-         'pressing at the centre of the drawn SWING band is on time');
-  assert((await page.evaluate(() => state.swing.result)) === 'HOMERUN', 'and it is a home run');
-  await settled();
-
-  section('A spent swing does not seed the next one');
-
-  // The whole loop, through the real UI: bank, spend, and confirm the count
-  // starts from nothing rather than from one.
-  await stack(['DOUBLE', 'DOUBLE', 'DOUBLE', 'DOUBLE', 'DOUBLE']);
-  await bank(2);
-  await page.evaluate(() => { state.hitStreak = 0; });
-  await page.click('#bank-button');
-  await live();
-  await page.evaluate(() => {
-    const w = pressWindow();
+  const runsBefore = (await look()).runs;
+  await page.evaluate(async () => {
+    const w = pressWindow(SWING_LEAD_MS, attemptFlightMs(2), attemptWindowMs(2));
     takeSwing((w.opens + w.shuts) / 2);
   });
-  await page.waitForTimeout(LEAD + 120);
+  await page.waitForTimeout(LEAD + 250);
+  const hit = await look();
   assert((await page.evaluate(() => state.swing.result)) === 'HOMERUN',
-         'the banked swing connects');
+         'the centre of the third band connects');
+  assert(hit.runs === runsBefore + 3, 'two on plus the batter scores three');
+  assert(hit.hits.HOMERUN >= 1, 'and it goes down as a home run');
+  assert(await page.locator('#swing-figure').evaluate(e => e.classList.contains('bat-flip')),
+         'the bat flip fires');
   await settled();
   assert((await page.evaluate(() => state.hitStreak)) === 0,
-         'and the streak is back at zero, not one');
-  assert((await page.evaluate(() => state.bonus)) === null, 'with nothing banked');
+         'and the shot never seeds the next streak');
 
-  // Two more hits must not be enough to re-bank.
-  await page.evaluate(() => { resolvePitch(100, true); });
-  await page.waitForFunction(() => !state.locked, { timeout: 6000 });
-  await page.evaluate(() => { resolvePitch(100, true); });
-  await page.waitForFunction(() => !state.locked, { timeout: 6000 });
-  assert((await page.evaluate(() => state.hitStreak)) === 2, 'two hits later the streak is two');
-  assert((await page.evaluate(() => state.bonus)) === null,
-         'and no swing is banked yet — the spent one did not count toward it');
+  section('The cue is redrawn per attempt');
 
-  await page.evaluate(() => { resolvePitch(100, true); });
-  await page.waitForFunction(() => !state.locked, { timeout: 6000 });
-  assert((await page.evaluate(() => state.bonus)) !== null,
-         'the third hit banks the next one, a full three after the last');
+  const perAttempt = await page.evaluate(() => {
+    const out = [];
+    for (let a = 0; a < SWING_ATTEMPTS; a++) {
+      const w = pressWindow(SWING_LEAD_MS, attemptFlightMs(a), attemptWindowMs(a));
+      out.push({ flight: attemptFlightMs(a), win: attemptWindowMs(a),
+                 band: +((w.shuts - w.opens) * 170).toFixed(1) });
+    }
+    return out;
+  });
+  assert(perAttempt[1].band > perAttempt[0].band,
+         `attempt two's band is bigger than attempt one's (${perAttempt[0].band} to ${perAttempt[1].band}) — speed alone is decoration`);
+  assert(perAttempt[2].win < perAttempt[1].win && perAttempt[2].band < perAttempt[1].band,
+         `attempt three squeezes the window instead (${perAttempt[1].win}ms to ${perAttempt[2].win}ms, ${perAttempt[1].band}px to ${perAttempt[2].band}px)`);
+
+  section('The ball still flies, and the load still leads');
+
+  await toOffer();
+  await page.click('#offer-take');
+  await page.waitForTimeout(300);
+  await page.evaluate(() => resolvePitch(200, true));
+  await page.waitForTimeout(2300);
+  await live();
+
+  await page.waitForFunction(() => state.swing && state.swing.progress > 0, { timeout: 6000 });
+  const a1 = await page.evaluate(() => state.swing.progress);
+  await page.waitForTimeout(240);
+  const a2 = await page.evaluate(() => state.swing.progress);
+  assert(a2 > a1, `the ball is closing while the swing is live (${a1.toFixed(2)} to ${a2.toFixed(2)})`);
+
+  await page.evaluate(() => { state.swing.progress = 0.4; takeSwing(0.4); });
+  const midLoad = await page.evaluate(() => ({
+    press: state.swing.pressAt, result: state.swing.result,
+    loading: document.getElementById('swing-figure').classList.contains('swinging')
+  }));
+  assert(midLoad.press === 0.4 && midLoad.result === null,
+         'pressing commits but settles nothing — the barrel is still on its way');
+  assert(midLoad.loading, 'and the bat is visibly coming through');
+  await page.waitForTimeout(LEAD + 200);
+  const want = await page.evaluate(() => contactProgress(0.4, SWING_LEAD_MS, attemptFlightMs(0)));
+  assert(Math.abs((await page.evaluate(() => state.swing.contactAt)) - want) < 1e-9,
+         'and the barrel arrives where this attempt\'s flight says it does');
+  await page.waitForTimeout(1400);
 
   section('Swinging with the keyboard');
 
-  await stack(['DOUBLE', 'DOUBLE']);
-  await bank(2);
-  await page.click('#bank-button');
   await live();
-  await page.evaluate(() => { state.swing.progress = PLATE_AT - leadProgress(); });
+  await page.evaluate(async () => {
+    const w = pressWindow(SWING_LEAD_MS, attemptFlightMs(state.swing.attempt),
+                          attemptWindowMs(state.swing.attempt));
+    state.swing.progress = (w.opens + w.shuts) / 2;
+  });
   await page.keyboard.press('Space');
-  assert((await page.evaluate(() => state.swing && state.swing.pressAt)) !== null,
-         'space bar commits the swing too');
-  await page.waitForTimeout(LEAD + 120);
-  assert((await page.evaluate(() => state.swing && state.swing.result)) === 'HOMERUN',
+  assert((await page.evaluate(() => state.swing.pressAt)) !== null, 'space bar commits the swing');
+  await page.waitForTimeout(LEAD + 200);
+  assert((await page.evaluate(() => state.swing.result)) === 'HOMERUN',
          'and it settles the same way a click does');
-
-  // A second press mid-load must not start a second swing.
-  await settled();
-  await stack(['DOUBLE', 'DOUBLE']);
-  await bank(1);
-  await page.click('#bank-button');
-  await live();
-  await page.evaluate(() => takeSwing(0.3));
-  await page.evaluate(() => takeSwing(0.75));
-  assert((await page.evaluate(() => state.swing.pressAt)) === 0.3,
-         'a second press during the load is ignored — you only commit once');
   await settled();
 
   /* =================================================================== */
   section('Pause cannot be used to win the swing');
 
-  await stack(['DOUBLE', 'DOUBLE', 'DOUBLE']);
-  await bank(2);
-  await page.click('#bank-button');
+  await toOffer();
+  await page.click('#offer-take');
+  await page.waitForTimeout(300);
+  await page.evaluate(() => resolvePitch(200, true));
+  await page.waitForTimeout(2300);
   await live();
-  await page.waitForFunction(() => state.swing && state.swing.progress > 0.5, { timeout: 6000 });
+  await page.waitForFunction(() => state.swing && state.swing.progress > 0.5, { timeout: 9000 });
   const mid = await page.evaluate(() => state.swing.progress);
   await page.click('#pause-button');
   const stopped = await page.evaluate(() => ({
@@ -891,21 +737,60 @@ const section = title => console.log('\n# ' + title);
   await page.evaluate(() => takeSwing(0.72));
   assert((await page.evaluate(() => state.swing.pressAt)) === null,
          'a press while paused does nothing at all');
-
   await page.click('#pause-resume');
-  assert((await page.evaluate(() => state.swing.live)) === false,
-         'resuming restarts the ready beat rather than releasing the ball');
   await live();
   assert((await page.evaluate(() => state.swing.progress)) < 0.2,
-         'and the ball starts from the pitcher again');
-  await page.evaluate(() => {
-    const w = pressWindow();
+         'resuming throws it again from the mound');
+  assert((await page.evaluate(() => state.swing.attempt)) === 0,
+         'and it does not burn an attempt — the pause is not a foul');
+  await page.evaluate(async () => {
+    const w = pressWindow(SWING_LEAD_MS, attemptFlightMs(0), attemptWindowMs(0));
     takeSwing((w.opens + w.shuts) / 2);
   });
-  await page.waitForTimeout(LEAD + 120);
+  await page.waitForTimeout(LEAD + 250);
   assert((await page.evaluate(() => state.swing.result)) === 'HOMERUN',
          'and the re-thrown pitch is a real one that can still be hit');
   await settled();
+
+  section('The offer alongside the other two rules');
+
+  // The easy-out rule is untouched by any of this: a missed WALK is still an
+  // out on the spot, whatever the offer state.
+  await stack(['WALK', 'DOUBLE', 'DOUBLE']);
+  await page.evaluate(() => { state.offersLeft = 2; renderHud(); });
+  const outsWasEasy = (await look()).outs;
+  await page.evaluate(() => resolvePitch(500, false));
+  await page.waitForTimeout(300);
+  assert((await look()).outs === outsWasEasy + 1,
+         'a missed easy word is still an instant out with a bank in hand');
+  assert((await page.evaluate(() => state.offersLeft)) === 2,
+         'and the bank survives it — an out is not a decline');
+  await page.waitForFunction(() => !state.locked, { timeout: 8000 });
+
+  // The extension really reaches the thing that ends the inning.
+  const grown = await page.evaluate(() => {
+    startInning();
+    const base = state.cap;
+    state.cap = extendInning(state.cap);
+    return {
+      base, grown: state.cap,
+      atBase: inningOver(0, base, state.deck.length, state.cap),
+      atGrown: inningOver(0, state.cap, state.deck.length, state.cap)
+    };
+  });
+  assert(grown.grown > grown.base, `the cap grew (${grown.base} to ${grown.grown})`);
+  assert(grown.atBase === null,
+         'and the inning no longer ends at the old cap — the extension is real');
+  assert(grown.atGrown === 'CAP', 'it ends at the new one');
+
+  // Two bonuses pay and no more, so the inning cannot grow without bound.
+  const ceiling = await page.evaluate(() => {
+    startInning();
+    for (let i = 0; i < 6; i++) state.cap = extendInning(state.cap);
+    return { cap: state.cap, max: AT_BATS_PER_INNING + MAX_INNING_EXTENSION };
+  });
+  assert(ceiling.cap === ceiling.max,
+         `six wins still cannot push the inning past ${ceiling.max} at-bats`);
 
   /* =================================================================== */
   section('Both prompt directions');

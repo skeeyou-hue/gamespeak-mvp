@@ -290,8 +290,11 @@ assert(ab.windowMs === 5000 && ab.strikes === 0 && !ab.over,
 
 const st = T.newTimedState(1);
 assert(st.mode === 'timed' && st.inning === 1, 'state knows which mode and inning it is');
-assert(st.hitStreak === 0 && st.bonus === null && st.swing === null,
-       'bonus fields start empty');
+assert(st.hitStreak === 0 && st.offersLeft === 0 &&
+       st.bonusQ === null && st.swing === null,
+       'offer and swing fields start empty');
+assert(st.cap === T.AT_BATS_PER_INNING,
+       'the inning starts on the base cap, and carries its own so a bonus can extend it');
 assert(same(st.bases, [false, false, false]) && st.outs === 0 && st.runs === 0,
        'bases, outs and runs start clean');
 assert('atBat' in st, 'there is a slot for the at-bat in progress');

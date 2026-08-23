@@ -303,6 +303,96 @@ body {
 .bank-button:hover { filter: brightness(1.05); }
 .bank-life { opacity: 0.7; font-weight: 700; }
 
+/* --- the offer ------------------------------------------------------------
+   Both branches have to be readable at a glance, because the decision is the
+   feature. The reward is stated in at-bats because at-bats are what it pays
+   in — a player who reads "a home run" will take it for the wrong reason. */
+.offer-eyebrow {
+  margin: 0;
+  font-size: 0.66rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--medium);
+}
+
+.offer-title { margin: 4px 0 2px; font-size: 1.45rem; line-height: 1.1; }
+
+.offer-terms { margin: 0 0 12px; font-size: 0.82rem; color: var(--muted); }
+
+.offer-deal {
+  margin: 0 0 14px;
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+  padding: 10px 0;
+}
+
+.offer-line {
+  display: flex;
+  gap: 10px;
+  align-items: baseline;
+  margin: 0;
+  font-size: 0.86rem;
+}
+
+.offer-line + .offer-line { margin-top: 7px; }
+
+.offer-key {
+  flex: 0 0 74px;
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.offer-win  .offer-key { color: var(--good); }
+.offer-lose .offer-key { color: var(--bad); }
+
+.offer-take, .offer-pass {
+  font: inherit;
+  width: 100%;
+  border: none;
+  border-radius: 9px;
+  cursor: pointer;
+}
+
+.offer-take {
+  font-size: 0.98rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  padding: 13px;
+  background: #C2410C;
+  color: #fff;
+}
+
+.offer-take:hover { filter: brightness(1.08); }
+
+.offer-pass {
+  margin-top: 8px;
+  font-size: 0.86rem;
+  font-weight: 700;
+  padding: 10px;
+  background: transparent;
+  color: var(--muted);
+  border: 1px solid var(--line);
+}
+
+.offer-pass:hover { background: #f4f6f4; }
+.offer-left { opacity: 0.75; font-weight: 600; }
+
+/* Fouls, one pip per attempt used. */
+.foul-pips { display: inline-flex; gap: 4px; margin-left: 8px; vertical-align: middle; }
+
+.foul-pip {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  border: 1.5px solid var(--medium);
+  opacity: 0.45;
+}
+
+.foul-pip.used { background: var(--bad); border-color: var(--bad); opacity: 1; }
+
 .swing-eyebrow {
   margin: 0;
   font-size: 0.66rem;

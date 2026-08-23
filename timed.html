@@ -92,9 +92,7 @@
 
       <!-- Only appears while a swing is banked. Taking it is always the
            player's choice — the word is still there to answer instead. -->
-      <button class="bank-button hidden" id="bank-button">
-        Swing for the fences <span class="bank-life" id="bank-life"></span>
-      </button>
+
 
       <div class="choices" id="choices"></div>
       <!-- The umpire. Fires off outcomes the game already produces —
@@ -107,12 +105,38 @@
 
 
     <!-- ============================================================
+         THE OFFER
+         Three in a row does not bank a swing, it offers one. Both branches
+         cost something: accepting risks an out on a hard word, declining
+         spends one of the three chances the bank carries.
+         ============================================================ -->
+    <section class="card hidden" id="offer-screen">
+      <p class="offer-eyebrow">Three in a row</p>
+      <h2 class="offer-title">Swing for the fences?</h2>
+      <p class="offer-terms" id="offer-terms"></p>
+
+      <div class="offer-deal">
+        <p class="offer-line offer-win"><span class="offer-key">Answer it</span>
+          <span id="offer-reward"></span></p>
+        <p class="offer-line offer-lose"><span class="offer-key">Miss it</span>
+          <span>an out. The pitcher wins that one.</span></p>
+      </div>
+
+      <button class="offer-take" id="offer-take">Take the shot</button>
+      <button class="offer-pass" id="offer-pass">Not this one <span
+        class="offer-left" id="offer-left"></span></button>
+    </section>
+
+    <!-- ============================================================
          THE POWER SWING
          Spending a banked swing replaces the whole at-bat: no word, no
          countdown, no count. One pitch comes in; one press swings at it.
          ============================================================ -->
     <section class="card hidden" id="swing-screen">
-      <p class="swing-eyebrow">Banked swing</p>
+      <p class="swing-eyebrow">
+        <span id="swing-eyebrow-text">Swinging for it</span>
+        <span class="foul-pips" id="foul-pips" aria-label="Attempts"></span>
+      </p>
 
       <!-- The dugout, shouting -->
       <p class="dugout-es" id="dugout-phrase" lang="es">¡Vamos!</p>
