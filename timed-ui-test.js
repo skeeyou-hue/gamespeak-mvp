@@ -342,6 +342,93 @@ const section = title => console.log('\n# ' + title);
          `nothing in the HUD overlaps, bank badge showing, across 5 widths${hudClash.length ? ' — ' + hudClash.join(' | ') : ''}`);
 
   /* =================================================================== */
+  section('The cap ends the half-inning');
+
+  // Drive a real inning to the cap with a clean count, the case the cap
+  // exists for: a player good enough that three outs never arrive.
+  const capped = await page.evaluate(async () => {
+    startInning();
+    const cap = AT_BATS_PER_INNING;
+    state.deck = Array.from({ length: cap + 5 },
+                            () => VOCAB.find(w => w.tag === 'DOUBLE'));
+    state.index = 0;
+    startAtBat();
+    for (let i = 0; i < cap; i++) {
+      state.atBat.over = false;
+      resolvePitch(10, true);            // a hit every time
+      state.locked = false;
+      state.index = i + 1;
+      if (!document.getElementById('summary-screen').classList.contains('hidden')) break;
+      state.atBat = newAtBat('DOUBLE');
+    }
+    const over = inningOver(state.outs, state.index, state.deck.length);
+    if (over) finishInning(over);
+    return {
+      over, atBats: state.index, outs: state.outs,
+      title: document.getElementById('summary-title').textContent,
+      sub:   document.getElementById('summary-sub').textContent,
+      summaryUp: !document.getElementById('summary-screen').classList.contains('hidden'),
+      dots: [...document.querySelectorAll('#hud-outs .out-dot')]
+              .filter(d => d.classList.contains('filled')).length
+    };
+  });
+  assert(capped.over === 'CAP', `a clean inning ends on the cap (${capped.atBats} at-bats)`);
+  assert(capped.summaryUp, 'and the summary takes over');
+  assert(capped.outs === 3, 'the count resolves to three, not to whatever it was');
+  assert(capped.dots === 3,
+         'and the HUD agrees — three filled dots under a summary that says the side was retired');
+  assert(/matanza|hilo|Atrapada/.test(capped.title),
+         `the ending has a call on it, not a counter (${capped.title})`);
+  assert(capped.sub.includes(String(await page.evaluate(() => AT_BATS_PER_INNING))),
+         'and the subtitle says what actually ended it');
+
+  // Bases empty is the path that cannot be a double play. Same requirement:
+  // the count still has to reach three.
+  const empty = await page.evaluate(() => {
+    startInning();
+    state.outs = 0;
+    state.bases = [false, false, false];
+    state.index = AT_BATS_PER_INNING;
+    finishInning('CAP');
+    return {
+      outs: state.outs,
+      title: document.getElementById('summary-title').textContent,
+      bases: state.bases.slice()
+    };
+  });
+  assert(empty.outs === 3, 'with the bases empty the count still resolves to three');
+  assert(empty.title === '¡Tres al hilo!',
+         `and the beat is one an empty diamond can support (${empty.title})`);
+  assert(empty.bases.every(b => !b), 'nobody is left on');
+
+  // A runner on: the beat can be a real play, and the runner it retires
+  // comes off, so LOB in the summary agrees with the call.
+  const withRunner = await page.evaluate(() => {
+    startInning();
+    state.outs = 1;
+    state.bases = [true, true, false];
+    state.index = AT_BATS_PER_INNING;
+    finishInning('CAP');
+    return {
+      title: document.getElementById('summary-title').textContent,
+      lob: document.getElementById('sum-lob').textContent
+    };
+  });
+  assert(withRunner.title === '¡Doble matanza!', 'with runners on it is a double play');
+  assert(withRunner.lob === '1',
+         `and the box score's LOB agrees with it — one taken, one stranded (${withRunner.lob})`);
+
+  // Three outs still ends it the old way, and still says so.
+  const byOuts = await page.evaluate(() => {
+    startInning();
+    state.outs = 3;
+    state.index = 5;
+    finishInning(inningOver(state.outs, state.index, state.deck.length));
+    return document.getElementById('summary-title').textContent;
+  });
+  assert(byOuts === 'Inning over', `three outs still ends it as it always did (${byOuts})`);
+
+  /* =================================================================== */
   section('Missing an easy word ends the at-bat');
 
   await stack(['WALK', 'DOUBLE', 'DOUBLE']);

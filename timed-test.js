@@ -300,6 +300,134 @@ assert(!('strikes' in st), 'strikes live on the at-bat, not the inning — they 
 /* ===================================================================
    F. THE DUGOUT
    =================================================================== */
+section('Ending the half-inning');
+
+assert(T.AT_BATS_PER_INNING === 40, `the cap is ${T.AT_BATS_PER_INNING} at-bats`);
+assert(T.inningOver(0, 0, 100) === null, 'a fresh inning is not over');
+assert(T.inningOver(0, T.AT_BATS_PER_INNING - 1, 100) === null,
+       'nor is one at-bat short of the cap');
+assert(T.inningOver(0, T.AT_BATS_PER_INNING, 100) === 'CAP', 'the cap ends it');
+assert(T.inningOver(T.MAX_OUTS, 5, 100) === 'OUTS', 'three outs ends it');
+assert(T.inningOver(0, 3, 3) === 'DECK', 'so does running out of words');
+
+// Outs win ties. An inning that reached three outs on its last legal at-bat
+// ended by outs, not by the clock — and the summary has to say so.
+assert(T.inningOver(T.MAX_OUTS, T.AT_BATS_PER_INNING, 100) === 'OUTS',
+       'three outs on the capped at-bat is still an out ending');
+assert(T.inningOver(T.MAX_OUTS, 100, 100) === 'OUTS',
+       'and it beats the deck running out too');
+
+// The cap is Timed's, not a shared rule. Classic charges an out for every
+// wrong answer and resolves by outs at every accuracy measured, so capping
+// it would introduce a problem rather than fix one.
+const shared = require('./rules.js');
+assert(!('AT_BATS_PER_INNING' in shared),
+       'the cap is not in the shared rules, so Classic never sees it');
+
+assert(T.inningOver(0, 12, 100, 12) === 'CAP', 'the cap is adjustable for testing');
+
+section('Retiring the side when the clock ends it');
+
+// The count has to reach three however it got there, or the scoreboard
+// contradicts the summary.
+for (const [outs, bases] of [
+  [0, [false, false, false]], [1, [false, false, false]], [2, [false, false, false]],
+  [0, [true, false, false]],  [1, [true, true, false]],   [0, [true, true, true]]
+]) {
+  const play = T.retireTheSide(outs, bases);
+  assert(play.outs === T.MAX_OUTS,
+         `from ${outs} out(s) with ${bases.filter(Boolean).length} on, the count resolves to three`);
+  assert(play.call && play.call.es && play.call.en, '  and it comes with a call in both languages');
+}
+
+// A play records the batter plus whoever is on base and no more. You cannot
+// turn two on an empty diamond, so the beat has to fit the field.
+assert(T.retireTheSide(2, [false, false, false]).call.es === '¡Atrapada!',
+       'one out needed on an empty diamond is a catch');
+assert(T.retireTheSide(1, [true, false, false]).call.es === '¡Doble matanza!',
+       'two needed with a runner on is a double play');
+assert(T.retireTheSide(1, [false, false, false]).call.es === '¡Dos al hilo!',
+       'two needed with nobody on cannot be a double play — the batters go down in order');
+assert(T.retireTheSide(0, [true, true, false]).call.es === '¡Triple matanza!',
+       'three needed with two on is a triple play');
+assert(T.retireTheSide(0, [true, false, false]).call.es === '¡Tres al hilo!',
+       'three needed with one on is not — one runner is not enough for two extra outs');
+assert(T.retireTheSide(0, [false, false, false]).call.es === '¡Tres al hilo!',
+       'and three needed on an empty diamond is three in a row');
+
+// Never claims more outs than the field can give.
+let overclaimed = [];
+for (let outs = 0; outs < T.MAX_OUTS; outs++) {
+  for (let mask = 0; mask < 8; mask++) {
+    const bases = [1, 2, 4].map(bit => (mask & bit) !== 0);
+    const play = T.retireTheSide(outs, bases);
+    const needed = T.MAX_OUTS - outs;
+    const claimsOnePlay = /matanza|Atrapada/.test(play.call.es);
+    if (claimsOnePlay && needed > 1 + bases.filter(Boolean).length) {
+      overclaimed.push(`${outs} out(s), ${bases.filter(Boolean).length} on`);
+    }
+  }
+}
+assert(overclaimed.length === 0,
+       `no beat claims more outs on one play than the diamond can give${overclaimed.length ? ': ' + overclaimed.join('; ') : ''}`);
+
+// The runners a multi-out play retires come off the bases, so LOB agrees
+// with what was just called. A play that is not one play strands them.
+const dp = T.retireTheSide(1, [true, true, false]);
+assert(dp.bases.filter(Boolean).length === 1,
+       'a double play takes one runner off, leaving one stranded');
+assert(dp.bases[2] === false && dp.bases[1] === false,
+       '  and it takes the lead one, the way a force play goes');
+const tp = T.retireTheSide(0, [true, true, true]);
+assert(tp.bases.filter(Boolean).length === 1, 'a triple play takes two off');
+const inOrder = T.retireTheSide(0, [true, false, false]);
+assert(inOrder.bases[0] === true,
+       'three in a row retires nobody on base — the runner is left there');
+
+// Nothing to retire.
+assert(T.retireTheSide(T.MAX_OUTS, [true, false, false]).call === null,
+       'a side already retired gets no extra call');
+
+section('The cap and the easy-out rule together');
+
+// Both can end an inning and they must not interfere. An easy miss is an
+// out on the spot; three of those end it by OUTS regardless of the cap.
+{
+  let outs = 0, atBats = 0;
+  for (let i = 0; i < 3; i++) {
+    const p = T.applyPitch(0, false, 9999, 3000, 'WALK');
+    if (p.result === 'OUT') outs++;
+    atBats++;
+  }
+  assert(outs === 3 && T.inningOver(outs, atBats, 100) === 'OUTS',
+         'three missed easy words end the inning by outs in three at-bats, cap untouched');
+}
+
+// And a player who never misses reaches the cap with the count still clean,
+// which is exactly the case the cap exists for.
+{
+  let outs = 0;
+  for (let i = 0; i < T.AT_BATS_PER_INNING; i++) {
+    const p = T.applyPitch(0, true, 10, 3000, 'WALK');
+    if (p.result === 'OUT') outs++;
+  }
+  assert(outs === 0, 'forty correct easy answers charge no outs');
+  assert(T.inningOver(outs, T.AT_BATS_PER_INNING, 100) === 'CAP',
+         'so the inning ends on the cap with a clean count');
+  assert(T.retireTheSide(outs, [false, false, false]).outs === T.MAX_OUTS,
+         'and the side is still retired three-for-three');
+}
+
+// A missed DOUBLE is a strike, so it costs at-bats but not outs — the word
+// comes back. The cap counts at-bats, so a strike must not advance it.
+{
+  const strike = T.applyPitch(0, false, 9999, 4000, 'DOUBLE');
+  assert(strike.result === 'STRIKE' && !strike.instant,
+         'a missed medium word is a strike, not an out');
+  assert(T.inningOver(0, 5, 100) === null,
+         'and five at-bats deep with strikes on them, the inning is still live');
+}
+
 section('The dugout');
 
 assert(T.DUGOUT_PHRASES.length >= 10, `${T.DUGOUT_PHRASES.length} phrases in the bank`);

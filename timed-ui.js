@@ -13,7 +13,6 @@
    ========================================================================= */
 
 const PAYOFF_LABEL = { HOMERUN: 'HOME RUN', TRIPLE: 'TRIPLE', DOUBLE: 'DOUBLE', SINGLE: 'SINGLE' };
-const MAX_OUTS = 3;
 
 // No opposing side in the game yet, so the visiting line on the outfield
 // scorebug is a placeholder. Replace this when there is one.
@@ -297,10 +296,8 @@ function afterPitch() {
   state.index++;
   renderHud();
 
-  if (state.outs >= MAX_OUTS) return endInning('Inning over', 'Three outs — side retired.');
-  if (state.index >= state.deck.length) {
-    return endInning('Through the lineup!', `All ${state.deck.length} words, never struck out.`);
-  }
+  const over = inningOver(state.outs, state.index, state.deck.length);
+  if (over) return finishInning(over);
   startAtBat();
 }
 
@@ -606,11 +603,31 @@ function endSwing() {
   state.locked = false;
   renderHud();
 
-  if (state.outs >= MAX_OUTS) return endInning('Inning over', 'Three outs — side retired.');
-  if (state.index >= state.deck.length) {
-    return endInning('Through the lineup!', `All ${state.deck.length} words, never struck out.`);
-  }
+  const over = inningOver(state.outs, state.index, state.deck.length);
+  if (over) return finishInning(over);
   startAtBat();
+}
+
+/* ---------- end of inning ----------
+   The rules said WHY it ended; this decides what that looks like. A cap
+   ending has to resolve the count to three before anything renders, or the
+   HUD and the outfield scorebug sit there showing one out under a summary
+   that says the side was retired — which reads as a bug, not an ending. ---- */
+
+function finishInning(reason) {
+  if (reason === 'CAP') {
+    const play = retireTheSide(state.outs, state.bases);
+    state.outs  = play.outs;
+    state.bases = play.bases;
+    renderHud();                       // the board agrees before the summary
+    return endInning(play.call.es,
+      `${play.call.en} ${AT_BATS_PER_INNING} at-bats — that is the inning.`);
+  }
+  if (reason === 'DECK') {
+    return endInning('Through the lineup!',
+                     `All ${state.deck.length} words, never struck out.`);
+  }
+  return endInning('Inning over', 'Three outs — side retired.');
 }
 
 /* ---------- end of inning ---------- */

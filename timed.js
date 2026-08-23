@@ -496,6 +496,90 @@ const COACH_PHRASES = [
 
 
 /* -------------------------------------------------------------------------
+   9d. THE HALF-INNING
+
+   Three outs ends it, as it always did. So does running out of at-bats:
+   AT_BATS_PER_INNING caps the half-inning so a session is bounded and two
+   sessions are comparable.
+
+   The cap is a Timed rule and lives here rather than in the shared rules.js
+   on purpose. Classic charges an out for every wrong answer, so 100% of
+   Classic innings resolve by outs at every accuracy measured — capping it
+   would introduce a problem rather than fix one.
+
+   Sized off sim-innings.js rather than off a guess. At 40, an inning at 60%
+   accuracy still ends by outs 97% of the time and its median length does not
+   move; at 75% both endings are live, 54% outs and 46% cap; at 85% and up,
+   where the out rule had effectively stopped firing, the cap is the ending.
+   A cap at the median of the learner band, which is where intuition puts it,
+   truncates half of that band by construction — the number has to be sized
+   against the tail, not the middle.
+
+   inningOver only reports WHY. What it looks like is the UI's problem.
+   ------------------------------------------------------------------------- */
+
+const MAX_OUTS           = 3;
+const AT_BATS_PER_INNING = 40;
+
+// 'OUTS' | 'CAP' | 'DECK' | null. Outs win ties: an inning that reached three
+// outs on its last legal at-bat ended by outs, not by the clock.
+function inningOver(outs, atBats, deckLength, cap = AT_BATS_PER_INNING) {
+  if (outs >= MAX_OUTS)     return 'OUTS';
+  if (atBats >= cap)        return 'CAP';
+  if (atBats >= deckLength) return 'DECK';
+  return null;
+}
+
+/* -------------------------------------------------------------------------
+   9e. RETIRING THE SIDE
+
+   When the cap ends it, the count has to reach three or the scoreboard
+   contradicts the story: a half-inning that ends showing one out reads as a
+   bug, not as an ending.
+
+   The beat has to fit the diamond. A play records the batter plus whoever is
+   on base and no more, so you cannot turn two on an empty one. Where the
+   field cannot support a multi-out play the batters go down in order
+   instead — which is what actually happens, and needs nothing invented.
+
+   The runners a multi-out play retires come off the bases, so the box
+   score's LOB agrees with what was just called.
+   ------------------------------------------------------------------------- */
+
+const IN_A_ROW = { 2: 'Dos', 3: 'Tres' };
+
+function retireTheSide(outs, bases) {
+  const needed  = MAX_OUTS - outs;
+  const runners = bases.filter(Boolean).length;
+  const next    = bases.slice();
+
+  if (needed <= 0) return { call: null, bases: next, outs };
+
+  // The batter is one out; each runner on base can be another.
+  const onOnePlay = needed <= 1 + runners;
+  let call;
+
+  if (needed === 1) {
+    call = { es: '¡Atrapada!', en: 'Caught — that is three.' };
+  } else if (onOnePlay) {
+    call = needed === 2
+      ? { es: '¡Doble matanza!',  en: 'Double play — the side is retired.' }
+      : { es: '¡Triple matanza!', en: 'Triple play — the side is retired.' };
+    // Lead runner first, the way a force play actually goes.
+    let taking = needed - 1;
+    for (let base = 2; base >= 0 && taking > 0; base--) {
+      if (next[base]) { next[base] = false; taking--; }
+    }
+  } else {
+    call = { es: `¡${IN_A_ROW[needed]} al hilo!`,
+             en: `${needed} down in a row — the side is retired.` };
+  }
+
+  return { call, bases: next, outs: MAX_OUTS };
+}
+
+
+/* -------------------------------------------------------------------------
    10. WHICH WAY THE PITCH COMES
    Each new word is shown in one of two directions, picked at random:
 
@@ -538,6 +622,7 @@ function promptFor(word, direction) {
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
     TIMED_TIERS, MAX_STRIKES, SPEED_BANDS,
+    MAX_OUTS, AT_BATS_PER_INNING, inningOver, retireTheSide,
     BONUS_STREAK, BONUS_LIFE_MIN, BONUS_LIFE_MAX,
     windowForTag, bucketForTag, hitForResponse, applyPitch, isFreeSwingTier,
     rollBonusLife, applyAtBatToBonus, newAtBat, newTimedState,
