@@ -303,5 +303,86 @@ for (let ms = 0; ms <= T.PITCH_WINDUP_MS; ms += 25) {
 }
 assert(earlyClean, 'no swing during the wind-up can accidentally be contact');
 
+/* ===================================================================
+   I. THE LOAD — the press has to lead the contact
+   =================================================================== */
+section('Where the ball is when the barrel arrives');
+
+const LEAD = T.SWING_LEAD_MS / T.PITCH_FLIGHT_MS;
+assert(Math.abs(T.leadProgress() - LEAD) < 1e-12,
+       `the load eats ${(LEAD * 100).toFixed(2)}% of the flight`);
+assert(Math.abs(T.contactProgress(0.4) - (0.4 + LEAD)) < 1e-12,
+       'the ball keeps travelling while the bat is on its way');
+assert(T.contactProgress(0.95) === 1,
+       'a press that late still only carries the ball to the mitt, never past it');
+assert(T.contactProgress(0.5, 0, T.PITCH_FLIGHT_MS) === 0.5,
+       'with no load at all, the press is the contact');
+assert(T.contactProgress(0.5, 700, 1400) === 1,
+       'the lead is adjustable for testing');
+
+section('Pressing on the plate is now late');
+
+// This is the whole point of the change: the timing that used to be perfect
+// is now a swing behind the ball.
+assert(T.swingVerdict(T.contactProgress(T.PLATE_AT)) === 'LATE',
+       'pressing exactly as the ball crosses the plate is LATE');
+assert(!T.isContact(T.contactProgress(T.PLATE_AT)),
+       'and it is a miss, not a home run');
+assert(T.isContact(T.contactProgress(T.PLATE_AT - LEAD)),
+       'pressing one load ahead of the plate is contact');
+assert(T.swingVerdict(T.contactProgress(T.PLATE_AT - LEAD)) === 'ON_TIME',
+       'and it is scored on time');
+
+section('The press window');
+
+const W = T.pressWindow();
+assert(Math.abs(W.opens - (T.PLATE_AT - T.CONTACT_WINDOW - LEAD)) < 1e-12 &&
+       Math.abs(W.shuts - (T.PLATE_AT + T.CONTACT_WINDOW - LEAD)) < 1e-12,
+       `the press window is the contact window shifted back by the load (${W.opens.toFixed(4)}..${W.shuts.toFixed(4)})`);
+
+// The load moves WHEN you have to act. It must not shrink HOW LONG you have.
+const pressMs   = (W.shuts - W.opens) * T.PITCH_FLIGHT_MS;
+assert(Math.abs(pressMs - T.contactWindowMs()) < 1e-9,
+       `the load shifts the window without narrowing it (${Math.round(pressMs)}ms, same as contact)`);
+assert(W.opens > 0,
+       'and the window still opens after the ball is released, not during the wind-up');
+
+// Every press inside the window connects; every press outside it does not.
+for (const [press, ok, label] of [
+  [W.opens - 0.02, false, 'a shade before the window opens'],
+  [W.opens,        true,  'the first frame it is open'],
+  [(W.opens + W.shuts) / 2, true, 'dead centre'],
+  [W.shuts,        true,  'the last frame it is open'],
+  [W.shuts + 0.02, false, 'a shade after it shuts'],
+  [0,              false, 'pressing during the wind-up'],
+  [1,              false, 'pressing as it hits the mitt']
+]) {
+  assert(T.isContact(T.contactProgress(press)) === ok,
+         `${label} ${ok ? 'connects' : 'misses'}`);
+}
+
+// Which side of it they were on, in press terms.
+assert(T.swingVerdict(T.contactProgress(W.opens - 0.05)) === 'EARLY',
+       'pressing before the window is EARLY');
+assert(T.swingVerdict(T.contactProgress(W.shuts + 0.05)) === 'LATE',
+       'pressing after it is LATE');
+
+section('The load leaves the countdown scoring alone');
+
+// The banked swing and the multiple-choice pitch are different clocks. The
+// load must not have reached across into the tiered timing.
+const bandsBefore = T.SPEED_BANDS.map(b => `${b.within}:${b.hit}`).join('|');
+assert(bandsBefore === '0.25:HOMERUN|0.45:TRIPLE|0.7:DOUBLE|1:SINGLE',
+       'the speed bands are untouched by the load');
+for (const [frac, hit] of [[0.1, 'HOMERUN'], [0.4, 'TRIPLE'], [0.6, 'DOUBLE'], [0.95, 'SINGLE']]) {
+  assert(T.hitForResponse(4000 * frac, 4000) === hit,
+         `answering at ${Math.round(frac * 100)}% of a 4s window is still a ${hit}`);
+}
+assert(T.hitForResponse(4001, 4000) === null, 'and past the window is still nothing');
+assert(T.applyPitch(0, true, 100, 4000).hit === 'HOMERUN',
+       'a fast correct answer is still scored on the answer clock, not the swing clock');
+assert(T.windowForTag('WALK') === 3000 && T.windowForTag('TRIPLE') === 5000,
+       'the tiers still set the clock they always did');
+
 console.log(`\n${passed} passed, ${failed} failed`);
 process.exit(failed ? 1 : 0);

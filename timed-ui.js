@@ -46,6 +46,7 @@ const el = {
   swingFigure:   document.getElementById('swing-figure'),
   pitchBall:     document.getElementById('pitch-ball'),
   contactZone:   document.getElementById('contact-zone'),
+  pressZone:     document.getElementById('press-zone'),
   swingGo:       document.getElementById('swing-go'),
   swingFeedback: document.getElementById('swing-feedback'),
 
@@ -308,6 +309,7 @@ const MISS_TEXT = {
 };
 
 let swingFrame = null;
+let swingTimer = null;
 
 function startSwing() {
   if (!state.bonus || state.locked || state.swing) return;
@@ -319,7 +321,7 @@ function startSwing() {
   const phrase = DUGOUT_PHRASES[Math.floor(Math.random() * DUGOUT_PHRASES.length)];
   const coach  = COACH_PHRASES[Math.floor(Math.random() * COACH_PHRASES.length)];
   state.swing = { progress: 0, phrase: phrase.es, coach: coach.es,
-                  result: null, verdict: null };
+                  pressAt: null, contactAt: null, result: null, verdict: null };
 
   el.dugoutPhrase.textContent = phrase.es;
   el.dugoutGloss.textContent  = phrase.en;
@@ -328,7 +330,7 @@ function startSwing() {
   el.swingFeedback.innerHTML  = '&nbsp;';
   el.swingFeedback.className  = 'feedback';
   el.swingGo.disabled         = false;
-  el.swingFigure.classList.remove('bat-flip');
+  el.swingFigure.classList.remove('bat-flip', 'swinging');
   el.pitchBall.classList.remove('struck');
   placeBall(0);
   el.pitchScreen.classList.add('hidden');
@@ -341,25 +343,49 @@ function startSwing() {
     state.swing.progress = progress;
     placeBall(progress);
     // The ball is in the mitt and the bat never left the shoulder. One
-    // pitch means one chance, so that settles it.
-    if (progress >= 1) { swingFrame = null; takeSwing(null); return; }
+    // pitch means one chance, so that settles it — unless a swing is
+    // already committed and its barrel is still on the way.
+    if (progress >= 1 && state.swing.pressAt === null) {
+      swingFrame = null; takeSwing(null); return;
+    }
     swingFrame = requestAnimationFrame(tick);
   };
   swingFrame = requestAnimationFrame(tick);
 }
 
-// `progress` is where the ball was when the bat came through. Null means it
-// never came through at all.
+// `progress` is where the ball was when the player COMMITTED — pressed the
+// button — not where it was at contact. Null means they never committed.
+//
+// Pressing does not settle anything. It starts the bat, and the barrel takes
+// SWING_LEAD_MS to arrive; the ball keeps coming in the meantime. The outcome
+// is scored when the barrel gets there, on contactProgress().
 function takeSwing(progress) {
+  if (!state.swing || state.swing.result || state.swing.pressAt !== null) return;
+
+  const swung = progress !== null && progress !== undefined;
+  el.swingGo.disabled = true;
+
+  if (!swung) { resolveSwing(null); return; }   // took it: nothing to load
+
+  state.swing.pressAt = progress;
+  el.swingFigure.classList.add('swinging');
+  // The ball keeps flying through the load, so the pitch loop stays running.
+  swingTimer = setTimeout(() => resolveSwing(state.swing && state.swing.pressAt),
+                          SWING_LEAD_MS);
+}
+
+function resolveSwing(pressProgress) {
   if (!state.swing || state.swing.result) return;
   if (swingFrame) { cancelAnimationFrame(swingFrame); swingFrame = null; }
+  if (swingTimer) { clearTimeout(swingTimer); swingTimer = null; }
 
-  const swung  = progress !== null && progress !== undefined;
-  const onTime = swung && isContact(progress);
-  state.swing.verdict = swung ? swingVerdict(progress) : 'LOOKING';
+  const swung   = pressProgress !== null && pressProgress !== undefined;
+  const contact = swung ? contactProgress(pressProgress) : null;
+  const onTime  = swung && isContact(contact);
+  state.swing.contactAt = contact;
+  state.swing.verdict = swung ? swingVerdict(contact) : 'LOOKING';
   state.swing.result  = onTime ? 'HOMERUN' : 'MISS';
   state.bonus         = null;          // spent, hit or miss
-  el.swingGo.disabled = true;
 
   if (onTime) {
     state.hits.HOMERUN++;
@@ -368,6 +394,9 @@ function takeSwing(progress) {
     state.runs += play.runs;
     el.swingFeedback.textContent = `¡JONRÓN! ${play.runs} in.`;
     el.swingFeedback.className   = 'feedback good';
+    // The flip picks up exactly where the swing left the bat, so the two
+    // read as one motion rather than a reset.
+    el.swingFigure.classList.remove('swinging');
     el.swingFigure.classList.add('bat-flip');
     el.pitchBall.classList.add('struck');
   } else {
@@ -381,7 +410,7 @@ function takeSwing(progress) {
 }
 
 function endSwing() {
-  el.swingFigure.classList.remove('bat-flip');
+  el.swingFigure.classList.remove('bat-flip', 'swinging');
   el.pitchBall.classList.remove('struck');
   placeBall(0);
   el.swingScreen.classList.add('hidden');
@@ -455,7 +484,8 @@ el.playAgain.addEventListener('click', startInning);
 el.bankButton.addEventListener('click', startSwing);
 el.swingGo.addEventListener('click', () => takeSwing(state.swing ? state.swing.progress : null));
 document.addEventListener('keydown', event => {
-  if (event.code === 'Space' && state.swing && !state.swing.result) {
+  if (event.code === 'Space' && state.swing && !state.swing.result &&
+      state.swing.pressAt === null) {
     event.preventDefault();
     takeSwing(state.swing.progress);
   }
@@ -464,9 +494,21 @@ document.addEventListener('keydown', event => {
 // Draw the contact window straight from the rules, so the band over the
 // plate is exactly the stretch of flight isContact() accepts — no more, no
 // less, and it cannot drift if the numbers are retuned.
-el.contactZone.style.top    = laneY(PLATE_AT - CONTACT_WINDOW) + 'px';
-el.contactZone.style.height = (laneY(PLATE_AT + CONTACT_WINDOW) -
-                               laneY(PLATE_AT - CONTACT_WINDOW)) + 'px';
+const band = (el_, from, to) => {
+  el_.style.top    = laneY(from) + 'px';
+  el_.style.height = (laneY(to) - laneY(from)) + 'px';
+};
+band(el.contactZone, PLATE_AT - CONTACT_WINDOW, PLATE_AT + CONTACT_WINDOW);
+
+// The press cue. Drawing only the contact window would be showing the player
+// a target they cannot aim at — by the time the ball is in it, committing is
+// already too late.
+const press = pressWindow();
+band(el.pressZone, press.opens, press.shuts);
+
+// The bat's load animation lasts exactly as long as the rule says it does.
+document.documentElement.style.setProperty('--swing-lead', SWING_LEAD_MS + 'ms');
+
 placeBall(0);
 
 startInning();

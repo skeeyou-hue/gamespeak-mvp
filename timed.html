@@ -176,8 +176,11 @@
           <ellipse cx="100" cy="196" rx="8.6" ry="7" fill="#40230D" opacity="0.7"/>
         </svg>
 
-        <!-- The window isContact() accepts, drawn from the constants by
-             timed-ui.js so what you aim at is what the rules allow. -->
+        <!-- Two cues, both drawn from the constants by timed-ui.js. The
+             solid band is where the ball has to be at contact; the dashed
+             one above it is where it has to be when you press, because the
+             bat takes SWING_LEAD_MS to get there. -->
+        <div class="press-zone" id="press-zone"></div>
         <div class="contact-zone" id="contact-zone"></div>
 
         <!-- The batter, built the same way as the one out at the plate:
