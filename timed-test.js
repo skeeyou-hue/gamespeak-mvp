@@ -332,18 +332,26 @@ assert(T.contactProgress(0.5, 0, T.PITCH_FLIGHT_MS) === 0.5,
 assert(T.contactProgress(0.5, 700, 1400) === 1,
        'the lead is adjustable for testing');
 
-section('Pressing on the plate is now late');
+section('What the load costs at each end of the window');
 
-// This is the whole point of the change: the timing that used to be perfect
-// is now a swing behind the ball.
-assert(T.swingVerdict(T.contactProgress(T.PLATE_AT)) === 'LATE',
-       'pressing exactly as the ball crosses the plate is LATE');
-assert(!T.isContact(T.contactProgress(T.PLATE_AT)),
-       'and it is a miss, not a home run');
-assert(T.isContact(T.contactProgress(T.PLATE_AT - LEAD)),
-       'pressing one load ahead of the plate is contact');
-assert(T.swingVerdict(T.contactProgress(T.PLATE_AT - LEAD)) === 'ON_TIME',
+// The load is a fixed 180ms of hitter, not a fraction of the pitch, so how
+// much of the window it eats depends on how fast the pitch is. On the 2400ms
+// flight it is 7.5%, and pressing as the ball crosses the plate still lands
+// inside the window — which is the point: what looks right IS right.
+assert(T.isContact(T.contactProgress(T.PLATE_AT)),
+       'pressing as the ball crosses the plate connects');
+assert(T.swingVerdict(T.contactProgress(T.PLATE_AT)) === 'ON_TIME',
        'and it is scored on time');
+assert(T.isContact(T.contactProgress(T.PLATE_AT - LEAD)),
+       'pressing one load ahead of the plate connects too');
+
+// The lead still costs something, and it costs it at the late edge: the last
+// frame the BALL is in the window is already too late to start the bat.
+assert(T.isContact(T.PLATE_AT + T.CONTACT_WINDOW),
+       'the ball at the far edge of the window is still contact');
+assert(!T.isContact(T.contactProgress(T.PLATE_AT + T.CONTACT_WINDOW)),
+       'but committing there is a miss — the barrel arrives after the ball has gone');
+assert(T.contactProgress(0.5) > 0.5, 'the press always leads the contact, never trails it');
 
 section('The press window');
 
