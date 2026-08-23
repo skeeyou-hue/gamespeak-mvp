@@ -36,7 +36,14 @@ assert(Object.keys(mix).every(t => TIERS.includes(t)),
 const easy = mix.WALK + mix.SINGLE, medium = mix.DOUBLE, hard = mix.TRIPLE + mix.HOMERUN;
 assert(easy + medium + hard === T.VOCAB.length,
        `the buckets account for every word (easy ${easy}, medium ${medium}, hard ${hard})`);
-assert(easy > hard, 'and the list leans easy rather than being balanced for its own sake');
+// The easy tier used to be the biggest, on the reasoning that a learning
+// app should lean gentle. Missing an easy word is now an instant out, which
+// makes it a penalty tier rather than a gentle one — simulated over 4000
+// innings it was 42% of the deck and 60-67% of the outs. It must not be the
+// largest bucket while that rule stands.
+assert(easy <= medium + 4 && easy < hard + 6,
+       `the easy tier does not dominate a deck where missing it ends the at-bat (easy ${easy}, medium ${medium}, hard ${hard})`);
+assert(easy >= 25, `but there are still enough easy words to open on (${easy})`);
 
 // Every entry is a complete bilingual pair. A blank half would render as an
 // empty prompt or an empty choice button rather than failing loudly.

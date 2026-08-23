@@ -21,7 +21,7 @@
    Add or edit entries here — everything else adapts automatically.
    ------------------------------------------------------------------------- */
 const VOCAB = [
-  // --- WALK: everyday words, close cognates, high frequency (21) ---
+  // --- WALK: everyday words, close cognates, high frequency (19) ---
   { es: 'el béisbol',     en: 'baseball',        tag: 'WALK'   },
   { es: 'la pelota',      en: 'the ball',        tag: 'WALK'   },
   { es: 'el bate',        en: 'the bat',         tag: 'WALK'   },
@@ -40,11 +40,11 @@ const VOCAB = [
   { es: 'el aficionado',  en: 'the fan',         tag: 'WALK'   },
   { es: 'el campeón',     en: 'the champion',    tag: 'WALK'   },
   { es: 'la liga',        en: 'the league',      tag: 'WALK'   },
-  { es: 'la temporada',   en: 'the season',      tag: 'WALK'   },
-  { es: 'el error',       en: 'the error',       tag: 'WALK'   },
-  { es: 'el público',     en: 'the crowd',       tag: 'WALK'   },
 
-  // --- SINGLE: common baseball terms, some verbs (21) ---
+  { es: 'el error',       en: 'the error',       tag: 'WALK'   },
+
+
+  // --- SINGLE: common baseball terms, some verbs (13) ---
   { es: 'el lanzador',    en: 'the pitcher',     tag: 'SINGLE' },
   { es: 'el bateador',    en: 'the batter',      tag: 'SINGLE' },
   { es: 'la carrera',     en: 'the run (score)', tag: 'SINGLE' },
@@ -52,22 +52,22 @@ const VOCAB = [
   { es: 'atrapar',        en: 'to catch',        tag: 'SINGLE' },
   { es: 'lanzar',         en: 'to throw/pitch',  tag: 'SINGLE' },
   { es: 'ganar',          en: 'to win',          tag: 'SINGLE' },
-  { es: 'anotar',         en: 'to score',        tag: 'SINGLE' },
-  { es: 'el sencillo',    en: 'the single (hit)', tag: 'SINGLE' },
-  { es: 'la curva',       en: 'the curveball',   tag: 'SINGLE' },
-  { es: 'las gradas',     en: 'the stands',      tag: 'SINGLE' },
+
+
+
+
   { es: 'entrenar',       en: 'to train',        tag: 'SINGLE' },
-  { es: 'deslizarse',     en: 'to slide',        tag: 'SINGLE' },
+
   { es: 'el jonrón',      en: 'the homer',       tag: 'SINGLE' },
   { es: 'el out',         en: 'the out',         tag: 'SINGLE' },
-  { es: 'la derrota',     en: 'the defeat',      tag: 'SINGLE' },
+
   { es: 'el entrenador',  en: 'the coach',       tag: 'SINGLE' },
-  { es: 'el banco',       en: 'the bench (dugout)', tag: 'SINGLE' },
-  { es: 'el marcador',    en: 'the scoreboard',  tag: 'SINGLE' },
+
+
   { es: 'la jugada',      en: 'the play (on the field)', tag: 'SINGLE' },
   { es: 'el campeonato',  en: 'the championship', tag: 'SINGLE' },
 
-  // --- DOUBLE: specialist vocabulary, false friends (21).
+  // --- DOUBLE: specialist vocabulary, false friends (31).
   //     el jardín and el cuadro are the real traps: "the garden" and "the
   //     square" are both perfectly good translations and both wrong here.
   //     el toque joins them — "the touch" is right everywhere but a ballpark. ---
@@ -92,6 +92,16 @@ const VOCAB = [
   { es: 'la rompiente',   en: 'the breaking ball',       tag: 'DOUBLE' },
   { es: 'el turno al bate', en: 'the at-bat',            tag: 'DOUBLE' },
   { es: 'el equipo local', en: 'the home team',          tag: 'DOUBLE' },
+  { es: 'la temporada',   en: 'the season',              tag: 'DOUBLE' },
+  { es: 'el público',     en: 'the crowd',               tag: 'DOUBLE' },
+  { es: 'anotar',         en: 'to score',                tag: 'DOUBLE' },
+  { es: 'el sencillo',    en: 'the single (hit)',        tag: 'DOUBLE' },
+  { es: 'la curva',       en: 'the curveball',           tag: 'DOUBLE' },
+  { es: 'las gradas',     en: 'the stands',              tag: 'DOUBLE' },
+  { es: 'deslizarse',     en: 'to slide',                tag: 'DOUBLE' },
+  { es: 'la derrota',     en: 'the defeat',              tag: 'DOUBLE' },
+  { es: 'el banco',       en: 'the bench (dugout)',      tag: 'DOUBLE' },
+  { es: 'el marcador',    en: 'the scoreboard',          tag: 'DOUBLE' },
 
   // --- TRIPLE: positions and pitches you'd only know from the game (19).
   //     Mostly phrases from here on: the hard tiers are where a language
