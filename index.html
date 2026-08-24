@@ -61,6 +61,10 @@
 
     <!-- ============================================================
          START SCREEN: nothing is live until this is pressed.
+         It is also the audio unlock — see audio.js. The press is the
+         only user gesture guaranteed to happen before anything could
+         want to make a sound, and mobile browsers will not start audio
+         without one.
          ============================================================ -->
     <section class="card start-card" id="start-screen">
       <p class="start-eyebrow">Classic</p>
@@ -134,6 +138,7 @@
 
   <script src="rules.js"></script>
   <script src="scene.js"></script>
+  <script src="audio.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

@@ -68,8 +68,26 @@ const show = state => state.map((on, i) => on ? ['1B', '2B', '3B'][i] : null)
   assert(gated.count === String(gated.vocab),
          `the card counts the deck rather than a typed number (${gated.count} of ${gated.vocab})`);
 
+  const before = await page.evaluate(() => audioStatus());
   await page.click('#start-button');
   await page.waitForSelector('.choice');
+  const after = await page.evaluate(() => {
+    const first = audioStatus().context;
+    return Object.assign(audioStatus(), { same: unlockAudio() === first });
+  });
+
+  /* --- the audio unlock ------------------------------------------------
+     No audio ships yet. What is tested is the gesture, because that is the
+     part that cannot be added later without a round of "audio is broken"
+     reports from every iOS tester at once. --------------------------- */
+  assert(!before.opened && before.context === null,
+         'no audio context exists before the press — creating one on load is exactly what does not work on mobile');
+  assert(after.opened, 'the start press runs the unlock');
+  assert(after.supported === false || after.context !== null,
+         'and a browser that supports Web Audio comes out of it with a context');
+  assert(after.supported === false || after.state !== 'suspended',
+         `the context is not left suspended, which is the state that plays nothing (${after.state})`);
+  assert(after.same, 'pressing again resumes the same context rather than stacking up a second one');
 
   const opened = await page.evaluate(() => ({
     startHidden: document.getElementById('start-screen').classList.contains('hidden'),

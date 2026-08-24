@@ -704,7 +704,10 @@ function showStart() {
 }
 
 el.playAgain.addEventListener('click', startInning);
-el.startButton.addEventListener('click', startInning);
+el.startButton.addEventListener('click', () => {
+  unlockAudio();          // inside the gesture, which is the whole point
+  startInning();
+});
 el.bankButton.addEventListener('click', startSwing);
 el.swingGo.addEventListener('click', () => takeSwing(state.swing ? state.swing.progress : null));
 el.pauseButton.addEventListener('click', togglePause);

@@ -353,7 +353,10 @@ function showStart() {
 }
 
 el.playAgain.addEventListener('click', startInning);
-el.startButton.addEventListener('click', startInning);
+el.startButton.addEventListener('click', () => {
+  unlockAudio();          // inside the gesture, which is the whole point
+  startInning();
+});
 
 // Nothing runs until the player says so.
 showStart();
