@@ -31,6 +31,46 @@ Run all three before committing anything.
 
 ---
 
+## Do not touch these without asking
+
+Everything below this section is a convention: reasoning you are expected to
+apply, argue with, and occasionally set aside with a reason. This section is
+not that. These are rules. They hold until the person you are working for
+says otherwise, in the message you are working from — not inferred from an
+earlier approval, not implied by the change being small, not licensed by the
+fact that touching one would make the current task easier.
+
+**1. Tier assignments.** The `tag` on any of the 100 entries in `rules.js`,
+and `TIMED_TIERS`. A tier is a word's clock and its consequence at once — in
+Timed a mistagged word is both the wrong difficulty and, under the easy-out
+rule, an instant out instead of a strike. Retiering is also the change most
+likely to look like tidying: `el error` reads easy and is tagged `WALK`, and
+that is a known open question, not an invitation.
+
+**2. Scene files.** `scene.js`, `scene.css`, and the SVG inside them. They
+are read by both modes, they are the only thing standing between the player
+and a cropped diamond, and their tests measure geometry that a plausible-
+looking edit breaks silently. Nine fielders were once entirely off screen
+with every test green.
+
+**3. Timing constants.** `PITCH_WINDUP_MS`, `PITCH_FLIGHT_MS`, `PLATE_AT`,
+`CONTACT_WINDOW_MS`, `SWING_LEAD_MS`, `READY_READ_MS`, `READY_CUE_MS`,
+`SPEED_BANDS`, and anything added later that sets a pitch's clock — as of
+this writing `ATTEMPT_FLIGHT_MS` and `ATTEMPT_WINDOW_MS` on the bonus-swing
+branch, which are not in this tree yet. These are coupled to
+each other and the couplings are not local: speeding the flight from 2400ms
+to 2000ms shrank the contact window and moved the fixed swing lead from 0.075
+of the flight to 0.09, with nobody editing either. Any one of them is a
+difficulty change wearing an implementation hat.
+
+Two things this does not prohibit. Reading them, measuring them, and
+simulating what a different value would do is always in scope — that is how
+you make the case for changing one. And a rule can be lifted in the same
+breath it is invoked: "yes, change the window" is enough. What is not enough
+is the absence of an objection.
+
+---
+
 ## Shared files are shared
 
 `rules.js`, `scene.js` and `scene.css` are read by both modes. A change to
@@ -94,16 +134,35 @@ the real deck through the real shuffle — and sweeps the only genuinely
 unknown input, the player. Extend it rather than reasoning about the shape of
 a distribution in prose.
 
-Two findings that came out the other way round from the intuition:
-
-- Three-answer innings were assumed to be a real risk of the easy-out rule.
-  They are a 0.7% tail at 60% accuracy and round to zero above it.
-- The easy tier was 42% of the deck and 60-67% of the outs. Nobody would
-  have guessed the second number from the first.
-
 When a proposed constant is checked against a simulation and fails, say so
 and propose what the data supports. Do not build to a number on anyone's
 say-so once the data disagrees with it.
+
+**A type check verifies the code does what you said. A simulation verifies
+you should have said it.** No type system would have caught any of the five
+findings below. In every one the code was correct and the belief about it
+was wrong, and each came out the other way round from the intuition:
+
+- Three-answer innings were assumed a real risk of the easy-out rule. They
+  are a 0.7% tail at 60% accuracy and round to zero above it.
+- The easy tier was 42% of the deck and 60-67% of the outs. Nobody would
+  have guessed the second number from the first.
+- The inning cap was proposed at 15, sized off the median. A cap at the
+  median truncates half the distribution by construction; the sweep
+  supported 40.
+- The bonus was assumed to fail because a home run clears the bases. Forcing
+  every hit to one tier showed chasing home runs is the *best* strategy at
+  every accuracy band. The real cause was that a bonus at-bat is a worse
+  home-run machine than an ordinary one — 70.0% against 97.9% at 85%.
+- Accepting the bonus past the extension ceiling looks like a bargain
+  locally: 0.29 outs given up per home run won. It costs 3.64 runs an inning
+  at 85%, because the at-bat it spends comes out of the pool the cap bounds.
+
+Two of the five contradicted something said out loud rather than merely
+assumed — the cap at 15, proposed by the person asking for the work, and the
+bases-clearing explanation, asserted by the person doing it. Neither was a
+careless claim. Being confident in a claim is not evidence about the claim,
+and the person who is most sure is not exempt from running the sweep.
 
 ## Never invent content to satisfy a test or a spec
 
