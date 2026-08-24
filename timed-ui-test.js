@@ -796,6 +796,74 @@ const section = title => console.log('\n# ' + title);
   assert(ceiling.cap === ceiling.max,
          `six wins still cannot push the inning past ${ceiling.max} at-bats`);
 
+  section('At the ceiling the offer stops coming');
+
+  // Behind the ceiling the deal pays in the home run alone, which is the
+  // variant measured dominated. Driven on the page rather than asserted in
+  // the rules, because the trap the player meets is a SCREEN.
+  await stack(Array.from({ length: 30 }, () => 'DOUBLE'));
+  await page.evaluate(() => {
+    state.cap = AT_BATS_PER_INNING + MAX_INNING_EXTENSION;   // both bonuses won
+    state.offersLeft = BONUS_STREAK_OFFERS;                  // and a bank in hand
+    renderHud();
+  });
+  assert(await page.locator('#hud-bank').isVisible(),
+         'a bank in hand shows on the HUD to start with');
+
+  for (let i = 0; i < 4; i++) {
+    await page.waitForFunction(() => !state.locked, { timeout: 8000 });
+    await page.evaluate(() => resolvePitch(400, true));
+    await page.waitForTimeout(1700);
+  }
+  const atCeiling = await page.evaluate(() => ({
+    offerUp: !document.getElementById('offer-screen').classList.contains('hidden'),
+    pitching: !document.getElementById('pitch-screen').classList.contains('hidden'),
+    offersLeft: state.offersLeft,
+    streak: state.hitStreak,
+    bankShown: !document.getElementById('hud-bank').classList.contains('hidden')
+  }));
+  assert(atCeiling.offerUp === false,
+         `four hits in a row at the ceiling put no offer on screen (streak ${atCeiling.streak})`);
+  assert(atCeiling.pitching, 'play carries straight on into the next at-bat');
+  assert(atCeiling.streak >= 3,
+         'and the streak is genuinely long enough that it would have offered otherwise');
+  assert(atCeiling.offersLeft === 0 && atCeiling.bankShown === false,
+         'the bank held from before is cleared rather than left promising a shot that cannot be redeemed');
+
+  // The same streak with room left still offers, so it is the ceiling doing
+  // the suppressing and not something about this deck or this run.
+  await page.evaluate(() => { state.cap = AT_BATS_PER_INNING; });
+  await page.waitForFunction(() => !state.locked, { timeout: 8000 });
+  await page.evaluate(() => resolvePitch(400, true));
+  await page.waitForSelector('#offer-screen:not(.hidden)', { timeout: 8000 });
+  assert(await page.locator('#offer-screen').isVisible(),
+         'and with room back on the cap the very next hit offers again — it is the ceiling, not the deck');
+  await page.click('#offer-pass');
+  await page.waitForFunction(() => !state.locked, { timeout: 8000 });
+
+  // The last paying win says so, because the offers stop after it.
+  const lastCall = await page.evaluate(() => {
+    startInning();
+    state.cap = AT_BATS_PER_INNING + MAX_INNING_EXTENSION - BONUS_EXTRA_AT_BATS;
+    state.bonusQ = { word: state.deck[state.index], direction: 'ES_EN' };
+    settleBonusQuestion(true);
+    return { text: document.getElementById('feedback').textContent, cap: state.cap,
+             ceiling: AT_BATS_PER_INNING + MAX_INNING_EXTENSION };
+  });
+  assert(lastCall.cap === lastCall.ceiling,
+         `winning the second bonus reaches the ceiling exactly (${lastCall.cap} at-bats)`);
+  assert(/as long as this inning goes/i.test(lastCall.text),
+         `and it says so ("${lastCall.text.trim()}") rather than letting the offers just stop`);
+
+  const notLast = await page.evaluate(() => {
+    startInning();
+    state.bonusQ = { word: state.deck[state.index], direction: 'ES_EN' };
+    settleBonusQuestion(true);
+    return document.getElementById('feedback').textContent;
+  });
+  assert(!/as long as this inning goes/i.test(notLast),
+         'a bonus with room still behind it does not say that');
+
   /* =================================================================== */
   section('Both prompt directions');
 

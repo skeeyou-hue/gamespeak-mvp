@@ -543,9 +543,24 @@ const BONUS_QUESTION_MS     = 7000;   // its own clock, not the swing's
 const BONUS_EXTRA_AT_BATS   = 5;
 const MAX_INNING_EXTENSION  = 10;
 
+// Once the extension is spent the offer stops paying in at-bats and pays in
+// the home run alone — which is variant 0, the version measured dominated.
+function extensionSpent(cap, ceiling = MAX_INNING_EXTENSION) {
+  return cap >= AT_BATS_PER_INNING + ceiling;
+}
+
 // A completed streak either opens a bank or re-offers the one being held.
 // Offers happen on streak completion only, never once per at-bat.
-function streakOffer(streak, offersLeft) {
+//
+// It stops offering entirely once the extension is spent. That is not tidying:
+// at 85% accuracy 8.3 of the 11.7 offers in an inning land behind the ceiling,
+// and a player who takes them loses 3.64 runs an inning against one who does
+// not. Leaving the offer up and labelling it honestly is not enough — a screen
+// that presents a strictly worse deal is a trap whatever the label says.
+// A bank being held is cleared with it, so the HUD stops promising a shot that
+// is never coming.
+function streakOffer(streak, offersLeft, cap = AT_BATS_PER_INNING) {
+  if (extensionSpent(cap))   return { offer: false, offersLeft: 0 };
   if (streak < BONUS_STREAK) return { offer: false, offersLeft };
   return { offer: true, offersLeft: offersLeft > 0 ? offersLeft : BONUS_STREAK_OFFERS };
 }
@@ -742,7 +757,7 @@ if (typeof module !== 'undefined' && module.exports) {
     TIMED_TIERS, MAX_STRIKES, SPEED_BANDS,
     MAX_OUTS, AT_BATS_PER_INNING, inningOver, retireTheSide,
     BONUS_STREAK_OFFERS, BONUS_QUESTION_MS, BONUS_EXTRA_AT_BATS,
-    MAX_INNING_EXTENSION, streakOffer, declineOffer, extendInning,
+    MAX_INNING_EXTENSION, streakOffer, declineOffer, extendInning, extensionSpent,
     SWING_ATTEMPTS, ATTEMPT_FLIGHT_MS, ATTEMPT_WINDOW_MS,
     attemptFlightMs, attemptWindowMs, resolveAttempt,
     BONUS_STREAK, BONUS_LIFE_MIN, BONUS_LIFE_MAX,

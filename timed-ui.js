@@ -315,11 +315,14 @@ function afterPitch() {
   if (over) return finishInning(over);
 
   // Three in a row offers a shot rather than banking one. A bank already
-  // being held is re-offered by this streak rather than replaced.
-  const step = streakOffer(state.hitStreak, state.offersLeft);
+  // being held is re-offered by this streak rather than replaced — and both
+  // stop once the extension is spent, so the assignment is unconditional:
+  // a bank that can no longer be redeemed has to leave the HUD too.
+  const step = streakOffer(state.hitStreak, state.offersLeft, state.cap);
+  state.offersLeft = step.offersLeft;
+  renderHud();
   if (step.offer) {
-    state.hitStreak  = 0;
-    state.offersLeft = step.offersLeft;
+    state.hitStreak = 0;
     return showOffer();
   }
   startAtBat();
@@ -413,14 +416,16 @@ function togglePause() { state.paused ? resumeGame() : pauseGame(); }
 
 function showOffer() {
   state.locked = true;
-  const room = (AT_BATS_PER_INNING + MAX_INNING_EXTENSION) - state.cap;
-  const extra = Math.min(BONUS_EXTRA_AT_BATS, room);
+  // Room is never zero here: streakOffer withholds the offer once the
+  // extension is spent, so an offer on screen always pays at least one
+  // at-bat. There is no "this pays nothing" arm because there is no way in.
+  const extra = Math.min(BONUS_EXTRA_AT_BATS,
+                         (AT_BATS_PER_INNING + MAX_INNING_EXTENSION) - state.cap);
 
   el.offerTerms.textContent =
     `One hard word, ${(BONUS_QUESTION_MS / 1000).toFixed(0)} seconds.`;
-  el.offerReward.textContent = extra > 0
-    ? `${extra} more at-bats this inning, and a swing at the fences.`
-    : 'a swing at the fences. The inning is already as long as it goes.';
+  el.offerReward.textContent =
+    `${extra} more at-bats this inning, and a swing at the fences.`;
   el.offerLeft.textContent = state.offersLeft > 1
     ? `· ${state.offersLeft - 1} chance${state.offersLeft > 2 ? 's' : ''} after this`
     : '· last chance';
@@ -509,9 +514,11 @@ function settleBonusQuestion(correct) {
   state.cap = extendInning(state.cap);
   const gained = state.cap - before;
   callUmpire(umpireCall('HIT'));
-  say(gained > 0
-    ? `¡Sí señor! The pitcher is rattled — ${gained} more at-bats, and you are swinging.`
-    : '¡Sí señor! You are swinging.', 'good');
+  // gained is never 0: the offer is withheld once the extension is spent, so
+  // reaching this line means there was room. What it can be is the LAST one,
+  // and the player is told, because the offers stop after it.
+  say(`¡Sí señor! The pitcher is rattled — ${gained} more at-bats, and you are swinging.` +
+      (extensionSpent(state.cap) ? ' That is as long as this inning goes.' : ''), 'good');
   return true;
 }
 

@@ -469,10 +469,53 @@ for (let i = 0; i < 10; i++) cap = T.extendInning(cap);
 assert(cap === T.AT_BATS_PER_INNING + T.MAX_INNING_EXTENSION,
        `ten wins cannot push the inning past +${T.MAX_INNING_EXTENSION} (${cap} at-bats)`);
 assert(Math.floor(T.MAX_INNING_EXTENSION / T.BONUS_EXTRA_AT_BATS) === 2,
-       'so exactly two bonuses pay, and later ones buy only the home run');
+       'so exactly two bonuses pay, and there is no third one to offer');
 assert(T.extendInning(T.AT_BATS_PER_INNING + T.MAX_INNING_EXTENSION + 5) >=
        T.AT_BATS_PER_INNING + T.MAX_INNING_EXTENSION + 5,
        'and the ceiling never pulls a cap back down, which would end an inning on a reward');
+
+
+section('The offer stops once the extension is spent');
+
+// A ceiling on the reward changes the meaning of the offer behind it. Past
+// it the deal pays in the home run alone, which is the variant measured
+// dominated before the reward moved to at-bats. Simulated at 8000 innings a
+// cell: at 85% accuracy 8.3 of 11.7 offers land behind the ceiling and
+// taking them costs 3.64 runs an inning. So they are not offered.
+assert(T.extensionSpent(T.AT_BATS_PER_INNING) === false,
+       'a fresh inning has the whole extension in front of it');
+assert(T.extensionSpent(T.AT_BATS_PER_INNING + T.MAX_INNING_EXTENSION) === true,
+       `a cap of ${T.AT_BATS_PER_INNING + T.MAX_INNING_EXTENSION} has spent it`);
+
+// Walk the cap the only way the game can move it — through extendInning —
+// and check the offer survives exactly as long as the extension pays.
+let walk = T.AT_BATS_PER_INNING, paying = 0;
+while (!T.extensionSpent(walk)) {
+  assert(T.streakOffer(T.BONUS_STREAK, 0, walk).offer === true,
+         `a streak at ${walk} at-bats still gets an offer, because it still pays`);
+  walk = T.extendInning(walk);
+  paying++;
+}
+assert(paying === Math.floor(T.MAX_INNING_EXTENSION / T.BONUS_EXTRA_AT_BATS),
+       `${paying} offers pay in an inning, which is the ceiling divided by the reward`);
+assert(T.streakOffer(T.BONUS_STREAK, 0, walk).offer === false,
+       'and the streak after the last paying one is not offered anything');
+
+// A bank being held is cleared with it. Leaving it on would promise a shot
+// that can never be redeemed, which is the trap wearing the HUD instead of
+// the offer screen.
+const stranded = T.streakOffer(T.BONUS_STREAK - 1, T.BONUS_STREAK_OFFERS, walk);
+assert(stranded.offer === false && stranded.offersLeft === 0,
+       'a bank held when the extension runs out is cleared, not stranded');
+assert(T.streakOffer(T.BONUS_STREAK - 1, 2, T.AT_BATS_PER_INNING).offersLeft === 2,
+       'while the extension still pays, a held bank is left alone between streaks');
+
+assert(T.extensionSpent(T.AT_BATS_PER_INNING, 0) === true,
+       'a ceiling of zero is spent before the inning starts, so nothing is ever offered');
+
+// The default keeps two-argument callers working the way they did.
+assert(T.streakOffer(T.BONUS_STREAK, 0).offer === true,
+       'called without a cap it assumes a fresh inning');
 
 section('The three attempts');
 
