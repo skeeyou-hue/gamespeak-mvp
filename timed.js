@@ -574,13 +574,26 @@ function extendInning(cap, extra = BONUS_EXTRA_AT_BATS, ceiling = MAX_INNING_EXT
    The escalation is a window squeeze, not a speed-up. Flight speeds up for
    the look of it, but at a fixed 240ms budget a faster ball gets a LARGER
    drawn band — 20.4px at 2000ms against 25.5px at 1600ms — so speed alone
-   is decoration. Attempt three takes 200ms, which is a real 17% squeeze.
-   1600ms is the floor: 1400ms was measured unreadable.
+   is decoration. 1600ms is the floor: 1400ms was measured unreadable.
+
+   The squeeze has to clear the speed-up to mean anything, and 200ms did not.
+   A band is window/flight, so attempt three at 200ms over 1600ms is 0.125 of
+   the lane against attempt one's 0.120 — 21.3px against 20.4px. Shorter in
+   time, still a BIGGER target, which is a mixed signal and worse than no
+   escalation at all. Anything at or above 192ms is wider than attempt one.
+   180ms is narrower in both: 19.1px, and a 25% cut in reaction time against
+   a ball moving 25% faster. It is a tight tolerance, and affordable only
+   because missing all three costs no out.
+
+     attempt   flight   window   band on a 170px lane
+       1       2000ms   240ms    20.4px
+       2       1800ms   240ms    22.7px
+       3       1600ms   180ms    19.1px
    ------------------------------------------------------------------------- */
 
 const SWING_ATTEMPTS      = 3;
 const ATTEMPT_FLIGHT_MS   = [2000, 1800, 1600];
-const ATTEMPT_WINDOW_MS   = [240, 240, 200];
+const ATTEMPT_WINDOW_MS   = [240, 240, 180];
 
 function attemptFlightMs(attempt) {
   return ATTEMPT_FLIGHT_MS[Math.min(Math.max(attempt, 0), SWING_ATTEMPTS - 1)];

@@ -634,8 +634,12 @@ const section = title => console.log('\n# ' + title);
   const times = await page.evaluate(() => [0, 1, 2].map(a => attemptWindowMs(a)));
   assert(times[2] < times[0],
          `and it is tighter in time than attempt one (${times[0]}ms to ${times[2]}ms)`);
-  assert(bands.third > bands.first,
-         `though still WIDER in pixels than attempt one (${bands.third.toFixed(1)}px against ${bands.first.toFixed(1)}px) — the speed-up enlarges the band and eats most of the squeeze`);
+  // This assertion used to read the other way. At 200ms the third band was
+  // 21.3px against 20.4px — shorter in time and still a bigger target, which
+  // is a mixed signal. Measured on the page, not just in the rules, because
+  // the drawn band is what the player aims at.
+  assert(bands.third < bands.first,
+         `and NARROWER on the page too (${bands.third.toFixed(1)}px against attempt one's ${bands.first.toFixed(1)}px) — the squeeze has to beat the speed-up or it is decoration`);
 
   const runsBefore = (await look()).runs;
   await page.evaluate(async () => {

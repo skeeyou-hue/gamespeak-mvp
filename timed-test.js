@@ -497,7 +497,21 @@ assert(band(1) > band(0),
        `attempt two's band is BIGGER than attempt one's (${band(0).toFixed(1)}px vs ${band(1).toFixed(1)}px) — speed alone does not make it harder`);
 assert(T.attemptWindowMs(2) < T.attemptWindowMs(1),
        `attempt three squeezes the window instead (${T.attemptWindowMs(1)}ms to ${T.attemptWindowMs(2)}ms)`);
-assert(band(2) < band(1), 'so its band really is the smallest of the three');
+
+// The squeeze has to beat the speed-up or it is decoration too. 200ms did
+// not: it was shorter in time and still a bigger target than attempt one.
+// Derived, so it fails the day either constant moves back.
+const widest = Math.max(...Array.from({ length: T.SWING_ATTEMPTS - 1 }, (_, a) => band(a)));
+const narrowest = Math.min(...Array.from({ length: T.SWING_ATTEMPTS - 1 }, (_, a) => band(a)));
+assert(band(T.SWING_ATTEMPTS - 1) < narrowest,
+       `the last attempt's band is the smallest of the ${T.SWING_ATTEMPTS} (${band(T.SWING_ATTEMPTS - 1).toFixed(1)}px against a narrowest-earlier of ${narrowest.toFixed(1)}px) — shorter in time but a bigger target is a mixed signal`);
+assert(widest >= narrowest, 'sanity: the earlier bands bracket each other');
+// Stated as the budget it takes to get there, so the reason survives the number.
+const breakEven = T.attemptWindowMs(0) / T.attemptFlightMs(0) * T.attemptFlightMs(T.SWING_ATTEMPTS - 1);
+assert(T.attemptWindowMs(T.SWING_ATTEMPTS - 1) < breakEven,
+       `and it takes a budget under ${breakEven.toFixed(0)}ms to be narrower than attempt one at that flight (it is ${T.attemptWindowMs(T.SWING_ATTEMPTS - 1)}ms)`);
+assert(T.attemptWindowMs(T.SWING_ATTEMPTS - 1) < T.attemptWindowMs(0),
+       'the last attempt is shorter in time than the first as well as narrower');
 
 // Fouling off: the first two misses cost nothing, the third ends it, and
 // none of them is an out — the extension was banked at the question.
