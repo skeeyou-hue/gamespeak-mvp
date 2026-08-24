@@ -514,10 +514,16 @@ function settleBonusQuestion(correct) {
   state.cap = extendInning(state.cap);
   const gained = state.cap - before;
   callUmpire(umpireCall('HIT'));
+  // ¡Error! rather than a counter incrementing. A fielding error is the one
+  // canonical way an inning goes on without an out being recorded, which is
+  // exactly what the extra at-bats are, so nothing has to be invented for it.
+  // The umpire already agrees: umpireCall('HIT') is ¡Safe!, which is the call
+  // a batter reaching on an error gets.
+  //
   // gained is never 0: the offer is withheld once the extension is spent, so
   // reaching this line means there was room. What it can be is the LAST one,
   // and the player is told, because the offers stop after it.
-  say(`¡Sí señor! The pitcher is rattled — ${gained} more at-bats, and you are swinging.` +
+  say(`¡Error! It gets away in the field — ${gained} more at-bats, and you are swinging.` +
       (extensionSpent(state.cap) ? ' That is as long as this inning goes.' : ''), 'good');
   return true;
 }

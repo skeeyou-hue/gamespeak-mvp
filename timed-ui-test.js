@@ -855,6 +855,25 @@ const section = title => console.log('\n# ' + title);
   assert(/as long as this inning goes/i.test(lastCall.text),
          `and it says so ("${lastCall.text.trim()}") rather than letting the offers just stop`);
 
+  // The reward is framed as a fielding error, which is the one way an inning
+  // goes on without an out being recorded. Asserted against the umpire rather
+  // than against the string, so a reword does not break it but a frame that
+  // stops agreeing with the call on screen does.
+  const frame = await page.evaluate(() => {
+    startInning();
+    state.bonusQ = { word: state.deck[state.index], direction: 'ES_EN' };
+    settleBonusQuestion(true);
+    return { text: document.getElementById('feedback').textContent,
+             ump:  document.querySelector('.ump-call .ump-es').textContent,
+             safe: umpireCall('HIT').es };
+  });
+  assert(/error/i.test(frame.text),
+         `the extra at-bats read as a fielding error ("${frame.text.trim()}")`);
+  assert(frame.ump === frame.safe && /safe/i.test(frame.safe),
+         `and the umpire agrees with that frame — a batter reaching on an error is ${frame.safe}`);
+  assert(!/\bout\b/i.test(frame.text),
+         'nothing in it says an out was recorded, because none was');
+
   const notLast = await page.evaluate(() => {
     startInning();
     state.bonusQ = { word: state.deck[state.index], direction: 'ES_EN' };
