@@ -121,7 +121,11 @@ const el = {
   sumLob:       document.getElementById('sum-lob'),
   missedBlock:  document.getElementById('missed-block'),
   missedList:   document.getElementById('missed-list'),
-  playAgain:    document.getElementById('play-again')
+  playAgain:    document.getElementById('play-again'),
+
+  startScreen:  document.getElementById('start-screen'),
+  startButton:  document.getElementById('start-button'),
+  startCount:   document.getElementById('start-count')
 };
 
 
@@ -313,16 +317,43 @@ function endInning(title, subtitle) {
 /* -------------------------------------------------------------------------
    10. STARTING (AND RESTARTING) THE GAME
    ------------------------------------------------------------------------- */
+// The start screen puts a state on the board before play begins, so the
+// inning number cannot simply be "one more than whatever is there" any
+// more — that would make the first pitch of the session the second inning.
+let started = false;
+
 function startInning() {
   // Carry the inning count forward; the first inning is 1.
-  state = newState((state.inning || 0) + 1);
+  state = newState(started ? state.inning + 1 : 1);
+  started = true;
+  el.startScreen.classList.add('hidden');
   el.summary.classList.add('hidden');
   el.quizScreen.classList.remove('hidden');
   renderScoreboard();
   renderQuestion();
 }
 
-el.playAgain.addEventListener('click', startInning);
+/* The start screen. Nothing is live behind it: no word is drawn and no
+   state exists until it is pressed, so the first thing a player sees is a
+   choice rather than a question already waiting on them.
 
-// Kick things off as soon as the page loads.
-startInning();
+   It is shown once, at load. The summary's "play another inning" goes
+   straight back to a live inning rather than through here — the gesture
+   this screen exists to collect has already happened by then, and making
+   someone press start twice for the same session is a step, not a gate. */
+function showStart() {
+  el.startScreen.classList.remove('hidden');
+  el.quizScreen.classList.add('hidden');
+  el.summary.classList.add('hidden');
+  el.startCount.textContent = VOCAB.length;
+  // The board reads what a scorebug reads before the first pitch: inning
+  // one, nobody on, nobody out. Not inning zero, which is not a thing.
+  state = newState(1);
+  renderScoreboard();
+}
+
+el.playAgain.addEventListener('click', startInning);
+el.startButton.addEventListener('click', startInning);
+
+// Nothing runs until the player says so.
+showStart();

@@ -63,10 +63,31 @@
   <main class="field">
 
     <!-- ============================================================
+         START SCREEN: nothing is live until this is pressed.
+         This mode needs the gate more than Classic does — the first
+         word arrives on a countdown, so dropping straight in spends
+         a player's first three seconds on working out what happened.
+         ============================================================ -->
+    <section class="card start-card" id="start-screen">
+      <p class="start-eyebrow">Tiered Timed Pitch</p>
+      <h2 class="start-title">¡Juguemos!</h2>
+      <p class="start-gloss">Let&rsquo;s play.</p>
+      <p class="start-rules">
+        Every word is on a clock. Answer fast and it carries further —
+        <strong>the quicker the answer, the bigger the hit.</strong>
+        Miss an easy one and you are out on the spot.
+      </p>
+      <button class="start-button" id="start-button">
+        <span class="start-button-es">Al bate</span>
+        <span class="start-button-en">Step in</span>
+      </button>
+    </section>
+
+    <!-- ============================================================
          THE PITCH: one word, one clock. The bar drains and its label
          says what a correct answer is worth at this instant.
          ============================================================ -->
-    <section class="card" id="pitch-screen">
+    <section class="card hidden" id="pitch-screen">
       <div class="pitch-top">
         <span class="pitch-tags">
           <span class="tier-badge" id="tier-badge">EASY · 3.0s</span>

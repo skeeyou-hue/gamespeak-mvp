@@ -28,7 +28,63 @@ const section = title => console.log('\n# ' + title);
   page.on('console', m => { if (m.type() === 'error') errors.push(m.text()); });
 
   await page.goto(URL);
+
+  /* ---------------------------------------------------------------------
+     The start screen gates everything, so it is tested first and opened
+     before any other section can run. This mode needs the gate most: the
+     first word arrives on a live countdown. ---------------------------- */
+  section('The start screen gates the inning');
+
+  // #start-screen is in the static HTML, so it matches before any script
+  // has run. Wait for the game itself, or the first evaluate races the load.
+  await page.waitForFunction(() => typeof state !== 'undefined' &&
+                                   typeof startInning === 'function');
+  await page.waitForSelector('#start-screen:not(.hidden)');
+  const gated = await page.evaluate(() => ({
+    pitchHidden: document.getElementById('pitch-screen').classList.contains('hidden'),
+    swingHidden: document.getElementById('swing-screen').classList.contains('hidden'),
+    summaryHidden: document.getElementById('summary-screen').classList.contains('hidden'),
+    atBat: state.atBat,
+    locked: state.locked,
+    // elementFromPoint rather than isVisible: the question is whether a
+    // player could hit a choice, and a covered one is not reachable.
+    reachable: [...document.querySelectorAll('.choice')].some(c => {
+                 const r = c.getBoundingClientRect();
+                 return document.elementFromPoint(r.left + r.width / 2,
+                                                  r.top + r.height / 2) === c;
+               })
+  }));
+  assert(gated.pitchHidden && gated.swingHidden && gated.summaryHidden,
+         'no play screen is up behind the start card');
+  assert(!gated.reachable, 'no answer button is reachable before the press');
+  assert(gated.atBat === null,
+         'and no at-bat exists yet — the countdown has not started on anybody');
+  assert(gated.locked === true, 'the game is locked, so a stray key press does nothing');
+
+  // The clock genuinely is not running: the same reading twice, a beat apart.
+  const clockA = await page.evaluate(() => document.getElementById('clock-num').textContent);
+  await page.waitForTimeout(700);
+  const clockB = await page.evaluate(() => document.getElementById('clock-num').textContent);
+  assert(clockA === clockB,
+         `the clock is not ticking behind the card (${clockA} then ${clockB})`);
+
+  await page.click('#start-button');
   await page.waitForSelector('.choice');
+
+  const opened = await page.evaluate(() => ({
+    startHidden: document.getElementById('start-screen').classList.contains('hidden'),
+    inning: state.inning, outs: state.outs, runs: state.runs, index: state.index,
+    bases: state.bases.filter(Boolean).length,
+    missed: state.missed.length, streak: state.hitStreak,
+    deck: state.deck.length, live: !!state.atBat
+  }));
+  assert(opened.startHidden, 'pressing it puts the start card away');
+  assert(opened.inning === 1, `and starts inning ${opened.inning}, not inning two`);
+  assert(opened.outs === 0 && opened.runs === 0 && opened.index === 0 &&
+         opened.bases === 0 && opened.missed === 0 && opened.streak === 0,
+         'with the inning genuinely reset — no outs, runs, runners, misses or streak');
+  assert(opened.deck > 0 && opened.live, 'a deck is dealt and an at-bat is live');
+
   await page.evaluate(() => { window.__realRandom = Math.random; });
   const unpinRandom = () => page.evaluate(() => { Math.random = window.__realRandom; });
 
@@ -321,6 +377,7 @@ const section = title => console.log('\n# ' + title);
   for (const w of [360, 390, 470, 768, 1440]) {
     const sized = await browser.newPage({ viewport: { width: w, height: 900 } });
     await sized.goto(URL);
+    await sized.click('#start-button');         // the inning is gated now
     await sized.waitForSelector('.choice');
     await sized.evaluate(() => { state.bonus = { atBatsLeft: 2 }; renderHud(); });
     const bad = await sized.evaluate(() => {
@@ -1043,6 +1100,72 @@ const section = title => console.log('\n# ' + title);
   assert(JSON.stringify(park.pips) === JSON.stringify(park.runners),
          'and the HUD diamond agrees with them');
 
+  section('Nobody is stranded at the end of an inning');
+
+  // Read from the page rather than typed, so the cap moving does not
+  // silently turn this into a test of nothing.
+  const AT_BATS   = await page.evaluate(() => AT_BATS_PER_INNING);
+  const VOCAB_SIZE = await page.evaluate(() => VOCAB.length);
+
+  // Both endings, because they leave the game in different places: three
+  // outs comes from the out counter, the cap comes from the at-bat count
+  // with outs still on the board.
+  for (const ending of ['OUTS', 'CAP']) {
+    if (ending === 'OUTS') {
+      await stack(['WALK', 'WALK', 'WALK']);          // easy misses are instant outs
+    } else {
+      // One at-bat short of the cap, on a deck long enough that the cap is
+      // what ends it rather than running out of words.
+      await page.evaluate(cap => {
+        startInning();
+        state.deck = Array.from({ length: cap + 20 },
+                                () => VOCAB.find(w => w.tag === 'DOUBLE'));
+        state.index = cap - 1;
+        startAtBat();
+      }, AT_BATS);
+    }
+    // Read after the deck is set: stack() starts an inning of its own, so
+    // reading before it would measure two innings of drift, not one.
+    const inningWas = await page.evaluate(() => state.inning);
+
+    for (let i = 0; i < (ending === 'OUTS' ? 3 : 1); i++) {
+      await page.waitForFunction(() => !state.locked, { timeout: 8000 });
+      await page.evaluate(ok => resolvePitch(ok ? 400 : 500, ok), ending !== 'OUTS');
+      await page.waitForTimeout(1700);
+    }
+
+    const over = await page.evaluate(() => ({
+      summary: !document.getElementById('summary-screen').classList.contains('hidden'),
+      pitch: !document.getElementById('pitch-screen').classList.contains('hidden'),
+      again: !!document.getElementById('play-again'),
+      title: document.getElementById('summary-title').textContent
+    }));
+    assert(over.summary && !over.pitch,
+           `${ending}: the inning ends on the summary ("${over.title.trim()}")`);
+    assert(over.again, '  and the way back out of it is on that screen');
+
+    // The way back is one press, and it lands in a live inning rather than
+    // back at the start card — the gesture that card exists for is spent.
+    await page.click('#play-again');
+    await page.waitForSelector('.choice');
+    const back = await page.evaluate(() => ({
+      startUp: !document.getElementById('start-screen').classList.contains('hidden'),
+      live: !document.getElementById('pitch-screen').classList.contains('hidden'),
+      inning: state.inning, outs: state.outs, runs: state.runs, index: state.index,
+      bases: state.bases.filter(Boolean).length, missed: state.missed.length,
+      streak: state.hitStreak, atBat: !!state.atBat, deck: state.deck.length
+    }));
+    assert(!back.startUp, '  it does not send the player back to the start card');
+    assert(back.live && back.atBat, '  a new at-bat is live straight away');
+    assert(back.inning === inningWas + 1,
+           `  and it is the next inning (${inningWas} to ${back.inning})`);
+    assert(back.outs === 0 && back.runs === 0 && back.index === 0 &&
+           back.bases === 0 && back.missed === 0 && back.streak === 0,
+           '  with everything reset — outs, runs, runners, misses and streak');
+    assert(back.deck === VOCAB_SIZE,
+           `  on a full deck again (${back.deck} words)`);
+  }
+
   section('The park and the Timed HUD share the screen');
 
   const FIELDERS = ['fielder-p', 'fielder-c', 'fielder-1b', 'fielder-2b', 'fielder-3b',
@@ -1056,6 +1179,7 @@ const section = title => console.log('\n# ' + title);
   for (const [w, h] of SIZES) {
     const sized = await browser.newPage({ viewport: { width: w, height: h } });
     await sized.goto(URL);
+    await sized.click('#start-button');         // the inning is gated now
     await sized.waitForSelector('.choice');
     const r = await sized.evaluate(ids => {
       const R = el => el.getBoundingClientRect();

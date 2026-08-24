@@ -80,7 +80,10 @@ const el = {
   sumLob:       document.getElementById('sum-lob'),
   missedList:   document.getElementById('missed-list'),
   missedBlock:  document.getElementById('missed-block'),
-  playAgain:    document.getElementById('play-again')
+  playAgain:    document.getElementById('play-again'),
+
+  startScreen:  document.getElementById('start-screen'),
+  startButton:  document.getElementById('start-button')
 };
 
 /* ---------- helpers ---------- */
@@ -664,16 +667,44 @@ function endInning(title, subtitle) {
 
 /* ---------- starting up ---------- */
 
+// See app.js: the start screen puts a state on the board before play, so
+// the inning number cannot be "one more than whatever is there".
+let started = false;
+
 function startInning() {
-  state = newTimedState((state.inning || 0) + 1);
+  state = newTimedState(started ? state.inning + 1 : 1);
+  started = true;
   state.deck = shuffle(VOCAB);
+  el.startScreen.classList.add('hidden');
   el.summary.classList.add('hidden');
   el.pitchScreen.classList.remove('hidden');
   renderHud();
   startAtBat();
 }
 
+/* The start screen. This mode needs it more than Classic does: startAtBat
+   puts a live countdown on screen, so without a gate the first thing a
+   player does is lose three seconds of a clock they had not noticed.
+
+   Shown once, at load. "Play another inning" on the summary goes straight
+   back into play rather than through here — the gesture this screen exists
+   to collect has already happened by then. */
+function showStart() {
+  clearReady();                       // nothing of a previous session left running
+  el.startScreen.classList.remove('hidden');
+  el.pitchScreen.classList.add('hidden');
+  el.swingScreen.classList.add('hidden');
+  el.summary.classList.add('hidden');
+  // Inning one on the board, which is what a scorebug reads before the
+  // first pitch — not inning zero, which is not a thing.
+  state = newTimedState(1);
+  state.locked = true;                // no key press reaches a game that has not begun
+  renderHud();
+  renderPause();
+}
+
 el.playAgain.addEventListener('click', startInning);
+el.startButton.addEventListener('click', startInning);
 el.bankButton.addEventListener('click', startSwing);
 el.swingGo.addEventListener('click', () => takeSwing(state.swing ? state.swing.progress : null));
 el.pauseButton.addEventListener('click', togglePause);
@@ -721,4 +752,5 @@ document.documentElement.style.setProperty('--swing-lead', SWING_LEAD_MS + 'ms')
 
 placeBall(0);
 
-startInning();
+// Nothing runs until the player says so.
+showStart();

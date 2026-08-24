@@ -308,6 +308,76 @@ body {
 
 .missed strong { color: var(--ink); }
 
+/* --- Start screen ---
+   Centred, because it is the only screen with nothing to compare across
+   and no scanning to do: one line to read and one thing to press. The rest
+   of the game is left-aligned for reading speed, so this reads as a
+   different kind of moment, which is what it is.
+
+   The Spanish is the point of the card, so it is the largest thing on it
+   and the English sits under it as a gloss rather than beside it as a
+   translation — the same shape the umpire calls use. ------------------ */
+.start-card { text-align: center; padding: 26px 20px 22px; }
+
+.start-eyebrow {
+  margin: 0;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.start-title {
+  margin: 6px 0 0;
+  font-size: 2rem;
+  line-height: 1.1;
+  color: var(--ink);
+}
+
+.start-gloss {
+  margin: 2px 0 0;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.start-rules {
+  margin: 14px auto 18px;
+  max-width: 30ch;
+  font-size: 0.86rem;
+  line-height: 1.5;
+  color: var(--ink);
+}
+
+.start-button {
+  font: inherit;
+  display: block;
+  width: 100%;
+  padding: 12px;
+  border: none;
+  border-radius: 9px;
+  background: var(--dirt);
+  color: #fff;
+  cursor: pointer;
+}
+
+.start-button:hover { background: #a2632f; }
+
+.start-button-es {
+  display: block;
+  font-size: 1.05rem;
+  font-weight: 700;
+}
+
+.start-button-en {
+  display: block;
+  margin-top: 1px;
+  font-size: 0.72rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  opacity: 0.82;
+}
+
 .play-again {
   font: inherit;
   font-weight: 600;

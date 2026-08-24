@@ -35,7 +35,56 @@ const show = state => state.map((on, i) => on ? ['1B', '2B', '3B'][i] : null)
   page.on('console', m => { if (m.type() === 'error') errors.push(m.text()); });
 
   await page.goto(URL);
+
+  /* ---------------------------------------------------------------------
+     The start screen gates everything, so it is the first thing tested and
+     the gate has to be opened before any other section can run. ------- */
+  section('The start screen gates the inning');
+
+  // #start-screen is in the static HTML, so it matches before any script
+  // has run. Wait for the game itself, or the first evaluate races the load.
+  await page.waitForFunction(() => typeof state !== 'undefined' &&
+                                   typeof startInning === 'function');
+  await page.waitForSelector('#start-screen:not(.hidden)');
+  const gated = await page.evaluate(() => ({
+    quizHidden:    document.getElementById('quiz-screen').classList.contains('hidden'),
+    summaryHidden: document.getElementById('summary-screen').classList.contains('hidden'),
+    word:          document.getElementById('word').textContent.trim(),
+    count:         document.getElementById('start-count').textContent.trim(),
+    vocab:         VOCAB.length,
+    // elementFromPoint, not isVisible: what matters is whether a player
+    // could reach a choice, and an offscreen or covered one is not reachable.
+    reachable:     [...document.querySelectorAll('.choice')].some(c => {
+                     const r = c.getBoundingClientRect();
+                     return document.elementFromPoint(r.left + r.width / 2,
+                                                     r.top + r.height / 2) === c;
+                   })
+  }));
+  assert(gated.quizHidden, 'the quiz screen is not up behind the start card');
+  assert(gated.summaryHidden, 'nor the summary');
+  assert(!gated.reachable, 'no answer button is reachable before the press');
+  assert(gated.word === '—' || gated.word === '',
+         `and no word has been drawn yet ("${gated.word}")`);
+  assert(gated.count === String(gated.vocab),
+         `the card counts the deck rather than a typed number (${gated.count} of ${gated.vocab})`);
+
+  await page.click('#start-button');
   await page.waitForSelector('.choice');
+
+  const opened = await page.evaluate(() => ({
+    startHidden: document.getElementById('start-screen').classList.contains('hidden'),
+    inning: state.inning, outs: state.outs, runs: state.runs, index: state.index,
+    bases: state.bases.filter(Boolean).length,
+    missed: state.missed.length,
+    word: document.getElementById('word').textContent.trim()
+  }));
+  assert(opened.startHidden, 'pressing it puts the start card away');
+  assert(opened.inning === 1, `and starts inning ${opened.inning}`);
+  assert(opened.outs === 0 && opened.runs === 0 && opened.index === 0 &&
+         opened.bases === 0 && opened.missed === 0,
+         'with the inning genuinely reset — no outs, no runs, no runners, nothing missed');
+  assert(opened.word.length > 0 && opened.word !== '—',
+         `and a real word up (${opened.word})`);
 
   // Answer the current question; pass false to deliberately answer wrong.
   async function answer(correct = true) {
@@ -257,8 +306,15 @@ const show = state => state.map((on, i) => on ? ['1B', '2B', '3B'][i] : null)
   assert((await page.locator('#sum-hits').textContent()) === '0', 'zero hits recorded');
   assert((await page.locator('#sum-lob').textContent()) === '0', 'nobody left on base');
 
+  const inningWas = await page.evaluate(() => state.inning);
   await page.click('#play-again');
   assert(await page.locator('#quiz-screen').isVisible(), 'play again returns to the quiz');
+  // Nobody is stranded on the box score, and nobody is sent back to the
+  // start card either — the gesture that card exists to collect is spent.
+  assert(await page.locator('#start-screen').isHidden(),
+         'and not back to the start card');
+  assert((await page.evaluate(() => state.inning)) === inningWas + 1,
+         `the inning count advances rather than restarting (${inningWas} to ${inningWas + 1})`);
   assert((await page.locator('.out-dot.filled').count()) === 0, 'outs reset to zero');
   assert(JSON.stringify(await page.evaluate(() => state.hits)) ===
          JSON.stringify({ WALK: 0, SINGLE: 0, DOUBLE: 0, TRIPLE: 0, HOMERUN: 0 }),
@@ -367,6 +423,7 @@ const show = state => state.map((on, i) => on ? ['1B', '2B', '3B'][i] : null)
   for (const [w, h] of SIZES) {
     const sized = await browser.newPage({ viewport: { width: w, height: h } });
     await sized.goto(URL);
+    await sized.click('#start-button');          // the inning is gated now
     await sized.waitForSelector('.choice');
     const r = await sized.evaluate(ids => {
       const R = el => el.getBoundingClientRect();

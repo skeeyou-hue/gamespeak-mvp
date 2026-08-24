@@ -60,9 +60,30 @@
   <main class="field">
 
     <!-- ============================================================
+         START SCREEN: nothing is live until this is pressed.
+         ============================================================ -->
+    <section class="card start-card" id="start-screen">
+      <p class="start-eyebrow">Classic</p>
+      <h2 class="start-title">¡Juguemos!</h2>
+      <p class="start-gloss">Let&rsquo;s play.</p>
+      <!-- The word count is filled in from VOCAB at load rather than typed:
+           the list has gone 30 to 50 to 100 already, and a number in prose
+           is the one that does not move with it. -->
+      <p class="start-rules">
+        <span id="start-count">&nbsp;</span> Spanish words, four choices each.
+        A right answer is a hit, a wrong one is an out, and three outs end
+        the inning.
+      </p>
+      <button class="start-button" id="start-button">
+        <span class="start-button-es">Al bate</span>
+        <span class="start-button-en">Step in</span>
+      </button>
+    </section>
+
+    <!-- ============================================================
          QUIZ SCREEN: one Spanish word, four English choices.
          ============================================================ -->
-    <section class="card" id="quiz-screen">
+    <section class="card hidden" id="quiz-screen">
       <p class="at-bat" id="at-bat">At-bat 1</p>
 
       <!-- Difficulty tag for the current word (WALK / SINGLE / DOUBLE) -->
