@@ -16,6 +16,7 @@ convention whose reason has been forgotten is just a habit.
 rules.js      SHARED. VOCAB, shuffle, base-running. Both modes read it.
 scene.js      SHARED. The ballpark SVG, injected into either mode.
 scene.css     SHARED. The scene layer, the runners, the signage breakpoint.
+audio.js      SHARED. The audio unlock, called from each mode's start press.
 
 index.html  app.js  style.css  test.js               Classic
 timed.html  timed.js  timed-ui.js  timed.css         Tiered Timed Pitch
@@ -73,13 +74,21 @@ is the absence of an objection.
 
 ## Shared files are shared
 
-`rules.js`, `scene.js` and `scene.css` are read by both modes. A change to
-any of them is a change to Classic, whether or not Classic was the subject.
+`rules.js`, `scene.js`, `scene.css` and `audio.js` are read by both modes. A
+change to any of them is a change to Classic, whether or not Classic was the
+subject.
 
 Say so before landing it. "This also changes Classic" is a decision the
 person you are working for gets to make, not a side effect you mention
 afterwards. When a change to a shared file is really only wanted in one
 mode, that is a signal the thing belongs in that mode's own file instead.
+
+**Adding a shared file means adding it here, in the same commit.** This list
+has been stale once already: `audio.js` was shared from the moment it landed
+and this convention still named three files, which is the convention failing
+at the one job it has. A shared file nobody has written down is not less
+shared, it is only less noticed — and it is the same defect as a doc naming
+constants that are not in the tree, pointing the other way.
 
 ## The rules layer stays clean
 
@@ -94,19 +103,39 @@ Presentation problems get presentation fixes. If a rule change is being
 asked for to make something *read* better, that is a UI change wearing a
 rules hat.
 
-## Derive test edges from constants, never type them
+## Read a constant's value from the constant, never restate it
 
-A hand-written `0.70` stops testing the edge the moment the constant moves,
-and it does it silently — the assertion still passes, it just no longer
-means anything.
+Anywhere a number that lives in the code gets said again somewhere else —
+an assertion, a line of copy, a sentence in this file — say it by reading
+the constant, not by typing what it currently equals. A restated value is a
+copy that nothing keeps in sync, and it goes wrong silently in every one of
+those places.
 
 ```js
 const OPENS = T.PLATE_AT - T.contactWindowFraction();   // yes
 for (const [p, verdict] of [[0.70, 'ON_TIME'], ...])    // no
+
+el.startCount.textContent = VOCAB.length;               // yes
+"Fifty Spanish words, four choices each."               // no
 ```
 
-This has bitten twice. Both times the test kept passing while the thing it
-was meant to protect had moved.
+**In tests** a hand-written `0.70` stops testing the edge the moment the
+constant moves, and the assertion still passes — it just no longer means
+anything. This has bitten twice, and both times the test kept passing while
+the thing it was meant to protect had moved.
+
+**In copy** the number is on screen next to the thing it describes. The
+Classic start card states the deck size from `VOCAB.length`: the list has
+gone 30 to 50 to 100 already, and a typed "fifty" would have sat one screen
+away from a header reading AT-BAT 1 OF 100. Copy is worse than a test here,
+because there is no assertion to fail — the player is the one who finds it.
+
+**In docs** the same applies and there is no runtime to read from, so the
+substitute is naming what a number is derived from and saying when it was
+measured, rather than presenting it as a standing fact.
+
+Where a value genuinely cannot be read at the point it is used, the fallback
+is an assertion that the two agree, not care.
 
 ## Timing constants are milliseconds unless they are genuinely a proportion
 
