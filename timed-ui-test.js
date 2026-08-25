@@ -1184,6 +1184,37 @@ const section = title => console.log('\n# ' + title);
            `  on a full deck again (${back.deck} words)`);
   }
 
+  section('The box score is smaller than the card that plays the inning');
+
+  // zoom, not transform: scale. The lesson from the question card is that
+  // scale leaves the original layout box behind, so a "smaller" card still
+  // reserves full-size space and still pushes the page down. Read the
+  // factor from the computed style rather than typing it, so this measures
+  // the reduction that is actually applied.
+  await page.evaluate(() => {
+    startInning();
+    state.outs = MAX_OUTS;
+    endInning('Inning over', 'Three outs — side retired.');
+  });
+  await page.waitForSelector('#summary-screen:not(.hidden)');
+  const box = await page.evaluate(() => {
+    const card = document.getElementById('summary-screen');
+    const pitch = document.getElementById('pitch-screen');
+    const z = el => parseFloat(getComputedStyle(el).zoom) || 1;
+    return {
+      zoom: z(card), pitchZoom: z(pitch),
+      drawn: card.getBoundingClientRect().width,   // real screen pixels
+      layout: card.offsetWidth,                    // zoomed pixels
+      fits: document.documentElement.scrollHeight <= innerHeight
+    };
+  });
+  assert(box.zoom < 1, `the box score is reduced (zoom ${box.zoom})`);
+  assert(box.zoom < box.pitchZoom,
+         `and reduced further than the question card (${box.zoom} against ${box.pitchZoom}) — it is read at rest, with nothing to hit`);
+  assert(Math.abs(box.drawn - box.layout * box.zoom) < 1,
+         `the layout box shrinks with it (${box.drawn.toFixed(0)}px drawn against ${box.layout}px of layout at ${box.zoom}) — a transform would have left a full-size box behind`);
+  assert(box.fits, 'and the whole card, missed words included, is on a phone screen without scrolling');
+
   section('The park and the Timed HUD share the screen');
 
   const FIELDERS = ['fielder-p', 'fielder-c', 'fielder-1b', 'fielder-2b', 'fielder-3b',

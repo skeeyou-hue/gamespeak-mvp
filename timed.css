@@ -778,3 +778,21 @@ body {
   max-width: 460px;
   margin-inline: auto;
 }
+
+/* --- the box score, 40% smaller -------------------------------------------
+   Same mechanism as the question card and for the same reason: zoom takes
+   the layout box with it, so the card really is smaller rather than a
+   full-size box wearing a scaled picture of itself.
+
+   Deeper than the pitch screen's 20% because the box score is read once, at
+   rest, with no clock running — nothing on it has to be hit, only read. It
+   is also the longest card in the mode, so shrinking it is what keeps the
+   missed-word list on screen without scrolling as that list grows.
+
+   max-width is in zoomed pixels: 460 here is 276 on screen, 60% of the
+   460px the field allows. ----------------------------------------------- */
+#summary-screen {
+  zoom: 0.6;
+  max-width: 460px;
+  margin-inline: auto;
+}
