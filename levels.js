@@ -89,10 +89,24 @@ function respond(learner, bucket) {
    bands 'pinned'   the hit ladder stays on the base window and the extra
                     time only buys survival: an answer past the base window
                     but inside the level's window is a SINGLE, not a strike.
+                    Fixes the slow end and breaks the fast end — below the
+                    base window there is no room left for four bands, so at
+                    Triple-A and Major League every answer that lands at all
+                    is a double or better.
+   bands 'compressed'
+                    the bands are laid out inside whichever window is
+                    TIGHTER: min(level, base). Slower than Double-A that is
+                    the base window, so home runs cannot inflate; faster
+                    than Double-A it is the level's own window, so the full
+                    single-through-home-run spread survives on a tighter
+                    distribution. It is not a third mechanism — it is
+                    'pinned' below Double-A and 'scaled' above it, chosen by
+                    a min(), and the table should show it matching each of
+                    them on its own half of the ladder.
 
-   'pinned' is driven through the real applyPitch too — passing the base
-   window with a clamped elapsed lands exactly on the 1.00 band, which is
-   SINGLE. No rule is re-implemented here. */
+   All three run through the real applyPitch. Clamping the elapsed time to
+   the band window lands exactly on the 1.00 band, which is SINGLE, so the
+   "late but inside the level" case needs no rule of its own here. */
 /* A level is either a multiplier or a table of clocks by bucket. The table
    form exists because the badge on screen shows the number — "EASY · 3.0s"
    — so the values a player reads should be round, and a single multiplier
@@ -122,9 +136,12 @@ function inning(learner, level, bands, cap = AT_BATS_PER_INNING, feedback = FEED
       if (!inTime) timeouts++;
       ms += Math.min(r.ms, open) + feedback;
 
-      const p = bands === 'pinned'
-        ? applyPitch(strikes, r.right && inTime, Math.min(r.ms, base), base, w.tag)
-        : applyPitch(strikes, r.right, r.ms, open, w.tag);
+      const bandWindow = bands === 'pinned'     ? base
+                       : bands === 'compressed' ? Math.min(open, base)
+                       :                          open;
+      const p = bands === 'scaled'
+        ? applyPitch(strikes, r.right, r.ms, open, w.tag)
+        : applyPitch(strikes, r.right && inTime, Math.min(r.ms, bandWindow), bandWindow, w.tag);
       strikes = p.strikes;
       if (p.result === 'HIT') {
         hits[p.hit]++;
@@ -160,7 +177,9 @@ function cell(learner, level, bands, cap = AT_BATS_PER_INNING, feedback = FEEDBA
     minMed: M[Math.floor(0.5 * M.length)] / 60000,
     minP90: M[Math.floor(0.9 * M.length)] / 60000,
     capShare: pct(endings.CAP || 0, n),
-    hr: hits.HOMERUN / n, single: hits.SINGLE / n
+    hr: hits.HOMERUN / n, single: hits.SINGLE / n,
+    mix: { SINGLE: hits.SINGLE / n, DOUBLE: hits.DOUBLE / n,
+           TRIPLE: hits.TRIPLE / n, HOMERUN: hits.HOMERUN / n }
   };
 }
 
