@@ -428,6 +428,33 @@ section('The cap and the easy-out rule together');
          'and five at-bats deep with strikes on them, the inning is still live');
 }
 
+section('The umpire has three calls, and only three');
+
+/* ¡Bola! was deleted from this bank because nothing could ever trigger it.
+   It has been proposed again with the audio layer, so this is the check
+   that says whether a call site has appeared since: sweep every result the
+   rules can produce, both ways on the timeout flag, and see what the umpire
+   can be made to say. If a fourth call ever becomes reachable this fails
+   and the bank can grow. Until then, a sound for ¡Bola! would be a sound
+   nobody can hear. */
+{
+  const reachable = new Set();
+  for (const result of ['HIT', 'OUT', 'STRIKE', 'STRUCK_OUT_SWINGING', null, undefined]) {
+    for (const timedOut of [true, false]) {
+      const call = T.umpireCall(result, timedOut);
+      if (call) reachable.add(Object.keys(T.UMPIRE_CALLS)
+                                    .find(k => T.UMPIRE_CALLS[k] === call));
+    }
+  }
+  assert(reachable.size === Object.keys(T.UMPIRE_CALLS).length,
+         `every call in the bank is reachable (${[...reachable].join(', ')})`);
+  assert(!Object.keys(T.UMPIRE_CALLS).includes('BALL'),
+         'and there is still no ¡Bola!, because a timeout is a strike in this ruleset');
+  assert(T.umpireCall('STRIKE', true) === T.umpireCall('STRIKE', false),
+         'a timed-out strike and a wrong answer get the same call, which is why');
+}
+
+
 section('The baseball ladder');
 
 assert(T.LEVELS.length === 5, `${T.LEVELS.length} levels on the ladder`);

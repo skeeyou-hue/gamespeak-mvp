@@ -1184,6 +1184,101 @@ const section = title => console.log('\n# ' + title);
            `  on a full deck again (${back.deck} words)`);
   }
 
+  section('Sound');
+
+  // Every call in the bank has a sound, and every sound is a call or the
+  // crack — checked against the two banks rather than a list written here,
+  // so adding a call without a sound fails instead of going quiet.
+  const banks = await page.evaluate(() => ({
+    calls: Object.keys(UMPIRE_CALLS), sounds: soundNames()
+  }));
+  assert(banks.calls.every(c => banks.sounds.includes(c)),
+         `every umpire call has a sound (${banks.calls.join(', ')})`);
+  assert(banks.sounds.every(sfx => sfx === 'CRACK' || banks.calls.includes(sfx)),
+         `and every sound has a trigger — no ¡Bola! sting for a call that cannot happen (${banks.sounds.join(', ')})`);
+
+  // The three outcomes, through the real loop, on the real deck.
+  await page.evaluate(() => {
+    startInning();
+    state.deck = ['TRIPLE', 'TRIPLE', 'WALK'].map(t => VOCAB.find(w => w.tag === t));
+    state.index = 0; startAtBat();
+  });
+  const heard = async (label, fn) => {
+    const before = await page.evaluate(() => audioStatus().played);
+    await page.evaluate(fn);
+    await page.waitForTimeout(120);
+    const a = await page.evaluate(() => audioStatus());
+    return { last: a.last, delta: a.played - before, label };
+  };
+  const onHit = await heard('hit', () => resolvePitch(300, true));
+  assert(onHit.last === 'SAFE' && onHit.delta === 1,
+         `a hit plays the ¡Safe! sting (${onHit.last})`);
+  await page.waitForTimeout(1700);
+  const onStrike = await heard('strike', () => {
+    state.deck[state.index] = VOCAB.find(w => w.tag === 'TRIPLE');
+    startAtBat(); resolvePitch(300, false);
+  });
+  assert(onStrike.last === 'STRIKE' && onStrike.delta === 1,
+         `a strike plays the ¡Strike! sting (${onStrike.last})`);
+  await page.waitForTimeout(1700);
+  const onOut = await heard('out', () => {
+    state.deck[state.index] = VOCAB.find(w => w.tag === 'WALK');
+    startAtBat(); resolvePitch(300, false);
+  });
+  assert(onOut.last === 'OUT' && onOut.delta === 1,
+         `an easy word missed plays the ¡Out! sting (${onOut.last})`);
+  await page.waitForTimeout(1700);
+
+  // The bat crack is contact only.
+  const swingSound = async press => {
+    await page.evaluate(() => {
+      startInning(); state.bonus = { atBatsLeft: 2 }; renderHud(); startSwing();
+    });
+    await page.waitForFunction(() => state.swing && state.swing.live, { timeout: 9000 });
+    const before = await page.evaluate(() => audioStatus().played);
+    await page.evaluate(p => {
+      const w = pressWindow();
+      takeSwing(p === null ? 0.02 : (w.opens + w.shuts) / 2);
+    }, press);
+    await page.waitForTimeout(400);
+    const a = await page.evaluate(() => ({
+      played: audioStatus().played, result: state.swing ? state.swing.result : null
+    }));
+    return { delta: a.played - before, result: a.result };
+  };
+  const contact = await swingSound(1);
+  assert(contact.result === 'HOMERUN', 'a swing on the band connects');
+  assert(contact.delta === 2, `  and makes two sounds, the crack and the call (${contact.delta})`);
+  const missed = await swingSound(null);
+  assert(missed.result === 'MISS', 'a swing off the band misses');
+  assert(missed.delta === 1, `  and makes one, the call alone — no crack for a miss (${missed.delta})`);
+  await page.waitForFunction(() => state.swing === null, { timeout: 12000 });
+
+  /* SOUND MAY NOT GATE GAMEPLAY. Break the audio layer at the node level —
+     the way a browser that refuses an oscillator would — and drive a pitch
+     through it. The pitch has to resolve exactly as it does in silence. */
+  const broken = await page.evaluate(() => {
+    const ctx = audioStatus().context;
+    const real = ctx.createOscillator;
+    ctx.createOscillator = () => { throw new Error('no oscillator for you'); };
+    startInning();
+    state.deck = [VOCAB.find(w => w.tag === 'TRIPLE')]; state.index = 0; startAtBat();
+    const before = audioStatus().played;
+    let threw = null;
+    try { resolvePitch(300, true); } catch (err) { threw = String(err); }
+    const out = {
+      threw, hit: state.atBat.hit, over: state.atBat.over,
+      silent: audioStatus().played === before,
+      runsCounted: state.hits.TRIPLE + state.hits.DOUBLE + state.hits.SINGLE + state.hits.HOMERUN
+    };
+    ctx.createOscillator = real;
+    return out;
+  });
+  assert(broken.threw === null, 'a browser that refuses an oscillator does not throw into the pitch');
+  assert(broken.over && broken.hit, `the pitch resolves anyway (${broken.hit})`);
+  assert(broken.silent, 'and it resolves in silence rather than half a sound');
+  assert(broken.runsCounted === 1, 'the hit is scored exactly once, audio or no audio');
+
   section('The baseball ladder');
 
   // Back to the start card: the gate was opened at the top of the suite, so

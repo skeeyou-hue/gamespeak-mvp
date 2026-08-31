@@ -324,6 +324,27 @@ const show = state => state.map((on, i) => on ? ['1B', '2B', '3B'][i] : null)
   assert((await page.locator('#sum-hits').textContent()) === '0', 'zero hits recorded');
   assert((await page.locator('#sum-lob').textContent()) === '0', 'nobody left on base');
 
+  /* SHARED FILE, SO THE QUESTION GETS ASKED HERE. audio.js is read by both
+     modes, and it gained a sound layer for Timed's umpire and bat crack.
+     Classic has neither, so it should have gained the code and none of the
+     noise — measured by playing an inning and counting. */
+  {
+    const sfx = await page.evaluate(() => ({
+      names: soundNames(),
+      played: audioStatus().played,
+      opened: audioStatus().opened,
+      state: audioStatus().state
+    }));
+    assert(sfx.names.length > 0, `the shared sound layer is present (${sfx.names.join(', ')})`);
+    assert(sfx.opened && sfx.state !== 'suspended',
+           'and the unlock still ran on the start press, as it did before');
+    assert(sfx.played === 0,
+           `but nothing has made a sound in Classic across this whole inning (${sfx.played} played)`);
+    // Not because it cannot: the layer works here, Classic just never calls it.
+    const canPlay = await page.evaluate(() => playSound('CRACK'));
+    assert(canPlay, 'the layer would work in Classic — it is silent by having no call sites, not by being broken');
+  }
+
   const inningWas = await page.evaluate(() => state.inning);
   await page.click('#play-again');
   assert(await page.locator('#quiz-screen').isVisible(), 'play again returns to the quiz');

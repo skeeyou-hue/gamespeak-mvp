@@ -176,6 +176,15 @@ function say(text, tone) {
 // game had already decided; null clears the line. Written to both cards
 // because only one of them is ever on screen.
 function callUmpire(call) {
+  /* The sound for a call is looked up by identity against the bank rather
+     than by a name written down here, so it cannot drift from what is on
+     screen, and clearing the call (callUmpire(null)) finds nothing and
+     plays nothing. audio.js does not import UMPIRE_CALLS — it is shared
+     with Classic, which has no umpire — so this mapping is Timed's job.
+
+     The return value is deliberately ignored. Sound never gates a pitch. */
+  playSound(Object.keys(UMPIRE_CALLS).find(name => UMPIRE_CALLS[name] === call));
+
   for (const node of el.umpCalls) {
     const es = node.querySelector('.ump-es');
     const en = node.querySelector('.ump-en');
@@ -638,6 +647,11 @@ function resolveSwing(pressProgress) {
   state.swing.verdict = swung ? swingVerdict(contact) : 'LOOKING';
   state.swing.result  = onTime ? 'HOMERUN' : 'MISS';
   state.bonus         = null;          // spent, hit or miss
+
+  // Contact only. A swing that misses makes no sound of its own — the
+  // umpire's call is the whole of it. The crack goes before the call
+  // because that is the order the two happen in: bat first, umpire after.
+  if (onTime) playSound('CRACK');
   callUmpire(umpireCall(onTime ? 'HIT' : 'OUT'));
 
   if (onTime) {
