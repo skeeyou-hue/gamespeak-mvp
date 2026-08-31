@@ -92,6 +92,87 @@ const TIMED_TIERS = {
 
 const MAX_STRIKES = 3;   // three strikes ends the at-bat as an out
 
+
+/* -------------------------------------------------------------------------
+   1b. THE BASEBALL LADDER — five answer clocks
+
+   A user test found the clock too fast for less confident learners, with no
+   way to change it. A level moves the whole tier ladder rather than
+   flattening it to one number: a hard word still gets more time than an
+   easy one, at every level.
+
+   Clocks are stated per bucket rather than as a multiplier because the
+   badge puts the number on screen and a multiplier gives things like 2.55s.
+   Double-A is today's build exactly.
+
+   SIZED FROM A SWEEP, not from a guess — levels.js, 4000 innings a cell,
+   five learner profiles built on lognormal retrieval times. Two findings
+   set the shape:
+
+   Accuracy saturates at the slow end. Above roughly 1.4x today's clock it
+   is flat for four of five profiles, because the ceiling is knowledge, not
+   time — a first-encounter learner tops out near 54% however long they get.
+   Sizing the ladder by accuracy would give two levels nobody can feel.
+
+   The timeout rate does not saturate. It roughly halves at every step
+   below, 67% to 10% for that same learner, and it is the metric that
+   matches the complaint: "too fast" is a report about running out of time,
+   not about being wrong. That is what separates these five levels.
+   ------------------------------------------------------------------------- */
+// Double-A is today's build, so it is READ from the tiers rather than
+// written out again. Typing 3000/4000/5000 here would be a second copy of
+// numbers that already exist, and it would go stale silently the day a tier
+// window moved — the ladder would still say Double-A and no longer be it.
+const BASE_CLOCK = Object.values(TIMED_TIERS).reduce((clock, tier) => {
+  clock[tier.bucket] = tier.windowMs;
+  return clock;
+}, {});
+
+const LEVELS = [
+  { name: 'Rookie',       clock: { easy: 5000, medium: 6500, hard: 8000 } },
+  { name: 'Single-A',     clock: { easy: 4000, medium: 5000, hard: 6500 } },
+  { name: 'Double-A',     clock: BASE_CLOCK },
+  { name: 'Triple-A',     clock: { easy: 2500, medium: 3500, hard: 4000 } },
+  { name: 'Major League', clock: { easy: 2000, medium: 2500, hard: 3500 } }
+];
+
+// The rung that is today's build, found by identity with the tiers rather
+// than by a written-down index, so reordering the ladder cannot silently
+// move the default onto a different clock.
+const DEFAULT_LEVEL = LEVELS.findIndex(lv => lv.clock === BASE_CLOCK);
+
+function levelAt(index) {
+  return LEVELS[Math.min(Math.max(index | 0, 0), LEVELS.length - 1)];
+}
+
+// How long this word is on screen before the auto-out, at this level.
+function levelWindowFor(tag, index = DEFAULT_LEVEL) {
+  return levelAt(index).clock[bucketForTag(tag)];
+}
+
+/* The window the SPEED BANDS are laid out inside, which is not always the
+   window the player gets to answer in.
+
+   The bands are fractions, so putting them in the level's own window at
+   every level breaks both ends. Slower than Double-A they inflate: a fluent
+   player takes 36.5 home runs an inning at Rookie against 26.2 at Double-A,
+   because a 0.25 band of a longer clock is a longer time. Pinning them to
+   the base window instead fixes that and deletes the fast end — below the
+   base window there is no room for four bands, and at Major League singles
+   fall to 0% of hits for every profile measured.
+
+   min() is both fixes at once and is not a third mechanism: pinned below
+   Double-A, the bands as they are above it, and exactly today at Double-A,
+   where the two windows are the same number. Measured, compressed matches
+   pinned on the slow half and today's behaviour on the fast half.
+
+   The extra time a slow level buys is therefore survival, not slugging: an
+   answer past the band window but inside the level's window clamps onto the
+   1.00 band, which is a SINGLE. */
+function bandWindowFor(tag, index = DEFAULT_LEVEL) {
+  return Math.min(levelWindowFor(tag, index), windowForTag(tag));
+}
+
 function windowForTag(tag) {
   const tier = TIMED_TIERS[tag];
   if (!tier) throw new Error(`no timing tier for tag "${tag}"`);
@@ -154,8 +235,18 @@ function isFreeSwingTier(tag) {
   return tag !== undefined && tag !== null && bucketForTag(tag) === 'easy';
 }
 
-function applyPitch(strikes, correct, elapsedMs, windowMs, tag) {
-  const hit = correct ? hitForResponse(elapsedMs, windowMs) : null;
+function applyPitch(strikes, correct, elapsedMs, windowMs, tag, bandMs = windowMs) {
+  // Landing inside the answer window is what makes an answer a hit at all.
+  // The band window then says what KIND of hit, and clamping to it turns an
+  // answer slower than the bands into the 1.00 band, a SINGLE.
+  //
+  // With bandMs defaulting to windowMs this is exactly the old expression:
+  // inside the window, min() is the identity; outside it, hitForResponse
+  // already returned null. Callers that predate the ladder are unaffected.
+  const inTime = elapsedMs >= 0 && elapsedMs <= windowMs;
+  const hit = correct && inTime
+    ? hitForResponse(Math.min(elapsedMs, bandMs), bandMs)
+    : null;
 
   // Beat the clock with the right answer and the count no longer matters —
   // you can homer on an 0-2 count, same as in a real at-bat.
@@ -233,10 +324,12 @@ function applyAtBatToBonus(bonus, streak, result, roll) {
    Built here so the countdown UI has one obvious thing to read from, and so
    tests can assert against a known shape.
    ------------------------------------------------------------------------- */
-function newAtBat(tag, direction = pickDirection(Math.random())) {
+function newAtBat(tag, direction = pickDirection(Math.random()), level = DEFAULT_LEVEL) {
   return {
     tag,                          // the word's tier, which set the window
-    windowMs: windowForTag(tag),
+    level,                        // the level it was thrown at, frozen here
+    windowMs: levelWindowFor(tag, level),
+    bandMs:   bandWindowFor(tag, level),
     direction,                    // held for every pitch of this at-bat
     strikes: 0,                   // resets with every new at-bat
     over: false,
@@ -255,6 +348,7 @@ function newTimedState(inning) {
     runs: 0,
     bases: [false, false, false],
     hits: { WALK: 0, SINGLE: 0, DOUBLE: 0, TRIPLE: 0, HOMERUN: 0 },
+    level: DEFAULT_LEVEL,   // index into LEVELS; changed from the pause screen
     atBat: null,        // newAtBat(tag) while one is in progress
     paused: false,      // a clock is stopped and the card is covered
     hitStreak: 0,       // at-bats ending in a hit, back to back
@@ -622,6 +716,7 @@ function promptFor(word, direction) {
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
     TIMED_TIERS, MAX_STRIKES, SPEED_BANDS,
+    LEVELS, DEFAULT_LEVEL, BASE_CLOCK, levelAt, levelWindowFor, bandWindowFor,
     MAX_OUTS, AT_BATS_PER_INNING, inningOver, retireTheSide,
     BONUS_STREAK, BONUS_LIFE_MIN, BONUS_LIFE_MAX,
     windowForTag, bucketForTag, hitForResponse, applyPitch, isFreeSwingTier,

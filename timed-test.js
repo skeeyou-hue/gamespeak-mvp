@@ -428,6 +428,126 @@ section('The cap and the easy-out rule together');
          'and five at-bats deep with strikes on them, the inning is still live');
 }
 
+section('The baseball ladder');
+
+assert(T.LEVELS.length === 5, `${T.LEVELS.length} levels on the ladder`);
+assert(new Set(T.LEVELS.map(l => l.name)).size === T.LEVELS.length,
+       'every rung has its own name');
+assert(T.LEVELS.every(l => ['easy', 'medium', 'hard'].every(b => l.clock[b] > 0)),
+       'and a clock for every bucket');
+
+// Double-A is today's build, and it is READ from the tiers rather than
+// written out again — so this compares the two rather than a typed number.
+assert(T.LEVELS[T.DEFAULT_LEVEL].name === 'Double-A',
+       `the default rung is ${T.LEVELS[T.DEFAULT_LEVEL].name}`);
+for (const tag of Object.keys(T.TIMED_TIERS)) {
+  assert(T.levelWindowFor(tag, T.DEFAULT_LEVEL) === T.windowForTag(tag),
+         `  ${tag} is unchanged at the default level (${T.windowForTag(tag)}ms)`);
+}
+
+// The ladder has to actually be a ladder: strictly faster going up it.
+for (let i = 1; i < T.LEVELS.length; i++) {
+  for (const bucket of ['easy', 'medium', 'hard']) {
+    assert(T.LEVELS[i].clock[bucket] < T.LEVELS[i - 1].clock[bucket],
+           `${T.LEVELS[i].name} is tighter than ${T.LEVELS[i - 1].name} on ${bucket}` +
+           ` (${T.LEVELS[i].clock[bucket]}ms against ${T.LEVELS[i - 1].clock[bucket]}ms)`);
+  }
+}
+
+/* THE min() BOUNDARY. The bands are laid out inside the tighter of the two
+   windows, and the two swap places at the default rung. Both sides are
+   derived from the constants, so moving a level or a tier moves the
+   expectation with it rather than turning this into a test of nothing. */
+for (let i = 0; i < T.LEVELS.length; i++) {
+  for (const tag of Object.keys(T.TIMED_TIERS)) {
+    const open = T.levelWindowFor(tag, i), base = T.windowForTag(tag);
+    assert(T.bandWindowFor(tag, i) === Math.min(open, base),
+           `${T.LEVELS[i].name}/${tag}: the bands sit in the tighter window`);
+    if (i < T.DEFAULT_LEVEL) {
+      assert(T.bandWindowFor(tag, i) === base && open > base,
+             `  slower than the default, the bands stay pinned to ${base}ms while the clock runs to ${open}ms`);
+    } else if (i > T.DEFAULT_LEVEL) {
+      assert(T.bandWindowFor(tag, i) === open && open < base,
+             `  faster than it, the bands compress into ${open}ms rather than truncating`);
+    } else {
+      assert(T.bandWindowFor(tag, i) === open && open === base,
+             '  and at the default the two windows are the same number');
+    }
+  }
+}
+
+/* The default rung must be bit-identical to the build before the ladder
+   existed: same call, with and without a band window. */
+for (const tag of Object.keys(T.TIMED_TIERS)) {
+  const win = T.levelWindowFor(tag, T.DEFAULT_LEVEL);
+  const band = T.bandWindowFor(tag, T.DEFAULT_LEVEL);
+  for (const at of [0, 0.1, 0.25, 0.44, 0.7, 0.99, 1.0, 1.4]) {
+    for (const correct of [true, false]) {
+      const was = T.applyPitch(0, correct, win * at, win, tag);
+      const now = T.applyPitch(0, correct, win * at, win, tag, band);
+      assert(JSON.stringify(was) === JSON.stringify(now),
+             `${tag} at ${(at * 100).toFixed(0)}% of the clock, correct=${correct}: the default rung is the old behaviour exactly`);
+    }
+  }
+}
+
+/* THE SLOW END. The extra time buys survival, not slugging: an answer past
+   the band window but inside the level's clock is a SINGLE rather than a
+   strike, and the home run still costs what it always did. */
+{
+  const i = 0, tag = 'DOUBLE';
+  const open = T.levelWindowFor(tag, i), band = T.bandWindowFor(tag, i);
+  const late = T.applyPitch(0, true, (band + open) / 2, open, tag, band);
+  assert(late.result === 'HIT' && late.hit === 'SINGLE',
+         `${T.LEVELS[i].name}: an answer past ${band}ms but inside ${open}ms is a single, not a strike`);
+  const beyond = T.applyPitch(0, true, open + 1, open, tag, band);
+  assert(beyond.result !== 'HIT',
+         '  and past the clock itself it is still not a hit');
+  // The home-run band is the same absolute time it is at the default rung,
+  // which is the whole point of pinning: a slower level is not a slugging
+  // shortcut. Read from SPEED_BANDS rather than typed.
+  const hrFraction = T.SPEED_BANDS[0].within;
+  assert(T.applyPitch(0, true, band * hrFraction, open, tag, band).hit === 'HOMERUN' &&
+         T.applyPitch(0, true, band * hrFraction * 1.02, open, tag, band).hit !== 'HOMERUN',
+         `  and the home run still closes at ${(band * hrFraction).toFixed(0)}ms, exactly as at the default rung`);
+}
+
+/* THE FAST END. Compressing rather than truncating is the whole reason for
+   min(): every band has to still be reachable at the tightest rung, or the
+   hit gradient the mode is built on disappears there. */
+{
+  const i = T.LEVELS.length - 1, tag = 'DOUBLE';
+  const open = T.levelWindowFor(tag, i), band = T.bandWindowFor(tag, i);
+  assert(open < T.windowForTag(tag), `${T.LEVELS[i].name} really is the tighter clock`);
+  const reached = new Set();
+  for (let at = 0.01; at < 1; at += 0.01) {
+    const p = T.applyPitch(0, true, band * at, open, tag, band);
+    if (p.hit) reached.add(p.hit);
+  }
+  for (const band_ of T.SPEED_BANDS) {
+    assert(reached.has(band_.hit),
+           `  ${band_.hit} is still reachable at the tightest rung — pinning to the base window would have deleted it`);
+  }
+}
+
+// An at-bat freezes the level it was thrown at, so changing rungs mid-count
+// cannot move the clock under a live pitch.
+{
+  const ab = T.newAtBat('DOUBLE', 'ES_TO_EN', 0);
+  assert(ab.level === 0, 'the at-bat carries the level it was thrown at');
+  assert(ab.windowMs === T.levelWindowFor('DOUBLE', 0) &&
+         ab.bandMs === T.bandWindowFor('DOUBLE', 0),
+         'with both windows resolved at that level, not looked up later');
+  const dflt = T.newAtBat('DOUBLE', 'ES_TO_EN');
+  assert(dflt.level === T.DEFAULT_LEVEL &&
+         dflt.windowMs === T.windowForTag('DOUBLE'),
+         'and an at-bat asked for without a level is the default rung');
+}
+
+assert(T.newTimedState(1).level === T.DEFAULT_LEVEL,
+       'a fresh inning starts on the default rung');
+
+
 section('The dugout');
 
 assert(T.DUGOUT_PHRASES.length >= 10, `${T.DUGOUT_PHRASES.length} phrases in the bank`);

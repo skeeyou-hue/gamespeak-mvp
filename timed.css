@@ -779,6 +779,62 @@ body {
   margin-inline: auto;
 }
 
+/* --- the level picker ---
+   Two copies of one control, on the start card and under the pause veil.
+   Chips wrap rather than scroll, because five names do not fit one phone
+   row and a horizontally scrolling control hides its own options. ------ */
+.level-eyebrow {
+  margin: 16px 0 6px;
+  font-size: 0.66rem; font-weight: 700;
+  letter-spacing: 0.12em; text-transform: uppercase;
+  color: var(--muted);
+}
+
+.level-pick {
+  display: flex; flex-wrap: wrap; gap: 5px;
+  justify-content: center;
+}
+
+.level-chip {
+  font: inherit;
+  font-size: 0.76rem; font-weight: 600;
+  padding: 6px 10px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: #fff;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.level-chip:hover { border-color: #b5713f; color: var(--ink); }
+
+.level-chip.on {
+  background: #b5713f;
+  border-color: #b5713f;
+  color: #fff;
+}
+
+.level-note {
+  margin: 7px 0 0;
+  font-size: 0.72rem;
+  color: var(--muted);
+}
+
+/* The level on the pitch card, beside the tier. The tier badge already
+   states the clock in seconds and reads it from the at-bat, so this only
+   has to name the rung. */
+.level-badge {
+  display: inline-block;
+  margin-left: 5px;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: #eef2ef;
+  color: var(--muted);
+  font-size: 0.62rem; font-weight: 700;
+  letter-spacing: 0.06em; text-transform: uppercase;
+  vertical-align: middle;
+}
+
 /* --- the box score, 40% smaller -------------------------------------------
    Same mechanism as the question card and for the same reason: zoom takes
    the layout box with it, so the card really is smaller rather than a

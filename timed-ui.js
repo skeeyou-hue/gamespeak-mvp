@@ -20,6 +20,12 @@ const VISITOR_RUNS = 2;
 
 let state     = newTimedState(0);
 let frame     = null;   // requestAnimationFrame handle for the countdown
+// The two beats between one pitch and the next. Tracked rather than fired
+// and forgotten, because a beat that outlives the state it was started in
+// wakes up to a null at-bat — which is exactly what going back to the start
+// card mid-inning does.
+let pitchTimer = null;
+let swingEndTimer = null;
 let startedAt = 0;      // when the pitch on screen was thrown
 
 const el = {
@@ -83,8 +89,69 @@ const el = {
   playAgain:    document.getElementById('play-again'),
 
   startScreen:  document.getElementById('start-screen'),
-  startButton:  document.getElementById('start-button')
+  startButton:  document.getElementById('start-button'),
+
+  levelBadge:      document.getElementById('level-badge'),
+  startLevels:     document.getElementById('start-levels'),
+  startLevelNote:  document.getElementById('start-level-note'),
+  pauseLevels:     document.getElementById('pause-levels'),
+  pauseLevelNote:  document.getElementById('pause-level-note')
 };
+
+
+/* ---------- the level picker ----------
+   Two copies of one control: the start screen picks it, the pause screen
+   changes it. Both are built from LEVELS rather than written in markup, so
+   a level added or renamed there appears in both places, and the clocks
+   shown are the clocks the game runs.
+
+   A change takes the next at-bat, not the one on screen: newAtBat freezes
+   windowMs and bandMs when the batter steps in, and moving the goalposts
+   under a running count would be its own kind of unfair. The note says so. */
+
+function levelClockText(index) {
+  const lv = levelAt(index);
+  return ['easy', 'medium', 'hard']
+    .map(b => (lv.clock[b] / 1000).toFixed(1))
+    .join(' / ') + 's to answer';
+}
+
+function buildLevelPicker(container, onPick) {
+  container.innerHTML = '';
+  LEVELS.forEach((lv, i) => {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'level-chip';
+    button.dataset.level = i;
+    button.textContent = lv.name;
+    button.setAttribute('role', 'radio');
+    button.addEventListener('click', () => onPick(i));
+    container.appendChild(button);
+  });
+}
+
+function renderLevelPickers() {
+  for (const [box, note] of [[el.startLevels, el.startLevelNote],
+                             [el.pauseLevels, el.pauseLevelNote]]) {
+    box.querySelectorAll('.level-chip').forEach(chip => {
+      const on = Number(chip.dataset.level) === state.level;
+      chip.classList.toggle('on', on);
+      chip.setAttribute('aria-checked', on ? 'true' : 'false');
+    });
+    note.textContent = levelClockText(state.level);
+  }
+  // Mid-game the change lands on the next batter, so say which.
+  if (state.atBat && state.atBat.level !== state.level) {
+    el.pauseLevelNote.textContent =
+      levelClockText(state.level) + ' — from the next batter.';
+  }
+  el.levelBadge.textContent = levelAt(state.level).name;
+}
+
+function setLevel(index) {
+  state.level = index;
+  renderLevelPickers();
+}
 
 /* ---------- helpers ---------- */
 
@@ -177,6 +244,7 @@ function renderQuestion() {
   el.directionHint.textContent = face.answerLang === 'es' ? '→ Español' : '→ English';
   el.tierBadge.textContent = `${bucketForTag(word.tag).toUpperCase()} · ${(state.atBat.windowMs / 1000).toFixed(1)}s`;
   el.tierBadge.className = 'tier-badge tier-' + bucketForTag(word.tag);
+  el.levelBadge.textContent = levelAt(state.atBat.level).name;
   renderStrikes();
 }
 
@@ -201,7 +269,10 @@ function renderChoices() {
 function startAtBat() {
   // The direction is picked here, once, and rides on the at-bat — so a
   // strike bringing the same word back cannot re-roll it.
-  state.atBat = newAtBat(state.deck[state.index].tag);
+  // The level is frozen into the at-bat here. Changing it on the pause
+  // screen mid-count therefore cannot move the clock under a live pitch.
+  state.atBat = newAtBat(state.deck[state.index].tag,
+                         pickDirection(Math.random()), state.level);
   renderQuestion();
   throwPitch();
 }
@@ -227,7 +298,11 @@ function runClock() {
     // A banked swing can take over the at-bat mid-pitch. Cancelling the
     // handle can lose a race with a callback already in flight, so the loop
     // also checks for itself and stops.
-    if (state.swing || state.paused) { frame = null; return; }
+    // Cancelling the handle can lose a race with a callback already in
+    // flight, so the loop checks for itself — including for the at-bat
+    // having been replaced underneath it, which is what going back to the
+    // start card does.
+    if (state.swing || state.paused || !state.atBat) { frame = null; return; }
     const elapsed = now - startedAt;
     if (pitchTimedOut(elapsed, state.atBat.windowMs)) {
       renderClock(elapsed); resolvePitch(elapsed, false); return;
@@ -247,7 +322,8 @@ function resolvePitch(elapsedMs, correct) {
 
   const atBat = state.atBat;
   const word  = state.deck[state.index];
-  const pitch = applyPitch(atBat.strikes, correct, elapsedMs, atBat.windowMs, word.tag);
+  const pitch = applyPitch(atBat.strikes, correct, elapsedMs, atBat.windowMs,
+                           word.tag, atBat.bandMs);
   atBat.strikes = pitch.strikes;
   callUmpire(umpireCall(pitch.result, pitchTimedOut(elapsedMs, atBat.windowMs)));
 
@@ -282,10 +358,14 @@ function resolvePitch(elapsedMs, correct) {
 
   renderStrikes();
   renderHud();
-  setTimeout(afterPitch, 1500);
+  pitchTimer = setTimeout(afterPitch, 1500);
 }
 
 function afterPitch() {
+  pitchTimer = null;
+  // The beat can outlive the at-bat that started it — going back to the
+  // start card replaces the whole state. Nothing to settle, nothing to do.
+  if (!state.atBat) return;
   // Still alive in this at-bat: same word comes back, one strike worse.
   if (!state.atBat.over) { throwPitch(); return; }
 
@@ -340,6 +420,7 @@ function renderPause() {
 function pauseGame() {
   if (state.paused || !canPause()) return;
   state.paused = true;
+  renderLevelPickers();      // the veil is where the ladder can be changed
 
   if (state.swing) {
     clearReady();
@@ -578,7 +659,7 @@ function resolveSwing(pressProgress) {
   }
 
   renderHud();
-  setTimeout(endSwing, onTime ? 2400 : 1500);   // longer, to let the bat land
+  swingEndTimer = setTimeout(endSwing, onTime ? 2400 : 1500);   // longer, to let the bat land
 }
 
 function endSwing() {
@@ -672,13 +753,19 @@ function endInning(title, subtitle) {
 let started = false;
 
 function startInning() {
+  // The chosen level outlives the inning: newTimedState resets everything,
+  // and having the ladder snap back to Double-A on "play another inning"
+  // would undo the one setting the player deliberately made.
+  const level = state.level;
   state = newTimedState(started ? state.inning + 1 : 1);
+  state.level = level;
   started = true;
   state.deck = shuffle(VOCAB);
   el.startScreen.classList.add('hidden');
   el.summary.classList.add('hidden');
   el.pitchScreen.classList.remove('hidden');
   renderHud();
+  renderLevelPickers();
   startAtBat();
 }
 
@@ -690,7 +777,14 @@ function startInning() {
    back into play rather than through here — the gesture this screen exists
    to collect has already happened by then. */
 function showStart() {
-  clearReady();                       // nothing of a previous session left running
+  // Everything that could still be running has to stop before the state is
+  // replaced: a countdown frame from the previous inning would wake up to
+  // state.atBat === null and throw. clearReady() alone was not enough — it
+  // stops the swing's timers, not the pitch clock.
+  clearReady();
+  if (frame) { cancelAnimationFrame(frame); frame = null; }
+  if (pitchTimer) { clearTimeout(pitchTimer); pitchTimer = null; }
+  if (swingEndTimer) { clearTimeout(swingEndTimer); swingEndTimer = null; }
   el.startScreen.classList.remove('hidden');
   el.pitchScreen.classList.add('hidden');
   el.swingScreen.classList.add('hidden');
@@ -700,8 +794,12 @@ function showStart() {
   state = newTimedState(1);
   state.locked = true;                // no key press reaches a game that has not begun
   renderHud();
+  renderLevelPickers();
   renderPause();
 }
+
+buildLevelPicker(el.startLevels, setLevel);
+buildLevelPicker(el.pauseLevels, setLevel);
 
 el.playAgain.addEventListener('click', startInning);
 el.startButton.addEventListener('click', () => {

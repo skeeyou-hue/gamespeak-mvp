@@ -56,6 +56,15 @@
       <p class="pause-eyebrow">Tiempo</p>
       <h2 class="pause-title" id="pause-title">Paused</h2>
       <p class="pause-note" id="pause-note">The clock is stopped.</p>
+
+      <!-- The only seam in the loop where this can live. afterPitch fires
+           1500ms after an answer and goes straight into the next live pitch,
+           so there is no idle beat between at-bats to put a control in —
+           but the pause veil stops every clock and hides the word. -->
+      <p class="level-eyebrow">Level</p>
+      <div class="level-pick" id="pause-levels" role="radiogroup" aria-label="Level"></div>
+      <p class="level-note" id="pause-level-note">&nbsp;</p>
+
       <button class="pause-resume" id="pause-resume" type="button">Resume</button>
     </div>
   </div>
@@ -78,6 +87,13 @@
         <strong>the quicker the answer, the bigger the hit.</strong>
         Miss an easy one and you are out on the spot.
       </p>
+      <!-- The five levels are injected from LEVELS by timed-ui.js: the names
+           and the clocks both come from the constant, so neither can drift
+           away from what the game actually runs. -->
+      <p class="level-eyebrow">Pick your level</p>
+      <div class="level-pick" id="start-levels" role="radiogroup" aria-label="Level"></div>
+      <p class="level-note" id="start-level-note">&nbsp;</p>
+
       <button class="start-button" id="start-button">
         <span class="start-button-es">Al bate</span>
         <span class="start-button-en">Step in</span>
@@ -92,6 +108,7 @@
       <div class="pitch-top">
         <span class="pitch-tags">
           <span class="tier-badge" id="tier-badge">EASY · 3.0s</span>
+          <span class="level-badge" id="level-badge">Double-A</span>
           <!-- Which way this pitch is coming. Set per at-bat, held across
                a re-pitch, so it never changes under the player mid-count. -->
           <span class="direction-hint" id="direction-hint">→ English</span>

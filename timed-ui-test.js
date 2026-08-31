@@ -1184,6 +1184,100 @@ const section = title => console.log('\n# ' + title);
            `  on a full deck again (${back.deck} words)`);
   }
 
+  section('The baseball ladder');
+
+  // Back to the start card: the gate was opened at the top of the suite, so
+  // its picker is off screen by now.
+  await page.evaluate(() => showStart());
+  await page.waitForSelector('#start-screen:not(.hidden)');
+
+  // Both pickers are built from LEVELS rather than written in markup, so
+  // the count and the names are read from the constant on both sides.
+  const rungPicker = await page.evaluate(() => ({
+    levels: LEVELS.map(l => l.name),
+    start: [...document.querySelectorAll('#start-levels .level-chip')].map(c => c.textContent),
+    pause: [...document.querySelectorAll('#pause-levels .level-chip')].map(c => c.textContent),
+    dflt: DEFAULT_LEVEL,
+    on: [...document.querySelectorAll('#start-levels .level-chip.on')].map(c => Number(c.dataset.level)),
+    note: document.getElementById('start-level-note').textContent,
+    clocks: ['easy','medium','hard'].map(b => (LEVELS[DEFAULT_LEVEL].clock[b]/1000).toFixed(1))
+  }));
+  assert(JSON.stringify(rungPicker.start) === JSON.stringify(rungPicker.levels),
+         `the start card offers every rung, named from LEVELS (${rungPicker.start.join(', ')})`);
+  assert(JSON.stringify(rungPicker.pause) === JSON.stringify(rungPicker.levels),
+         'and the pause veil offers the same ones from the same place');
+  assert(rungPicker.on.length === 1 && rungPicker.on[0] === rungPicker.dflt,
+         `the default rung is the one selected (${rungPicker.levels[rungPicker.dflt]})`);
+  assert(rungPicker.clocks.every(c => rungPicker.note.includes(c)),
+         `the clocks on the card are read from the constant, not written in copy ("${rungPicker.note.trim()}")`);
+
+  // Picking a rung and starting: the at-bat is thrown at that rung.
+  await page.click('#start-levels .level-chip[data-level="0"]');
+  await page.click('#start-button');
+  await page.waitForSelector('.choice');
+  const rungRookie = await page.evaluate(() => ({
+    level: state.atBat.level,
+    windowMs: state.atBat.windowMs, bandMs: state.atBat.bandMs,
+    wantWindow: levelWindowFor(state.deck[state.index].tag, 0),
+    wantBand: bandWindowFor(state.deck[state.index].tag, 0),
+    badge: document.getElementById('level-badge').textContent,
+    tier: document.getElementById('tier-badge').textContent,
+    name: LEVELS[0].name
+  }));
+  assert(rungRookie.level === 0 && rungRookie.windowMs === rungRookie.wantWindow,
+         `starting on ${rungRookie.name} throws the at-bat at its clock (${rungRookie.windowMs}ms)`);
+  assert(rungRookie.bandMs === rungRookie.wantBand && rungRookie.bandMs < rungRookie.windowMs,
+         `  with the bands pinned tighter than the clock (${rungRookie.bandMs}ms inside ${rungRookie.windowMs}ms)`);
+  assert(rungRookie.badge === rungRookie.name, `the badge names the rung ("${rungRookie.badge}")`);
+  assert(rungRookie.tier.includes((rungRookie.windowMs / 1000).toFixed(1)),
+         `and the tier badge states that clock from the at-bat ("${rungRookie.tier}")`);
+
+  // Changing it mid-game, on the only seam that has no clock running.
+  await page.click('#pause-button');
+  await page.waitForSelector('#pause-veil:not(.hidden)');
+  const rungWasWindow = await page.evaluate(() => state.atBat.windowMs);
+  await page.click('#pause-levels .level-chip[data-level="4"]');
+  const rungMid = await page.evaluate(() => ({
+    stateLevel: state.level, atBatLevel: state.atBat.level,
+    windowMs: state.atBat.windowMs,
+    note: document.getElementById('pause-level-note').textContent
+  }));
+  assert(rungMid.stateLevel === 4 && rungMid.atBatLevel === 0,
+         'changing rung under the veil does not touch the at-bat already in progress');
+  assert(rungMid.windowMs === rungWasWindow,
+         `  the live clock is the one the batter stepped in on (${rungMid.windowMs}ms)`);
+  assert(/next batter/i.test(rungMid.note),
+         `  and the veil says when it lands ("${rungMid.note.trim()}")`);
+
+  await page.click('#pause-resume');
+  await page.waitForFunction(() => !state.paused, { timeout: 6000 });
+  await page.evaluate(() => resolvePitch(200, true));
+  await page.waitForTimeout(1800);
+  const rungNext = await page.evaluate(() => ({
+    level: state.atBat.level, windowMs: state.atBat.windowMs, bandMs: state.atBat.bandMs,
+    wantWindow: levelWindowFor(state.deck[state.index].tag, 4),
+    wantBand: bandWindowFor(state.deck[state.index].tag, 4),
+    badge: document.getElementById('level-badge').textContent, name: LEVELS[4].name
+  }));
+  assert(rungNext.level === 4 && rungNext.windowMs === rungNext.wantWindow,
+         `the next batter steps in on ${rungNext.name} (${rungNext.windowMs}ms)`);
+  assert(rungNext.bandMs === rungNext.wantBand && rungNext.bandMs === rungNext.windowMs,
+         `  with the bands compressed into that clock rather than truncated (${rungNext.bandMs}ms)`);
+  assert(rungNext.badge === rungNext.name, 'and the badge follows');
+
+  // The rung outlives the inning: a reset that snapped it back to the
+  // default would undo the one setting the player deliberately made.
+  await page.evaluate(() => { startInning(); });
+  await page.waitForSelector('.choice');
+  const rungKept = await page.evaluate(() => ({ level: state.level, atBat: state.atBat.level }));
+  assert(rungKept.level === 4 && rungKept.atBat === 4,
+         'and it survives into the next inning rather than resetting');
+
+  // Back to the default rung, so the sections after this one see the game
+  // they were written against.
+  await page.evaluate(() => { setLevel(DEFAULT_LEVEL); startInning(); });
+  await page.waitForSelector('.choice');
+
   section('The box score is smaller than the card that plays the inning');
 
   // zoom, not transform: scale. The lesson from the question card is that
