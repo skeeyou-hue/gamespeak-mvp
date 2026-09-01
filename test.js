@@ -104,6 +104,38 @@ const show = state => state.map((on, i) => on ? ['1B', '2B', '3B'][i] : null)
   assert(opened.word.length > 0 && opened.word !== '—',
          `and a real word up (${opened.word})`);
 
+  /* THE PARK IS A SHARED FILE TOO, and it was restyled. Classic gets the
+     new look whether or not Classic was the subject, so the checks that
+     the style depends on live here as well as in Timed. */
+  {
+    const park = await page.evaluate(() => {
+      const svg = document.querySelector('.scene svg');
+      return { rendering: svg.getAttribute('shape-rendering'),
+               nodes: svg.querySelectorAll('*').length };
+    });
+    assert(park.rendering === 'crispEdges',
+           'the park is drawn with crispEdges, so the pixels stay pixels at any scale');
+    assert(park.nodes > 400,
+           `and the detail is really there rather than a flat backdrop (${park.nodes} shapes)`);
+
+    // Static means static: play a whole at-bat and the park is the same
+    // nodes it was, not rebuilt behind the game.
+    const before = await page.evaluate(() => {
+      const svg = document.querySelector('.scene svg');
+      window.__firstShape = svg.querySelector('rect');
+      return svg.querySelectorAll('*').length;
+    });
+    await answer(true);
+    const after = await page.evaluate(() => {
+      const svg = document.querySelector('.scene svg');
+      return { n: svg.querySelectorAll('*').length,
+               same: svg.querySelector('rect') === window.__firstShape };
+    });
+    assert(after.n === before && after.same,
+           'the park is not rebuilt as the game plays — same nodes, same count');
+  }
+
+
   // Answer the current question; pass false to deliberately answer wrong.
   async function answer(correct = true) {
     const es = await page.evaluate(() => document.getElementById('word').textContent);

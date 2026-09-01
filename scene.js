@@ -24,8 +24,122 @@
    only works when the SVG lives in the same document.
    ========================================================================= */
 
+/* -------------------------------------------------------------------------
+   PIXEL HELPERS
+
+   The park is drawn 16-bit: flat rects, a fixed palette, and dithering
+   instead of gradients. Nothing here is an asset — same constraint that
+   made the sounds synthesised — so the repeated detail is generated once,
+   at module load, into the one static string the scene has always been.
+   No part of it is rebuilt per frame.
+
+   PIX is the grid everything snaps to. Dither cells are one PIX square, so
+   a band edge reads as a checkerboard rather than a line.
+   ------------------------------------------------------------------------- */
+const PIX = 4;
+
+// Deterministic, so the crowd and the tufts are in the same places every
+// load and a screenshot test is not measuring Math.random().
+function seeded(seed) {
+  let n = seed >>> 0;
+  return () => {
+    n = (n * 1664525 + 1013904223) >>> 0;
+    return n / 4294967296;
+  };
+}
+
+const px = (x, y, w, h, fill) =>
+  `<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="${fill}"/>`;
+
+/* A checkerboard of PIX squares in `fill`, covering the box. Two rows of it
+   between two flat bands is what replaces a gradient: the eye blends it at
+   any size the park is drawn, and it stays hard-edged when it is scaled up.
+   `phase` flips which squares are filled, so stacked rows alternate. */
+function dither(x, y, w, h, fill, phase = 0) {
+  let out = '';
+  for (let row = 0; row < h / PIX; row++) {
+    for (let col = 0; col < w / PIX; col++) {
+      if ((row + col + phase) % 2) continue;
+      out += px(x + col * PIX, y + row * PIX, PIX, PIX, fill);
+    }
+  }
+  return out;
+}
+
+// A band edge: two dithered rows, the upper sparser than the lower, so the
+// transition has a direction rather than reading as a seam.
+function bandEdge(y, top, bottom) {
+  return dither(0, y, 1200, PIX, bottom, 0) +
+         dither(0, y + PIX, 1200, PIX, bottom, 1) +
+         dither(0, y + PIX, 1200, PIX, top, 0);
+}
+
+/* Two staggered rows of heads over a dark base. Staggering is what stops a
+   crowd of squares reading as a grid: the second row sits half a cell over
+   and half a cell down. */
+function crowd(y, height, seed) {
+  const rand = seeded(seed);
+  const shirts = ['#E8DCC0', '#2E8C9E', '#F2A73B', '#B8401F', '#9FB3AE', '#F4EDE0'];
+  let out = '';
+  for (let row = 0; row * PIX * 3 < height; row++) {
+    const oy = y + row * PIX * 3;
+    const ox = (row % 2) * PIX;
+    for (let col = 0; col * PIX * 2 < 1200; col++) {
+      if (rand() < 0.22) continue;           // gaps: nobody sells out every seat
+      out += px(ox + col * PIX * 2, oy, PIX, PIX, shirts[(rand() * shirts.length) | 0]);
+    }
+  }
+  return out;
+}
+
+/* Mow stripes, as flat wedges fanning from the infield with a dithered
+   column down each edge. Drawn as vertical bands clipped to the turf box
+   rather than as true wedges: at this scale the difference is invisible and
+   a rect is a rect is a pixel. */
+function mowStripes(y, height, light, dark) {
+  let out = '';
+  const w = 96;
+  for (let i = 0; i * w < 1300; i++) {
+    const x = -50 + i * w;
+    out += px(x, y, w, height, i % 2 ? light : dark);
+    out += dither(x, y, PIX * 3, height, i % 2 ? dark : light, i % 2);
+  }
+  return out;
+}
+
+// Scattered lighter tufts. Sparse, never on the infield dirt, and never
+// bright enough to compete with anything that moves.
+function tufts(seed, count, box, fill) {
+  const rand = seeded(seed);
+  let out = '';
+  for (let i = 0; i < count; i++) {
+    const x = Math.round((box.x + rand() * box.w) / PIX) * PIX;
+    const y = Math.round((box.y + rand() * box.h) / PIX) * PIX;
+    out += px(x, y, PIX * (rand() < 0.3 ? 2 : 1), PIX, fill);
+  }
+  return out;
+}
+
+/* A blocky stepped mound or home circle: three shades, lit on top, base in
+   the middle, shadow along the bottom. Built as rows of decreasing width so
+   the silhouette steps rather than curves. */
+function steppedCircle(cx, cy, rx, ry, lit, base, shade) {
+  let out = '';
+  const rows = Math.max(2, Math.round((ry * 2) / PIX));
+  for (let i = 0; i < rows; i++) {
+    const t = (i + 0.5) / rows;                       // 0 top .. 1 bottom
+    const w = Math.round((rx * 2 * Math.sqrt(1 - Math.pow(2 * t - 1, 2))) / PIX) * PIX;
+    if (w <= 0) continue;
+    const y = Math.round((cy - ry + i * PIX) / PIX) * PIX;
+    const fill = t < 0.34 ? lit : t > 0.74 ? shade : base;
+    out += px(Math.round((cx - w / 2) / PIX) * PIX, y, w, PIX, fill);
+  }
+  return out;
+}
+
 const BALLPARK_SVG = String.raw`
     <svg viewBox="0 0 1200 800" preserveAspectRatio="xMidYMax meet"
+         shape-rendering="crispEdges"
          xmlns="http://www.w3.org/2000/svg">
       <defs>
         <!-- Golden hour: dusky blue overhead falling through rose into
@@ -124,6 +238,7 @@ const BALLPARK_SVG = String.raw`
              shoulders wider than the waist, bent arms, and a batting helmet.
              Drawn small — these are up the field, behind the batter. -->
         <g id="runnerFig">
+          <rect x="-12" y="-1" width="24" height="4" fill="#0A3D24" opacity="0.34"/>
           <g stroke="#F4EDE0" stroke-width="4.6" stroke-linecap="round" stroke-linejoin="round" fill="none">
           <path d="M-4,-14.4 L-8,-7.4 L-10.5,0"/>
           <path d="M4,-14.4 L8,-7.4 L10.5,0"/>
@@ -142,6 +257,15 @@ const BALLPARK_SVG = String.raw`
           <path d="M-5.6,-30.2 A6,6 0 0 1 6.4,-30.2 Z" fill="#0E4C5C"/>
           <ellipse cx="0.4" cy="-30.4" rx="6" ry="1.4" fill="#0E4C5C"/>
           <path d="M-5,-30.2 q-1.5,2.8 0.5,4.3 q1.9,0.4 2.4,-1.5 Z" fill="#0E4C5C"/>
+          <!-- Lit from the left: a shade down the right edge of the figure,
+               and a flat shadow on the grass under it. Both sit inside the
+               figure's existing extents, so nothing about where a runner is
+               measured to be has moved. -->
+          <g fill="#0A2A33" opacity="0.34">
+            <rect x="4" y="-26" width="4" height="13"/>
+            <rect x="7" y="-15" width="4" height="15"/>
+            <rect x="2" y="-31" width="4" height="5"/>
+          </g>
         </g>
 
         <!-- A fielder, reused at every position and scaled by depth. Road
@@ -153,7 +277,7 @@ const BALLPARK_SVG = String.raw`
              shoulders carrying wider than the waist, glove arm bent low and
              out front, throwing arm cocked back. -->
         <g id="fielderFig">
-          <ellipse cy="1.5" rx="14" ry="3.4" fill="#0A3D24" opacity="0.3"/>
+          <rect x="-14" y="-0.5" width="28" height="4" fill="#0A3D24" opacity="0.34"/>
           <g stroke="#B9C2C0" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" fill="none">
           <path d="M-4.5,-15.8 L-8.6,-8 L-11,0"/>
           <path d="M4.5,-15.8 L8.6,-8 L11,0"/>
@@ -172,6 +296,13 @@ const BALLPARK_SVG = String.raw`
           <path d="M-5.2,-33.4 A5.6,5.6 0 0 1 6,-33.4 Z" fill="#1D3A46"/>
           <ellipse cx="0.4" cy="-33" rx="6.1" ry="1.5" fill="#1D3A46"/>
           <circle cx="-13.3" cy="-11.5" r="4.9" fill="#8A5A2B"/>
+          <!-- Right-edge shade, same light direction as the mound and the
+               home circle: from the left and slightly above. -->
+          <g fill="#0F2630" opacity="0.32">
+            <rect x="4" y="-28" width="4" height="14"/>
+            <rect x="7.5" y="-16" width="4" height="16"/>
+            <rect x="2" y="-34" width="4" height="6"/>
+          </g>
         </g>
 
         <!-- One palm, reused across the stadium rim at different sizes -->
@@ -187,37 +318,37 @@ const BALLPARK_SVG = String.raw`
         </g>
       </defs>
 
-      <!-- ================= SKY ================= -->
-      <rect width="1200" height="380" fill="url(#sky)"/>
+      <!-- ================= SKY =================
+           Three flat bands, not a gradient. The transitions are two rows of
+           dithered PIX squares, which is how a 16-bit palette fakes a ramp
+           and the only way this holds up when the park is scaled to a
+           desktop width. -->
+      <rect width="1200" height="152" fill="#17375F"/>
+      <rect y="152" width="1200" height="118" fill="#7C4A6E"/>
+      <rect y="270" width="1200" height="114" fill="#DB7F4E"/>
+      ${bandEdge(144, '#17375F', '#7C4A6E')}
+      ${bandEdge(262, '#7C4A6E', '#DB7F4E')}
 
-      <!-- Clouds, streaked and lit from beneath where the sun catches them -->
-      <g>
-        <g fill="#B87C90" opacity="0.32">
-          <ellipse cx="300" cy="92"  rx="175" ry="8"/>
-          <ellipse cx="960" cy="68"  rx="140" ry="6"/>
-          <ellipse cx="700" cy="112" rx="120" ry="6"/>
-        </g>
-        <g fill="#F0956A" opacity="0.5">
-          <ellipse cx="840" cy="150" rx="205" ry="11"/>
-          <ellipse cx="900" cy="142" rx="110" ry="7"/>
-          <ellipse cx="255" cy="176" rx="185" ry="10"/>
-          <ellipse cx="180" cy="168" rx="95"  ry="6"/>
-        </g>
-        <g fill="#FFD6A4" opacity="0.72">
-          <ellipse cx="300" cy="183" rx="155" ry="5.5"/>
-          <ellipse cx="855" cy="157" rx="155" ry="5.5"/>
-          <ellipse cx="600" cy="205" rx="125" ry="4.5"/>
-          <ellipse cx="1050" cy="188" rx="110" ry="4"/>
-        </g>
+      <!-- Clouds as flat bars, stepped rather than streaked -->
+      <g fill="#8A5A7C">
+        <rect x="128" y="84"  width="344" height="8"/>
+        <rect x="164" y="76"  width="212" height="8"/>
+        <rect x="820" y="60"  width="280" height="8"/>
+      </g>
+      <g fill="#C9708A">
+        <rect x="636" y="140" width="408" height="8"/>
+        <rect x="700" y="132" width="216" height="8"/>
+        <rect x="72"  y="168" width="368" height="8"/>
+      </g>
+      <g fill="#F6C08A">
+        <rect x="148" y="180" width="304" height="8"/>
+        <rect x="700" y="156" width="308" height="8"/>
+        <rect x="476" y="204" width="248" height="8"/>
       </g>
 
-      <!-- The sun, low and mostly behind the stands -->
-      <circle cx="108" cy="196" r="250" fill="url(#sunGlow)"/>
-      <circle cx="108" cy="196" r="27" fill="#FFF8E4" opacity="0.95"/>
-      <circle cx="108" cy="196" r="40" fill="#FFEFC0" opacity="0.3"/>
-
-      <!-- Horizon haze -->
-      <rect y="150" width="1200" height="230" fill="url(#haze)"/>
+      <!-- The sun, low and mostly behind the stands. Stepped, so it is a
+           shape in the palette rather than a light source. -->
+      ${steppedCircle(108, 196, 44, 44, '#FFF8E4', '#FFE9A8', '#F6C08A')}
 
       <!-- ================= LIGHT TOWERS ================= -->
       <g fill="#12455A">
@@ -258,45 +389,50 @@ const BALLPARK_SVG = String.raw`
            and section breaks cut through them, then a shading pass. -->
 
       <!-- roof / facade -->
-      <path d="M0,206 Q600,190 1200,206 L1200,218 L0,218 Z" fill="#0B3B4C"/>
-      <path d="M0,206 Q600,190 1200,206 L1200,210 L0,210 Z" fill="#F2A73B" opacity="0.75"/>
+      <rect y="206" width="1200" height="8" fill="#0B3B4C"/>
+      <rect y="206" width="1200" height="4" fill="#F2A73B"/>
 
-      <!-- upper deck -->
-      <path d="M0,218 Q600,202 1200,218 L1200,292 L0,292 Z" fill="#17789A"/>
-      <path d="M0,218 Q600,202 1200,218 L1200,292 L0,292 Z" fill="url(#crowdA)"/>
-      <path d="M0,218 Q600,202 1200,218 L1200,292 L0,292 Z" fill="url(#crowdB)"/>
-      <path d="M0,218 Q600,202 1200,218 L1200,292 L0,292 Z" fill="url(#crowdC)"/>
-      <path d="M0,218 Q600,202 1200,218 L1200,292 L0,292 Z" fill="url(#deckShade)"/>
+      <!-- upper deck: dark bowl, two staggered rows of heads over it -->
+      <rect y="214" width="1200" height="78" fill="#0A2E3C"/>
+      ${crowd(220, 68, 12345)}
 
       <!-- deck divider / press level -->
-      <path d="M0,292 Q600,278 1200,292 L1200,302 L0,302 Z" fill="#0B3B4C"/>
+      <rect y="292" width="1200" height="8" fill="#08313F"/>
+      <rect y="292" width="1200" height="4" fill="#1B5C74"/>
 
-      <!-- lower deck -->
-      <path d="M0,302 Q600,288 1200,302 L1200,344 L0,344 Z" fill="#B8401F"/>
-      <path d="M0,302 Q600,288 1200,302 L1200,344 L0,344 Z" fill="url(#crowdA)"/>
-      <path d="M0,302 Q600,288 1200,302 L1200,344 L0,344 Z" fill="url(#crowdB)"/>
-      <path d="M0,302 Q600,288 1200,302 L1200,344 L0,344 Z" fill="url(#crowdC)"/>
-      <path d="M0,302 Q600,288 1200,302 L1200,344 L0,344 Z" fill="url(#deckShade)"/>
+      <!-- lower deck: closer, so the heads sit on a warmer base -->
+      <rect y="300" width="1200" height="44" fill="#123A47"/>
+      ${crowd(304, 36, 99887)}
 
-      <!-- aisles cutting down through both decks -->
-      <g stroke="#08313F" stroke-width="4" opacity="0.5">
-        <path d="M70,214 L66,344"/>   <path d="M210,210 L206,344"/>
-        <path d="M350,207 L348,344"/> <path d="M490,204 L489,344"/>
-        <path d="M630,204 L631,344"/> <path d="M770,206 L772,344"/>
-        <path d="M910,209 L914,344"/> <path d="M1050,212 L1056,344"/>
-        <path d="M1160,216 L1168,344"/>
+      <!-- aisles cutting down through both decks, snapped to the grid -->
+      <g fill="#062632">
+        <rect x="68"   y="214" width="4" height="130"/>
+        <rect x="208"  y="214" width="4" height="130"/>
+        <rect x="348"  y="214" width="4" height="130"/>
+        <rect x="488"  y="214" width="4" height="130"/>
+        <rect x="628"  y="214" width="4" height="130"/>
+        <rect x="768"  y="214" width="4" height="130"/>
+        <rect x="908"  y="214" width="4" height="130"/>
+        <rect x="1048" y="214" width="4" height="130"/>
+        <rect x="1160" y="214" width="4" height="130"/>
       </g>
 
-      <!-- ================= OUTFIELD WALL ================= -->
-      <path d="M0,344 Q600,331 1200,344 L1200,384 L0,384 Z" fill="#0E4C5C"/>
-      <path d="M0,344 Q600,331 1200,344 L1200,352 L0,352 Z" fill="#F2A73B"/>
-      <!-- wall panel seams -->
-      <g stroke="#0A3B47" stroke-width="2" opacity="0.6">
-        <path d="M150,346 L150,384"/>  <path d="M300,344 L300,384"/>
-        <path d="M450,342 L450,383"/>  <path d="M600,341 L600,383"/>
-        <path d="M750,342 L750,383"/>  <path d="M900,344 L900,384"/>
-        <path d="M1050,346 L1050,384"/>
+      <!-- ================= OUTFIELD WALL =================
+           Four flat parts, top to bottom: a chalk rail, the padded body,
+           the panel seams, and the shadow the pad throws onto the track. -->
+      <rect y="344" width="1200" height="4"  fill="#F4EDE0"/>
+      <rect y="348" width="1200" height="4"  fill="#F2A73B"/>
+      <rect y="352" width="1200" height="28" fill="#0E4C5C"/>
+      <g fill="#0A3B47">
+        <rect x="148"  y="352" width="4" height="28"/>
+        <rect x="298"  y="352" width="4" height="28"/>
+        <rect x="448"  y="352" width="4" height="28"/>
+        <rect x="598"  y="352" width="4" height="28"/>
+        <rect x="748"  y="352" width="4" height="28"/>
+        <rect x="898"  y="352" width="4" height="28"/>
+        <rect x="1048" y="352" width="4" height="28"/>
       </g>
+      <rect y="380" width="1200" height="4" fill="#072B34"/>
 
       <!-- Wall signage on its own backing panel, so it reads as painted
            signage rather than floating letters. Both this and the video
@@ -315,38 +451,20 @@ const BALLPARK_SVG = String.raw`
         <rect x="1027" y="250" width="7" height="150"/>
       </g>
 
-      <!-- ================= THE FIELD ================= -->
-      <path d="M0,382 Q600,370 1200,382 L1200,800 L0,800 Z" fill="url(#turf)"/>
+      <!-- ================= THE FIELD =================
+           Base turf, mow stripes over it, a dithered column down each stripe
+           edge, then sparse tufts. The stripes are held to two shades a few
+           steps apart: this is the surface the ball crosses, and every step
+           of contrast spent here is a step taken away from reading it. -->
+      <rect y="384" width="1200" height="416" fill="#2A6539"/>
+      ${mowStripes(412, 388, '#317343', '#255B33')}
+      ${tufts(4242, 90, { x: 0, y: 430, w: 1200, h: 360 }, '#3A8050')}
 
-      <!-- Warning track hugging the wall -->
-      <path d="M0,382 Q600,370 1200,382 L1200,412 Q600,400 0,412 Z" fill="#B45C2A"/>
-      <path d="M0,382 Q600,370 1200,382 L1200,412 Q600,400 0,412 Z" fill="url(#grit)"/>
-
-      <!-- The stadium's own shadow falling across the outfield, which is
-           what late-afternoon light actually does to a ballfield. -->
-      <path d="M0,382 Q600,370 1200,382 L1200,470 Q900,506 600,486 Q300,466 0,500 Z"
-            fill="#0A3D24" opacity="0.28"/>
-
-      <!-- Mown wedges fanning out from the infield, alternating tone -->
-      <g opacity="0.075">
-        <path d="M600,400 L-420,800 L-120,800 Z" fill="#FFFFFF"/>
-        <path d="M600,400 L180,800  L420,800  Z" fill="#FFFFFF"/>
-        <path d="M600,400 L660,800  L900,800  Z" fill="#FFFFFF"/>
-        <path d="M600,400 L1140,800 L1500,800 Z" fill="#FFFFFF"/>
-      </g>
-      <g opacity="0.09">
-        <path d="M600,400 L-120,800 L180,800 Z" fill="#0A3D24"/>
-        <path d="M600,400 L420,800  L660,800 Z" fill="#0A3D24"/>
-        <path d="M600,400 L900,800  L1140,800 Z" fill="#0A3D24"/>
-      </g>
-
-      <!-- Seams between turf panels -->
-      <g stroke="#4FC07E" stroke-width="1.6" opacity="0.22">
-        <path d="M600,400 L-420,800"/><path d="M600,400 L-40,800"/>
-        <path d="M600,400 L320,800"/> <path d="M600,400 L600,800"/>
-        <path d="M600,400 L880,800"/> <path d="M600,400 L1240,800"/>
-        <path d="M600,400 L1620,800"/>
-      </g>
+      <!-- Warning track hugging the wall, with a dithered inside edge -->
+      <rect y="384" width="1200" height="28" fill="#B45C2A"/>
+      <rect y="384" width="1200" height="4"  fill="#C97A45"/>
+      ${dither(0, 408, 1200, PIX, '#B45C2A', 0)}
+      ${tufts(777, 40, { x: 0, y: 388, w: 1200, h: 20 }, '#A04E24')}
 
       <!-- Foul lines running out to the poles -->
       <g stroke="#F7EFDF" stroke-width="3" opacity="0.85" fill="none">
@@ -354,18 +472,14 @@ const BALLPARK_SVG = String.raw`
         <path d="M600,726 L1030,398"/>
       </g>
 
-      <!-- Base cutouts and the mound -->
-      <g fill="url(#clay)">
-        <ellipse cx="600" cy="590" rx="66" ry="23"/>
-        <ellipse cx="600" cy="465" rx="38" ry="14"/>
-        <ellipse cx="330" cy="520" rx="40" ry="15"/>
-        <ellipse cx="870" cy="520" rx="40" ry="15"/>
-      </g>
-      <g fill="url(#grit)">
-        <ellipse cx="600" cy="590" rx="66" ry="23"/>
-        <ellipse cx="330" cy="520" rx="40" ry="15"/>
-        <ellipse cx="870" cy="520" rx="40" ry="15"/>
-      </g>
+      <!-- Base cutouts and the mound, stepped in three shades: lit across
+           the top, clay through the middle, shadow along the bottom edge.
+           Same light direction as every sprite in the park — from the left
+           and slightly above. -->
+      ${steppedCircle(600, 590, 66, 23, '#C97A45', '#B45C2A', '#8E4519')}
+      ${steppedCircle(600, 465, 38, 14, '#C97A45', '#B45C2A', '#8E4519')}
+      ${steppedCircle(330, 520, 40, 15, '#C97A45', '#B45C2A', '#8E4519')}
+      ${steppedCircle(870, 520, 40, 15, '#C97A45', '#B45C2A', '#8E4519')}
       <g fill="#FBF6EA">
         <rect id="rubber"     x="592" y="584" width="17" height="5" rx="1"/>
         <rect id="bag-second" x="593" y="460" width="15" height="8" rx="1"/>
@@ -411,11 +525,15 @@ const BALLPARK_SVG = String.raw`
       </g>
 
       <!-- ================= FOREGROUND: home plate ================= -->
-      <ellipse cx="600" cy="730" rx="268" ry="80" fill="url(#clay)"/>
-      <ellipse cx="600" cy="730" rx="268" ry="80" fill="url(#grit)"/>
-      <!-- scuffed arc where batters dig in -->
-      <path d="M420,742 Q600,700 780,742" stroke="#8E4519" stroke-width="14"
-            fill="none" opacity="0.16"/>
+      ${steppedCircle(600, 730, 268, 80, '#C97A45', '#B45C2A', '#8E4519')}
+      <!-- scuffed arc where batters dig in, as flat blocks -->
+      <g fill="#9E5322">
+        <rect x="436" y="736" width="72" height="4"/>
+        <rect x="508" y="728" width="60" height="4"/>
+        <rect x="568" y="724" width="64" height="4"/>
+        <rect x="632" y="728" width="60" height="4"/>
+        <rect x="692" y="736" width="72" height="4"/>
+      </g>
       <g stroke="#F7EFDF" stroke-width="2.5" fill="none" opacity="0.7">
         <path d="M484,700 L576,700 L562,772 L464,772 Z"/>
         <path d="M624,700 L716,700 L738,772 L642,772 Z"/>
