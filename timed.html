@@ -29,6 +29,10 @@
       </span>
     </div>
 
+    <!-- The rung, in the status strip rather than on the pitch card, so it
+         is readable during a swing and a pause as well as a question. -->
+    <span class="hud-level" id="level-badge">Double-A</span>
+
     <span class="hud-bank hidden" id="hud-bank">SWING BANKED</span>
 
     <!-- Stops whatever clock is running. Disabled when there is no clock to
@@ -70,7 +74,7 @@
            to other people needs this reachable without leaving the game. -->
       <p class="level-eyebrow">Sound</p>
       <button class="sound-toggle" id="sound-toggle" type="button"
-              aria-pressed="false">Sound is on</button>
+              title="Sound (M)" aria-pressed="false">Sound is on</button>
       <p class="level-note" id="sound-note">&nbsp;</p>
 
       <button class="pause-resume" id="pause-resume" type="button">Resume</button>
@@ -116,7 +120,6 @@
       <div class="pitch-top">
         <span class="pitch-tags">
           <span class="tier-badge" id="tier-badge">EASY · 3.0s</span>
-          <span class="level-badge" id="level-badge">Double-A</span>
           <!-- Which way this pitch is coming. Set per at-bat, held across
                a re-pitch, so it never changes under the player mid-count. -->
           <span class="direction-hint" id="direction-hint">→ English</span>
@@ -131,9 +134,10 @@
         <span class="clock-num" id="clock-num">3.0</span>
       </div>
 
-      <div class="timer" aria-hidden="true">
-        <div class="timer-fill pay-homerun" id="timer-fill"></div>
-      </div>
+      <!-- Discrete blocks draining, not a bar sliding. The segments are
+           built once by timed-ui.js and only have a class toggled after
+           that — nothing in the clock is rebuilt per frame. -->
+      <div class="timer pay-homerun" id="timer-fill" aria-hidden="true"></div>
 
       <h2 class="word" id="word">—</h2>
 
@@ -184,32 +188,34 @@
            isContact() says it is. -->
       <div class="pitch-lane">
         <svg class="pitch-field" viewBox="0 0 200 210" aria-hidden="true">
-          <defs>
-            <linearGradient id="laneGrass" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0" stop-color="#2A6539"/>
-              <stop offset="1" stop-color="#3E8B52"/>
-            </linearGradient>
-            <linearGradient id="laneDirt" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0" stop-color="#A2703F"/>
-              <stop offset="1" stop-color="#C08A58"/>
-            </linearGradient>
-          </defs>
+          <!-- Flat palette, no gradients: the lane is drawn in the same
+               16-bit language as the park. It is also the one surface the
+               ball has to be read against, so the detail here is held
+               deliberately quieter than the park's — every step of contrast
+               spent on grass is a step taken off the ball. -->
 
-          <rect width="200" height="210" fill="url(#laneGrass)"/>
+          <rect width="200" height="210" fill="#2A6539"/>
 
-          <!-- Mow stripes, narrowing toward the top so the lane reads as
-               depth rather than as a flat strip. -->
-          <path d="M64,0 L136,0 L154,210 L46,210 Z" fill="#ffffff" opacity="0.032"/>
-          <path d="M26,0 L46,0 L18,210 L0,210 Z"    fill="#ffffff" opacity="0.04"/>
-          <path d="M154,0 L174,0 L200,210 L182,210 Z" fill="#ffffff" opacity="0.04"/>
+          <!-- Mow stripes as flat bands, two steps apart and no more,
+               narrowing toward the top so the lane still reads as depth. -->
+          <path d="M64,0 L136,0 L154,210 L46,210 Z" fill="#2E6E3E"/>
+          <path d="M26,0 L46,0 L18,210 L0,210 Z"    fill="#2E6E3E"/>
+          <path d="M154,0 L174,0 L200,210 L182,210 Z" fill="#2E6E3E"/>
 
-          <!-- The mound -->
-          <ellipse cx="100" cy="36" rx="46" ry="14" fill="url(#laneDirt)"/>
-          <rect x="94" y="29.5" width="12" height="3.2" rx="1" fill="#F2EFE6" opacity="0.8"/>
+          <!-- The mound, stepped in three shades and lit from the left -->
+          <g>
+            <rect x="62" y="24" width="76" height="4" fill="#C08A58"/>
+            <rect x="56" y="28" width="88" height="4" fill="#C08A58"/>
+            <rect x="54" y="32" width="92" height="4" fill="#A2703F"/>
+            <rect x="56" y="36" width="88" height="4" fill="#A2703F"/>
+            <rect x="62" y="40" width="76" height="4" fill="#8A5A2B"/>
+            <rect x="72" y="44" width="56" height="4" fill="#8A5A2B"/>
+          </g>
+          <rect x="94" y="29.5" width="12" height="3.2" fill="#F2EFE6"/>
 
           <!-- The pitcher, mid-delivery. Front foot down, throwing arm
                coming through — his hand finishes where the ball starts. -->
-          <ellipse cx="101" cy="37" rx="13" ry="3" fill="#0A3D24" opacity="0.28"/>
+          <rect x="88" y="35.5" width="26" height="3" fill="#0A3D24" opacity="0.32"/>
           <g stroke="#EDE6D6" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round" fill="none">
             <path d="M99,25 L95,31 L92,35.6"/>
             <path d="M102,25 L108,30 L112,34.8"/>
@@ -229,10 +235,28 @@
           <circle cx="100.6" cy="9.2" r="4.2" fill="#C08A6B"/>
           <path d="M96.4,8.6 A4.2,4.2 0 0 1 104.8,8.6 Z" fill="#0E4C5C"/>
           <path d="M96.4,8.8 L92.4,9.7 L96.8,10.4 Z" fill="#0E4C5C"/>
+          <!-- Lit from the left, like everything else in both scenes -->
+          <g fill="#0A2A33" opacity="0.3">
+            <rect x="103" y="13" width="3" height="13"/>
+            <rect x="102" y="7"  width="3" height="5"/>
+          </g>
 
-          <!-- The corridor the ball comes down, and the dirt around the plate -->
-          <path d="M88,40 L112,40 L124,176 L76,176 Z" fill="#000000" opacity="0.055"/>
-          <ellipse cx="100" cy="177" rx="72" ry="31" fill="url(#laneDirt)"/>
+          <!-- The corridor the ball comes down. Kept as a single flat step
+               darker than the turf: it wants to read as a lane without
+               becoming another thing competing with the ball inside it. -->
+          <path d="M88,40 L112,40 L124,176 L76,176 Z" fill="#265C34"/>
+
+          <!-- The dirt around the plate, stepped in three shades -->
+          <g>
+            <rect x="44"  y="150" width="112" height="6" fill="#C08A58"/>
+            <rect x="34"  y="156" width="132" height="6" fill="#C08A58"/>
+            <rect x="28"  y="162" width="144" height="6" fill="#A2703F"/>
+            <rect x="28"  y="168" width="144" height="6" fill="#A2703F"/>
+            <rect x="30"  y="174" width="140" height="6" fill="#A2703F"/>
+            <rect x="36"  y="180" width="128" height="6" fill="#8A5A2B"/>
+            <rect x="48"  y="186" width="104" height="6" fill="#8A5A2B"/>
+            <rect x="66"  y="192" width="68"  height="6" fill="#8A5A2B"/>
+          </g>
 
           <!-- The plate itself, point toward the catcher -->
           <path d="M89,156 L111,156 L111,164 L100,170.5 L89,164 Z" fill="#F7F5EF"/>
@@ -266,7 +290,7 @@
              untouched, so the flip's transform-origin still lands on the
              hands however small it is drawn here. -->
       <svg class="swing-figure" id="swing-figure" viewBox="0 0 220 200" aria-hidden="true">
-        <ellipse cx="96" cy="190" rx="46" ry="8" fill="#0a2a18" opacity="0.3"/>
+        <rect x="50" y="184" width="92" height="8" fill="#0a2a18" opacity="0.34"/>
 
         <g stroke="#F4EDE0" stroke-width="22" stroke-linecap="round" stroke-linejoin="round" fill="none">
           <path d="M84,122 L70,158 L66,180"/>
@@ -298,6 +322,17 @@
         <ellipse cx="97" cy="46" rx="22" ry="20" fill="#0E4C5C"/>
         <path d="M77,48 Q71,62 81,69 Q91,70 94,59 Z" fill="#0E4C5C"/>
         <path d="M76,39 Q97,28 118,39 Q97,33 76,39 Z" fill="#F2A73B" opacity="0.9"/>
+
+        <!-- Lit from the left. This is also the batter's contribution to the
+             one thing the swing depends on: the ball crosses this figure at
+             roughly 0.65 of the flight, and it was the lightest thing in the
+             lane, so shading its right side is what pulls the worst-case
+             ball contrast up rather than down. -->
+        <g fill="#123540" opacity="0.30">
+          <rect x="118" y="66"  width="16" height="54"/>
+          <rect x="120" y="120" width="14" height="40"/>
+          <rect x="124" y="160" width="12" height="24"/>
+        </g>
         <text x="98" y="54" text-anchor="middle" font-family="system-ui, sans-serif"
               font-size="13" font-weight="800" fill="#F2A73B">SJ</text>
 

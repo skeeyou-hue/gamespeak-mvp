@@ -20,9 +20,10 @@
   --pay-single:  #6f9a63;
   --pay-none:    #7a3f3a;
 
-  --easy:   #4a90d9;
-  --medium: #d98324;
-  --hard:   #a51d3a;
+  /* Light to dark as the words get harder: a tone ladder, not three hues */
+  --easy:   #A9CDEE;
+  --medium: #D98324;
+  --hard:   #8E1730;
 }
 
 * { box-sizing: border-box; }
@@ -30,7 +31,10 @@
 body {
   margin: 0;
   padding: 14px 16px 40px;
-  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  /* A system monospace stack, no font files — same constraint that made the
+     sounds synthesised and the park flat rects. */
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas,
+               "Liberation Mono", monospace;
   color: var(--ink);
   min-height: 100vh;
   /* Shows through only before the scene's SVG paints */
@@ -63,6 +67,11 @@ body {
   position: relative;   /* above the fixed scene */
   z-index: 1;
   display: flex;
+  /* Wraps rather than overflows. Adding the level chip pushed the base
+     diamond off screen at every width below 768px — measured, not guessed —
+     and a status chip you cannot see is not a status chip. */
+  flex-wrap: wrap;
+  row-gap: 6px;
   justify-content: space-between;
   align-items: center;
   gap: 10px;
@@ -118,12 +127,34 @@ body {
   margin: 0 auto;
 }
 
+/* Double-bordered panel: light outer, dark inner, square corners. Drawn
+   with two box-shadow rings rather than a border plus an outline so the
+   two are always the same thickness and cannot be rounded apart. */
 .card {
   background: var(--card);
-  border-radius: 14px;
+  border-radius: 0;
   padding: 13px 16px 14px;
-  border: 1px solid rgba(255, 233, 199, 0.7);
-  box-shadow: 0 14px 38px rgba(20, 52, 30, 0.38);
+  border: none;
+  /* Dark ring against the panel, light ring outside it. The other way round
+     put cream against a cream card and the inner border vanished. */
+  box-shadow: 0 0 0 3px #123540,
+              0 0 0 6px #F4EDE0,
+              0 10px 0 6px rgba(9, 30, 22, 0.35);
+}
+
+/* The rung, in the status strip, so it survives the swing screen and the
+   pause veil. Text set from LEVELS by renderLevelPickers. */
+.hud-level {
+  align-self: center;
+  white-space: nowrap;      /* "Major League" must not stack on a phone */
+  padding: 4px 7px;
+  background: #0E3A45;
+  color: #E4EBE9;
+  border: 2px solid #08222A;
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 
 .hidden { display: none !important; }   /* utility: must beat any component's own display */
@@ -148,18 +179,32 @@ body {
   color: var(--muted);
 }
 
+/* The tier badge is how a player knows whether a miss is a strike or an
+   instant out, so it has to survive both the new palette and a player who
+   cannot tell blue from orange.
+
+   Measured on the old palette, the three chips separated by hue and almost
+   not at all by tone — easy against medium was 1.15:1 — and two of the
+   three had white labels below readable contrast on their own chip (easy
+   3.34:1, medium 2.91:1). Both were true before this restyle; neither was
+   caused by it.
+
+   The three now run light to dark in step with difficulty, which gives the
+   ladder a second channel besides hue, and each carries whichever label
+   colour its own chip can actually hold. */
 .tier-badge {
   padding: 2px 9px;
-  border-radius: 999px;
+  border-radius: 0;
+  border: 2px solid #123540;
   font-size: 0.62rem;
   font-weight: 800;
   letter-spacing: 0.09em;
   color: #fff;
   background: var(--muted);
 }
-.tier-easy   { background: var(--easy);   }
-.tier-medium { background: var(--medium); }
-.tier-hard   { background: var(--hard);   }
+.tier-easy   { background: var(--easy);   color: #10242E; }
+.tier-medium { background: var(--medium); color: #241000; }
+.tier-hard   { background: var(--hard);   color: #FFFFFF; }
 
 /* Strikes, filling as they pile up */
 .strike-pips { display: flex; gap: 5px; }
@@ -197,23 +242,27 @@ body {
 .pay-single  { color: #4d7043; }
 .pay-none    { color: var(--bad); }
 
+/* Segmented clock: discrete blocks going out, not a bar sliding. Square
+   corners and a hard gap, so it reads as the same object as the park. */
 .timer {
+  display: flex;
+  gap: 2px;
   height: 12px;
-  border-radius: 6px;
-  background: #e7ece8;
-  overflow: hidden;
+  background: #d8e0da;
+  padding: 2px;
+  border: 2px solid #123540;
 }
 
-.timer-fill {
-  height: 100%;
-  width: 100%;
-  border-radius: 6px;
+.timer-seg {
+  flex: 1;
+  background: transparent;
 }
-.timer-fill.pay-homerun { background: var(--pay-homerun); }
-.timer-fill.pay-triple  { background: var(--pay-triple);  }
-.timer-fill.pay-double  { background: var(--pay-double);  }
-.timer-fill.pay-single  { background: var(--pay-single);  }
-.timer-fill.pay-none    { background: var(--pay-none);    }
+
+.timer.pay-homerun .timer-seg.on { background: var(--pay-homerun); }
+.timer.pay-triple  .timer-seg.on { background: var(--pay-triple);  }
+.timer.pay-double  .timer-seg.on { background: var(--pay-double);  }
+.timer.pay-single  .timer-seg.on { background: var(--pay-single);  }
+.timer.pay-none    .timer-seg.on { background: var(--pay-none);    }
 
 /* --- Word and answers --- */
 .word { margin: 12px 0; font-size: 1.6rem; line-height: 1.12; }

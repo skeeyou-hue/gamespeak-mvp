@@ -256,17 +256,43 @@ function renderStrikes() {
 
 // The bar drains, and its color and label say what a correct answer earns
 // at this instant.
+/* The clock is CLOCK_SEGMENTS discrete blocks rather than one bar whose
+   width is set every frame. The blocks are created once, here, and the loop
+   only toggles a class on them — the scene detail and the clock detail are
+   both static DOM, and neither is rebuilt as the pitch runs.
+
+   A fixed count rather than one block per fixed slice of time: the window
+   changes with the tier and with the level, and a segment count that moved
+   with it would make the clock a different shape at every at-bat. */
+const CLOCK_SEGMENTS = 20;
+
+function buildClock() {
+  el.timerFill.innerHTML = '';
+  for (let i = 0; i < CLOCK_SEGMENTS; i++) {
+    const seg = document.createElement('span');
+    seg.className = 'timer-seg on';
+    el.timerFill.appendChild(seg);
+  }
+}
+
 function renderClock(elapsedMs) {
   const windowMs  = state.atBat.windowMs;
   const remaining = Math.max(0, 1 - elapsedMs / windowMs);
   const payoff    = hitForResponse(elapsedMs, windowMs);
   const tone      = payoff ? 'pay-' + payoff.toLowerCase() : 'pay-none';
 
-  el.timerFill.style.width = (remaining * 100) + '%';
-  el.timerFill.className   = 'timer-fill ' + tone;
+  // The colour says what a correct answer is worth right now; the blocks
+  // say how much clock is left. Width is not touched any more.
+  el.timerFill.className = 'timer ' + tone;
   el.payoff.textContent    = payoff ? PAYOFF_LABEL[payoff] : 'TOO LATE';
   el.payoff.className      = 'payoff ' + tone;
   el.clockNum.textContent  = (Math.max(0, windowMs - elapsedMs) / 1000).toFixed(1);
+
+  // Blocks drain from the right. Rounded up, so the last block only goes
+  // out when the clock is genuinely spent rather than a frame early.
+  const lit = Math.ceil(remaining * CLOCK_SEGMENTS);
+  const segs = el.timerFill.children;
+  for (let i = 0; i < segs.length; i++) segs[i].classList.toggle('on', i < lit);
 }
 
 function renderQuestion() {
@@ -838,6 +864,7 @@ function showStart() {
   renderPause();
 }
 
+buildClock();
 buildLevelPicker(el.startLevels, setLevel);
 buildLevelPicker(el.pauseLevels, setLevel);
 
@@ -852,6 +879,14 @@ el.pauseButton.addEventListener('click', togglePause);
 el.pauseResume.addEventListener('click', resumeGame);
 el.soundToggle.addEventListener('click', toggleSound);
 document.addEventListener('keydown', event => {
+  // M silences it. Checked before the pause guard below, because wanting
+  // the sound off is the one thing that has to work while the game is
+  // stopped as well as while it is running.
+  if (event.code === 'KeyM') {
+    event.preventDefault();
+    toggleSound();
+    return;
+  }
   // Space already swings, so pause takes P and Escape.
   if (event.code === 'KeyP' || event.code === 'Escape') {
     event.preventDefault();

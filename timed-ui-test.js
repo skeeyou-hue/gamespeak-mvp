@@ -142,8 +142,32 @@ const section = title => console.log('\n# ' + title);
     const shown = await page.evaluate(t => { renderClock(t); return document.getElementById('payoff').textContent; }, ms);
     assert(shown === label, `at ${ms}ms of 4000 the bar reads ${label}`);
   }
-  const width = await page.evaluate(() => { renderClock(2000); return document.getElementById('timer-fill').style.width; });
-  assert(width === '50%', 'the bar is half drained halfway through the window');
+  /* The clock is discrete blocks now, not a sliding bar. Counted against
+     CLOCK_SEGMENTS rather than a typed number, so changing the segment
+     count changes the expectation with it. */
+  const clock = await page.evaluate(() => {
+    const segs = () => [...document.getElementById('timer-fill').children];
+    const lit = () => segs().filter(s => s.classList.contains('on')).length;
+    const first = segs()[0];
+    renderClock(2000);
+    const half = lit();
+    renderClock(0);
+    const full = lit();
+    renderClock(4200);
+    const spent = lit();
+    return { half, full, spent, total: CLOCK_SEGMENTS, count: segs().length,
+             // Same node objects after three renders: the blocks are built
+             // once and only have a class toggled, never rebuilt per frame.
+             sameNodes: segs()[0] === first };
+  });
+  assert(clock.count === clock.total,
+         `the clock is ${clock.total} discrete blocks, not a bar`);
+  assert(clock.full === clock.total, 'all of them are lit at the start of the window');
+  assert(clock.half === clock.total / 2,
+         `half are out halfway through it (${clock.half} of ${clock.total})`);
+  assert(clock.spent === 0, 'and none are left once the clock is spent');
+  assert(clock.sameNodes,
+         'the blocks are the same nodes across renders — built once, not rebuilt per frame');
 
   /* =================================================================== */
   section('Answering');
@@ -1279,6 +1303,125 @@ const section = title => console.log('\n# ' + title);
   assert(broken.silent, 'and it resolves in silence rather than half a sound');
   assert(broken.runsCounted === 1, 'the hit is scored exactly once, audio or no audio');
 
+  section('The ball is still the easiest thing to see');
+
+  /* THE MECHANIC-CRITICAL CHECK. The swing is a timing read on one moving
+     object, so the ball has to stay the highest-contrast moving thing in
+     the lane. The pixel restyle gives it more to compete with, so this
+     measures rather than assumes: screenshot the lane with the ball frozen
+     at points across the flight, and compare the ball's own luminance
+     against the ring of background it has to be separated from.
+
+     BALL_CONTRAST_FLOOR is the worst case MEASURED ON THE BUILD BEFORE THE
+     RESTYLE, at 85d3f8c: 2.54:1, with the ball crossing the batter at 0.65
+     of the flight. It is not a standard and not a target — it is the bar
+     the art was already clearing, and the rule is that no amount of field
+     detail may drop below it. */
+  const BALL_CONTRAST_FLOOR = 2.54;
+
+  await page.evaluate(() => {
+    startInning();
+    state.swing = { attempt: 0, live: false, progress: 0, pressAt: null, result: null };
+    document.getElementById('pitch-screen').classList.add('hidden');
+    document.getElementById('swing-screen').classList.remove('hidden');
+  });
+  await page.waitForTimeout(150);
+
+  const samples = [];
+  for (const at of [0.05, 0.35, 0.65, 0.95]) {
+    await page.evaluate(v => placeBall(v), at);
+    await page.waitForTimeout(50);
+    const box = await page.evaluate(() => {
+      const lane = document.querySelector('.pitch-lane').getBoundingClientRect();
+      const ball = document.getElementById('pitch-ball').getBoundingClientRect();
+      return { cx: ball.x + ball.width / 2 - lane.x,
+               cy: ball.y + ball.height / 2 - lane.y, r: ball.width / 2 };
+    });
+    const shot = (await page.locator('.pitch-lane').screenshot()).toString('base64');
+    const ratio = await page.evaluate(async ({ b64, box }) => {
+      const img = new Image();
+      img.src = 'data:image/png;base64,' + b64;
+      await img.decode();
+      const c = document.createElement('canvas');
+      c.width = img.width; c.height = img.height;
+      const ctx = c.getContext('2d');
+      ctx.drawImage(img, 0, 0);
+      const d = ctx.getImageData(0, 0, c.width, c.height).data;
+      const px = (x, y) => { const i = (Math.round(y) * c.width + Math.round(x)) * 4;
+                             return [d[i], d[i + 1], d[i + 2]]; };
+      const inner = [], ring = [];
+      const { cx, cy, r } = box;
+      const span = Math.ceil(r * 2.6);
+      for (let dy = -span; dy <= span; dy++) {
+        for (let dx = -span; dx <= span; dx++) {
+          const x = cx + dx, y = cy + dy;
+          if (x < 1 || y < 1 || x > c.width - 2 || y > c.height - 2) continue;
+          const dist = Math.hypot(dx, dy);
+          if (dist <= r * 0.62) inner.push(px(x, y));
+          // Started outside the ball's own drop shadow, so the shadow is
+          // not credited as contrast the field is providing.
+          else if (dist >= r * 1.9 && dist <= r * 2.5) ring.push(px(x, y));
+        }
+      }
+      const mean = list => list.reduce((a, p) => [a[0] + p[0], a[1] + p[1], a[2] + p[2]], [0, 0, 0])
+                                .map(v => v / list.length);
+      const lum = ([r_, g, b]) => {
+        const f = v => { v /= 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); };
+        return 0.2126 * f(r_) + 0.7152 * f(g) + 0.0722 * f(b);
+      };
+      const a = lum(mean(inner)), b = lum(mean(ring));
+      return (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05);
+    }, { b64: shot, box });
+    samples.push({ at, ratio });
+  }
+
+  const worst = samples.reduce((a, b) => a.ratio < b.ratio ? a : b);
+  for (const sm of samples) {
+    assert(sm.ratio >= BALL_CONTRAST_FLOOR,
+           `at ${sm.at} of the flight the ball reads at ${sm.ratio.toFixed(2)}:1, at or above the ${BALL_CONTRAST_FLOOR}:1 the art cleared before the restyle`);
+  }
+  assert(worst.ratio >= BALL_CONTRAST_FLOOR,
+         `worst case across the flight is ${worst.ratio.toFixed(2)}:1 at ${worst.at} — the field detail has not cost the swing anything`);
+  await page.evaluate(() => { state.swing = null; showStart(); });
+  await page.click('#start-button');
+  await page.waitForSelector('.choice');
+
+  section('The tier badges stay apart');
+
+  /* A player reads the badge to know whether a miss is a strike or an
+     instant out, so the three tiers have to stay separable from each other
+     and legible on the panel. Colours are read from the stylesheet rather
+     than typed here. */
+  const badges = await page.evaluate(() => {
+    const probe = document.createElement('span');
+    document.body.appendChild(probe);
+    const read = cls => {
+      probe.className = 'tier-badge ' + cls;
+      const cs = getComputedStyle(probe);
+      return { bg: cs.backgroundColor, fg: cs.color };
+    };
+    const out = { easy: read('tier-easy'), medium: read('tier-medium'), hard: read('tier-hard'),
+                  card: getComputedStyle(document.getElementById('pitch-screen')).backgroundColor };
+    probe.remove();
+    return out;
+  });
+  const rgb = str => str.match(/\d+/g).slice(0, 3).map(Number);
+  const lum = c => { const f = v => { v /= 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); };
+                     return 0.2126 * f(c[0]) + 0.7152 * f(c[1]) + 0.0722 * f(c[2]); };
+  const ratio = (a, b) => { const x = lum(rgb(a)), y = lum(rgb(b));
+                            return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05); };
+  for (const [a, b] of [['easy', 'medium'], ['medium', 'hard'], ['easy', 'hard']]) {
+    const r = ratio(badges[a].bg, badges[b].bg);
+    assert(r >= 1.35,
+           `${a} and ${b} are still told apart by tone as well as hue (${r.toFixed(2)}:1)`);
+  }
+  for (const tier of ['easy', 'medium', 'hard']) {
+    const r = ratio(badges[tier].bg, badges[tier].fg);
+    assert(r >= 4.5, `${tier}'s label is readable on its own chip (${r.toFixed(2)}:1)`);
+    const onCard = ratio(badges[tier].bg, badges.card);
+    assert(onCard >= 1.6, `and the ${tier} chip is visible against the panel (${onCard.toFixed(2)}:1)`);
+  }
+
   section('Silencing it');
 
   // Default is audible: a game that starts silent teaches nobody it has a
@@ -1351,6 +1494,39 @@ const section = title => console.log('\n# ' + title);
   });
   assert(backOn.muted === false && backOn.rang === 1 && backOn.last === 'SAFE',
          'unmuting is immediate — no second unlock gesture needed');
+
+  // M silences it too, and has to work while the game is stopped as well as
+  // while it is running — that is why it is checked before the pause guard.
+  await page.evaluate(() => { setMuted(false); renderSound(); });
+  await page.keyboard.press('KeyM');
+  assert((await page.evaluate(() => isMuted())) === true, 'M mutes');
+  await page.keyboard.press('KeyM');
+  assert((await page.evaluate(() => isMuted())) === false, 'and M unmutes');
+  await page.click('#pause-button');
+  await page.waitForSelector('#pause-veil:not(.hidden)');
+  await page.keyboard.press('KeyM');
+  assert((await page.evaluate(() => isMuted())) === true,
+         'and it still works with the game stopped, which is when a player reaches for it');
+  await page.click('#pause-resume');
+  await page.waitForFunction(() => !state.paused, { timeout: 6000 });
+
+  /* Muted stays muted across a reload. localStorage THROWS in a private
+     window rather than returning null, so the read is wrapped — a game that
+     failed to start because it could not read a sound preference would be a
+     worse bug than the one this fixes. */
+  const persisted = await page.evaluate(() => ({
+    stored: (() => { try { return localStorage.getItem(MUTE_KEY); } catch (e) { return 'threw'; } })(),
+    muted: isMuted()
+  }));
+  assert(persisted.muted && persisted.stored === '1',
+         `muting writes the preference (the key = ${persisted.stored})`);
+  await page.reload();
+  await page.waitForFunction(() => typeof startInning === 'function');
+  assert((await page.evaluate(() => isMuted())) === true,
+         'and it is still muted after a reload rather than shouting at the room again');
+  await page.evaluate(() => { setMuted(false); });
+  await page.click('#start-button');
+  await page.waitForSelector('.choice');
 
   // And it is the shared layer being silenced, not one call site.
   await page.evaluate(() => setMuted(true));
@@ -1484,6 +1660,45 @@ const section = title => console.log('\n# ' + title);
   assert(Math.abs(box.drawn - box.layout * box.zoom) < 1,
          `the layout box shrinks with it (${box.drawn.toFixed(0)}px drawn against ${box.layout}px of layout at ${box.zoom}) — a transform would have left a full-size box behind`);
   assert(box.fits, 'and the whole card, missed words included, is on a phone screen without scrolling');
+
+  section('Every status chip is on screen');
+
+  /* Adding the rung to the status strip overflowed it: measured at 320 to
+     412px, the base diamond was pushed off the right edge and at 320px the
+     pause button with it. The strip wraps now. This is the same failure as
+     the fielders leaving the viewport — an element that is laid out but not
+     on screen looks fine to isVisible() and is gone to the player. */
+  const chipSizes = [[320, 800], [360, 780], [390, 844], [412, 915], [768, 1024]];
+  let chipsOff = [];
+  for (const [w, h] of chipSizes) {
+    const sized = await browser.newPage({ viewport: { width: w, height: h } });
+    await sized.goto(URL);
+    await sized.waitForFunction(() => typeof startInning === 'function');
+    await sized.click('#start-button');
+    await sized.waitForSelector('.choice');
+    // The widest state the strip can be in: longest rung, bank showing.
+    await sized.evaluate(() => {
+      setLevel(LEVELS.length - 1);
+      state.bonus = { atBatsLeft: 2 };
+      renderHud();
+    });
+    const off = await sized.evaluate(() => {
+      const onScreen = el => {
+        const b = el.getBoundingClientRect();
+        return b.width > 0 && b.left >= -0.5 && b.right <= innerWidth + 0.5;
+      };
+      return [['bases', document.querySelector('.hud-bases')],
+              ['level', document.getElementById('level-badge')],
+              ['bank',  document.getElementById('hud-bank')],
+              ['pause', document.getElementById('pause-button')]]
+        .filter(([, el]) => !onScreen(el)).map(([name]) => name);
+    });
+    if (off.length) chipsOff.push(`${w}px: ${off.join(', ')}`);
+    await sized.close();
+  }
+  assert(chipsOff.length === 0,
+         `every status chip is fully on screen at the widest strip state, across ${chipSizes.length} widths` +
+         (chipsOff.length ? ' — off: ' + chipsOff.join(' | ') : ''));
 
   section('The park and the Timed HUD share the screen');
 
