@@ -83,9 +83,14 @@ body {
   align-items: center;
   gap: 8px;
   padding: 6px 10px;
-  border-radius: 9px;
-  background: rgba(11, 46, 26, 0.85);
-  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 0;   /* square, like every other chip on the strip */
+  /* Opaque, for the same reason the pause control is. At 0.85 alpha this
+     still borrowed 15% of whatever was behind it, and the borrowing showed:
+     the chip's measured edge against the park swung 6.97 / 1.88 / 2.28
+     across three widths, and at 2000px the runs-and-outs chip was the one
+     status readout under a 3:1 edge. */
+  background: #0B2E1A;
+  border: 1px solid #24483A;
   color: #fff;
   /* The park behind the strip is a bright warning track at one width and a
      dark crowd at another, so every chip carries a light ring: an edge that

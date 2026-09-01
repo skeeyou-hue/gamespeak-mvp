@@ -1668,63 +1668,98 @@ const section = title => console.log('\n# ' + title);
      stopped working over a dithered crowd: its rendered fill CHANGED with
      what was behind it, [59,82,91] to [78,95,90] to [66,94,89] across three
      widths, and it measured 1.81:1 against the park at 1280px. The person
-     who commissioned the restyle could not find it in the build.
+     who commissioned the restyle opened the build and could not find it.
 
-     The park behind the strip runs from a bright warning track at one width
-     to a dark crowd at another, so no single chip colour clears everywhere.
-     Each chip is a solid fill inside a light ring instead, and the invariant
-     is two-sided: at every width EITHER the fill or the ring has to clear
-     3:1 against the park behind it. One of them always does. */
+     This runs over EVERY chip in the strip rather than the one that broke.
+     A narrow check on a broad fix is how the next restyle regresses it
+     quietly, and generalising found a second one: the runs-and-outs chip
+     was under the bar at 2000px, partly because it was the last chip with
+     rounded corners and its own "edge" was letting the park through them.
+
+     The park behind the strip is a bright warning track at one width and a
+     dark crowd at another, so no single chip colour clears everywhere. Each
+     chip is a solid fill inside a light ring, and the invariant is
+     two-sided: at every width EITHER the chip's own edge or its ring has to
+     clear 3:1 against the park. One of them always does. */
   const CHIP_EDGE = 3;
   const chipEdgeSizes = [[390, 820], [1280, 820], [2000, 820]];
-  const weak = [];
+  const weakChips = [];
   for (const [w, h] of chipEdgeSizes) {
     const sized = await browser.newPage({ viewport: { width: w, height: h } });
     await sized.goto(URL);
     await sized.waitForFunction(() => typeof startInning === 'function');
     await sized.click('#start-button');
     await sized.waitForSelector('.choice');
-    await sized.waitForTimeout(300);
-    const geo = await sized.evaluate(() => {
-      const r = document.getElementById('pause-button').getBoundingClientRect();
-      const hud = document.querySelector('.hud').getBoundingClientRect();
-      return { x: Math.round(r.x), y: Math.round(r.y),
-               w: Math.round(r.width), h: Math.round(r.height),
-               below: Math.round(hud.bottom + 14) };
+    // The widest state the strip has: longest rung, bank showing, so every
+    // chip that can ever be up is up.
+    await sized.evaluate(() => {
+      setLevel(LEVELS.length - 1);
+      state.bonus = { atBatsLeft: 2 };
+      renderHud();
     });
+    await sized.waitForTimeout(300);
+    const boxes = await sized.evaluate(() => {
+      const hud = document.querySelector('.hud').getBoundingClientRect();
+      return [['runs/outs', document.querySelector('.hud-chip')],
+              ['level',     document.getElementById('level-badge')],
+              ['bank',      document.getElementById('hud-bank')],
+              ['pause',     document.getElementById('pause-button')],
+              ['bases',     document.querySelector('.hud-bases')]]
+        .filter(([, el]) => el && el.getBoundingClientRect().width > 0)
+        .map(([name, el]) => { const r = el.getBoundingClientRect();
+          return { name, x: Math.round(r.x), y: Math.round(r.y),
+                   w: Math.round(r.width), h: Math.round(r.height),
+                   below: Math.round(hud.bottom + 14) }; });
+    });
+    assert(boxes.length === 5,
+           `${w}px: all five chips are up in the strip's widest state (${boxes.map(b => b.name).join(', ')})`);
     const b64 = (await sized.screenshot()).toString('base64');
-    const best = await sized.evaluate(async ({ b64, geo }) => {
+    const rows = await sized.evaluate(async ({ b64, boxes }) => {
       const img = new Image(); img.src = 'data:image/png;base64,' + b64; await img.decode();
       const c = document.createElement('canvas'); c.width = img.width; c.height = img.height;
       const ctx = c.getContext('2d'); ctx.drawImage(img, 0, 0);
       const d = ctx.getImageData(0, 0, c.width, c.height).data;
       const at = (x, y) => { const i = ((y | 0) * c.width + (x | 0)) * 4; return [d[i], d[i+1], d[i+2]]; };
-      const fill = [], ring = [], park = [];
-      for (let y = geo.y + 6; y < geo.y + geo.h - 6; y++)
-        for (let x = geo.x + 6; x < geo.x + geo.w - 6; x++) fill.push(at(x, y));
-      for (let y = geo.y - 2; y < geo.y + geo.h + 2; y++)
-        for (let x = geo.x - 2; x < geo.x + geo.w + 2; x++) {
-          const outside = x < geo.x || x >= geo.x + geo.w || y < geo.y || y >= geo.y + geo.h;
-          if (outside && x >= 0 && y >= 0 && x < c.width && y < c.height) ring.push(at(x, y));
-        }
-      for (let y = geo.below; y < geo.below + 18; y++)
-        for (let x = geo.x - 20; x < geo.x + geo.w + 20; x++)
-          if (x >= 0 && x < c.width && y < c.height) park.push(at(x, y));
-      const mean = l => l.reduce((a, p) => [a[0]+p[0], a[1]+p[1], a[2]+p[2]], [0,0,0]).map(v => v / l.length);
+      const mean = l => l.length
+        ? l.reduce((a, p) => [a[0]+p[0], a[1]+p[1], a[2]+p[2]], [0,0,0]).map(v => v / l.length)
+        : null;
       const lum = ([r_, g, b_]) => { const f = v => { v /= 255;
         return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); };
         return 0.2126*f(r_) + 0.7152*f(g) + 0.0722*f(b_); };
       const cr = (a, b) => { const A = lum(a), B = lum(b);
         return (Math.max(A, B) + 0.05) / (Math.min(A, B) + 0.05); };
-      const p = mean(park);
-      return Math.max(cr(mean(fill), p), cr(mean(ring), p));
-    }, { b64, geo });
-    if (best < CHIP_EDGE) weak.push(`${w}px: ${best.toFixed(2)}:1`);
+      return boxes.map(g => {
+        const edge = [], ring = [], park = [];
+        // A 3px band just INSIDE the chip: its background and border, never
+        // its text or its pips.
+        for (let y = g.y; y < g.y + g.h; y++)
+          for (let x = g.x; x < g.x + g.w; x++) {
+            const near = x < g.x+3 || x >= g.x+g.w-3 || y < g.y+3 || y >= g.y+g.h-3;
+            if (near && x >= 0 && y >= 0 && x < c.width && y < c.height) edge.push(at(x, y));
+          }
+        for (let y = g.y - 2; y < g.y + g.h + 2; y++)
+          for (let x = g.x - 2; x < g.x + g.w + 2; x++) {
+            const outside = x < g.x || x >= g.x+g.w || y < g.y || y >= g.y+g.h;
+            if (outside && x >= 0 && y >= 0 && x < c.width && y < c.height) ring.push(at(x, y));
+          }
+        // The park itself, sampled below the strip rather than as a ring
+        // around the chip — a ring there would contain the NEIGHBOURING
+        // chips, and measuring the neighbours is how the first version of
+        // this check reported a fix as a regression.
+        for (let y = g.below; y < g.below + 18; y++)
+          for (let x = g.x - 20; x < g.x + g.w + 20; x++)
+            if (x >= 0 && x < c.width && y < c.height) park.push(at(x, y));
+        const P = mean(park);
+        return { name: g.name,
+                 best: +Math.max(cr(mean(edge), P), cr(mean(ring), P)).toFixed(2) };
+      });
+    }, { b64, boxes });
+    for (const r of rows) if (r.best < CHIP_EDGE) weakChips.push(`${w}px ${r.name} ${r.best}:1`);
     await sized.close();
   }
-  assert(weak.length === 0,
-         `the pause control has a ${CHIP_EDGE}:1 edge against the park at every width` +
-         (weak.length ? ' — under at ' + weak.join(', ') : ''));
+  assert(weakChips.length === 0,
+         `every status chip has a ${CHIP_EDGE}:1 edge against the park, at every width` +
+         (weakChips.length ? ' — under at ' + weakChips.join(', ') : ''));
 
   section('Every status chip is on screen');
 
