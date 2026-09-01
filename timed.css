@@ -87,6 +87,10 @@ body {
   background: rgba(11, 46, 26, 0.85);
   border: 1px solid rgba(255, 255, 255, 0.15);
   color: #fff;
+  /* The park behind the strip is a bright warning track at one width and a
+     dark crowd at another, so every chip carries a light ring: an edge that
+     holds against either, in the same double-border language as the panels. */
+  box-shadow: 0 0 0 2px #F4EDE0;
 }
 
 .hud-label { font-size: 0.62rem; font-weight: 700; letter-spacing: 0.1em; opacity: 0.65; }
@@ -146,6 +150,7 @@ body {
    pause veil. Text set from LEVELS by renderLevelPickers. */
 .hud-level {
   align-self: center;
+  box-shadow: 0 0 0 2px #F4EDE0;
   white-space: nowrap;      /* "Major League" must not stack on a phone */
   padding: 4px 7px;
   background: #0E3A45;
@@ -741,22 +746,33 @@ body {
    The veil covers the card rather than sitting beside it. A pause that left
    the word readable would not be a pause, it would be unlimited thinking
    time on a mode whose whole point is the clock. */
+/* Opaque, not translucent. It was rgba(10,40,32,0.55) over a soft sky and
+   it worked; over the dithered crowd it measured 1.24:1 against what is
+   behind it at phone width and 1.30:1 at 1280px, which is a control nobody
+   can find. A semi-transparent chip on high-frequency pixel noise takes on
+   the noise. Same solid treatment as the other status chips now, and the
+   label says what it is rather than leaving two bars to be decoded. */
 .pause-button {
   flex: 0 0 auto;
-  width: 34px;
+  display: inline-flex;
+  box-shadow: 0 0 0 2px #F4EDE0;
+  align-items: center;
+  gap: 5px;
   height: 34px;
-  padding: 0;
-  border: 1px solid rgba(255, 255, 255, 0.22);
-  border-radius: 9px;
-  background: rgba(10, 40, 32, 0.55);
+  padding: 0 10px;
+  border: 2px solid #08222A;
+  border-radius: 0;
+  background: #0E3A45;
   color: #EDE6D6;
-  font-size: 0.72rem;
+  font-size: 0.62rem;
+  font-weight: 700;
   line-height: 1;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
   cursor: pointer;
 }
 
-.pause-button:hover:not(:disabled) { background: rgba(14, 60, 48, 0.75); }
+.pause-button:hover:not(:disabled) { background: #16505F; }
 .pause-button:disabled { opacity: 0.35; cursor: default; }
 
 .pause-veil {

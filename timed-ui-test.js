@@ -1661,6 +1661,71 @@ const section = title => console.log('\n# ' + title);
          `the layout box shrinks with it (${box.drawn.toFixed(0)}px drawn against ${box.layout}px of layout at ${box.zoom}) — a transform would have left a full-size box behind`);
   assert(box.fits, 'and the whole card, missed words included, is on a phone screen without scrolling');
 
+  section('Every status chip can be found on the park');
+
+  /* Being on screen is not the same as being findable. The pause control
+     was rgba(10,40,32,0.55) — translucent, which worked over a soft sky and
+     stopped working over a dithered crowd: its rendered fill CHANGED with
+     what was behind it, [59,82,91] to [78,95,90] to [66,94,89] across three
+     widths, and it measured 1.81:1 against the park at 1280px. The person
+     who commissioned the restyle could not find it in the build.
+
+     The park behind the strip runs from a bright warning track at one width
+     to a dark crowd at another, so no single chip colour clears everywhere.
+     Each chip is a solid fill inside a light ring instead, and the invariant
+     is two-sided: at every width EITHER the fill or the ring has to clear
+     3:1 against the park behind it. One of them always does. */
+  const CHIP_EDGE = 3;
+  const chipEdgeSizes = [[390, 820], [1280, 820], [2000, 820]];
+  const weak = [];
+  for (const [w, h] of chipEdgeSizes) {
+    const sized = await browser.newPage({ viewport: { width: w, height: h } });
+    await sized.goto(URL);
+    await sized.waitForFunction(() => typeof startInning === 'function');
+    await sized.click('#start-button');
+    await sized.waitForSelector('.choice');
+    await sized.waitForTimeout(300);
+    const geo = await sized.evaluate(() => {
+      const r = document.getElementById('pause-button').getBoundingClientRect();
+      const hud = document.querySelector('.hud').getBoundingClientRect();
+      return { x: Math.round(r.x), y: Math.round(r.y),
+               w: Math.round(r.width), h: Math.round(r.height),
+               below: Math.round(hud.bottom + 14) };
+    });
+    const b64 = (await sized.screenshot()).toString('base64');
+    const best = await sized.evaluate(async ({ b64, geo }) => {
+      const img = new Image(); img.src = 'data:image/png;base64,' + b64; await img.decode();
+      const c = document.createElement('canvas'); c.width = img.width; c.height = img.height;
+      const ctx = c.getContext('2d'); ctx.drawImage(img, 0, 0);
+      const d = ctx.getImageData(0, 0, c.width, c.height).data;
+      const at = (x, y) => { const i = ((y | 0) * c.width + (x | 0)) * 4; return [d[i], d[i+1], d[i+2]]; };
+      const fill = [], ring = [], park = [];
+      for (let y = geo.y + 6; y < geo.y + geo.h - 6; y++)
+        for (let x = geo.x + 6; x < geo.x + geo.w - 6; x++) fill.push(at(x, y));
+      for (let y = geo.y - 2; y < geo.y + geo.h + 2; y++)
+        for (let x = geo.x - 2; x < geo.x + geo.w + 2; x++) {
+          const outside = x < geo.x || x >= geo.x + geo.w || y < geo.y || y >= geo.y + geo.h;
+          if (outside && x >= 0 && y >= 0 && x < c.width && y < c.height) ring.push(at(x, y));
+        }
+      for (let y = geo.below; y < geo.below + 18; y++)
+        for (let x = geo.x - 20; x < geo.x + geo.w + 20; x++)
+          if (x >= 0 && x < c.width && y < c.height) park.push(at(x, y));
+      const mean = l => l.reduce((a, p) => [a[0]+p[0], a[1]+p[1], a[2]+p[2]], [0,0,0]).map(v => v / l.length);
+      const lum = ([r_, g, b_]) => { const f = v => { v /= 255;
+        return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); };
+        return 0.2126*f(r_) + 0.7152*f(g) + 0.0722*f(b_); };
+      const cr = (a, b) => { const A = lum(a), B = lum(b);
+        return (Math.max(A, B) + 0.05) / (Math.min(A, B) + 0.05); };
+      const p = mean(park);
+      return Math.max(cr(mean(fill), p), cr(mean(ring), p));
+    }, { b64, geo });
+    if (best < CHIP_EDGE) weak.push(`${w}px: ${best.toFixed(2)}:1`);
+    await sized.close();
+  }
+  assert(weak.length === 0,
+         `the pause control has a ${CHIP_EDGE}:1 edge against the park at every width` +
+         (weak.length ? ' — under at ' + weak.join(', ') : ''));
+
   section('Every status chip is on screen');
 
   /* Adding the rung to the status strip overflowed it: measured at 320 to
