@@ -90,7 +90,8 @@ function audioStatus() {
     // Sound is not observable from a test runner, so what a sound DID is:
     // how many have started and which was last.
     played:    played,
-    last:      lastPlayed
+    last:      lastPlayed,
+    muted:     muted
   };
 }
 
@@ -116,6 +117,21 @@ function audioStatus() {
 
 let played  = 0;      // how many sounds have actually been started
 let lastPlayed = null;
+
+/* Muted is a property of the shared layer rather than of either mode, so a
+   player who silences the game has silenced all of it. It is off by
+   default: the sounds are tied to outcomes the player caused, and a game
+   that starts silent teaches nobody that it has a voice. The control is on
+   the pause veil, which is the one seam with no clock running.
+
+   Muting does NOT close or suspend the context. The unlock is a one-time
+   gesture and throwing it away would mean needing another one to come back,
+   which a pause screen cannot ask for. Silence here is a decision not to
+   start a sound, nothing more. */
+let muted = false;
+
+function setMuted(on) { muted = !!on; return muted; }
+function isMuted() { return muted; }
 
 // A pitched note with an attack-decay envelope. Scheduled rather than
 // played immediately, so a two-note figure is one function call.
@@ -188,6 +204,7 @@ const SOUNDS = {
 function playSound(name) {
   const make = SOUNDS[name];
   if (!make) return false;                    // unknown name is not a crash
+  if (muted) return false;                    // asked for silence, given silence
   if (!audioCtx || !audioOpened) return false; // never unlocked: stay silent
   if (audioCtx.state !== 'running') return false;
   try {
@@ -203,5 +220,6 @@ function playSound(name) {
 function soundNames() { return Object.keys(SOUNDS); }
 
 if (typeof module !== 'undefined' && module.exports) {
-  module.exports = { unlockAudio, audioStatus, audioSupported, playSound, soundNames };
+  module.exports = { unlockAudio, audioStatus, audioSupported, playSound, soundNames,
+                     setMuted, isMuted };
 }

@@ -95,8 +95,32 @@ const el = {
   startLevels:     document.getElementById('start-levels'),
   startLevelNote:  document.getElementById('start-level-note'),
   pauseLevels:     document.getElementById('pause-levels'),
-  pauseLevelNote:  document.getElementById('pause-level-note')
+  pauseLevelNote:  document.getElementById('pause-level-note'),
+  soundToggle:     document.getElementById('sound-toggle'),
+  soundNote:       document.getElementById('sound-note')
 };
+
+
+/* ---------- sound ----------
+   The toggle is the shared layer's, not this mode's: muting here mutes
+   everything audio.js will ever play, in either mode. It does not close the
+   context — the unlock was a one-time gesture and a pause screen has no way
+   to ask for another one, so coming back has to be free. */
+
+function renderSound() {
+  const off = isMuted();
+  el.soundToggle.textContent = off ? 'Sound is off' : 'Sound is on';
+  el.soundToggle.classList.toggle('off', off);
+  el.soundToggle.setAttribute('aria-pressed', off ? 'true' : 'false');
+  el.soundNote.textContent = off
+    ? 'The umpire and the bat are silent.'
+    : 'Umpire calls and the crack of the bat.';
+}
+
+function toggleSound() {
+  setMuted(!isMuted());
+  renderSound();
+}
 
 
 /* ---------- the level picker ----------
@@ -430,6 +454,7 @@ function pauseGame() {
   if (state.paused || !canPause()) return;
   state.paused = true;
   renderLevelPickers();      // the veil is where the ladder can be changed
+  renderSound();             // and where the sound is silenced
 
   if (state.swing) {
     clearReady();
@@ -809,6 +834,7 @@ function showStart() {
   state.locked = true;                // no key press reaches a game that has not begun
   renderHud();
   renderLevelPickers();
+  renderSound();
   renderPause();
 }
 
@@ -824,6 +850,7 @@ el.bankButton.addEventListener('click', startSwing);
 el.swingGo.addEventListener('click', () => takeSwing(state.swing ? state.swing.progress : null));
 el.pauseButton.addEventListener('click', togglePause);
 el.pauseResume.addEventListener('click', resumeGame);
+el.soundToggle.addEventListener('click', toggleSound);
 document.addEventListener('keydown', event => {
   // Space already swings, so pause takes P and Escape.
   if (event.code === 'KeyP' || event.code === 'Escape') {

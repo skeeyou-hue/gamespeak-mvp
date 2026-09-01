@@ -65,6 +65,14 @@
       <div class="level-pick" id="pause-levels" role="radiogroup" aria-label="Level"></div>
       <p class="level-note" id="pause-level-note">&nbsp;</p>
 
+      <!-- Sound lives on the same seam as the level, for the same reason:
+           it is the one place with no clock running. A tester playing next
+           to other people needs this reachable without leaving the game. -->
+      <p class="level-eyebrow">Sound</p>
+      <button class="sound-toggle" id="sound-toggle" type="button"
+              aria-pressed="false">Sound is on</button>
+      <p class="level-note" id="sound-note">&nbsp;</p>
+
       <button class="pause-resume" id="pause-resume" type="button">Resume</button>
     </div>
   </div>

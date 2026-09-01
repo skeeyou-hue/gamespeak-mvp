@@ -1279,6 +1279,87 @@ const section = title => console.log('\n# ' + title);
   assert(broken.silent, 'and it resolves in silence rather than half a sound');
   assert(broken.runsCounted === 1, 'the hit is scored exactly once, audio or no audio');
 
+  section('Silencing it');
+
+  // Default is audible: a game that starts silent teaches nobody it has a
+  // voice, and the whole unlock exists to make the first sound possible.
+  const soundStart = await page.evaluate(() => ({
+    muted: isMuted(), label: document.getElementById('sound-toggle').textContent,
+    pressed: document.getElementById('sound-toggle').getAttribute('aria-pressed')
+  }));
+  assert(soundStart.muted === false, 'sound is on by default');
+
+  // The toggle lives on the veil, and the veil is reachable mid-inning.
+  await page.evaluate(() => {
+    startInning();
+    state.deck = ['TRIPLE', 'TRIPLE', 'TRIPLE'].map(t => VOCAB.find(w => w.tag === t));
+    state.index = 0; startAtBat();
+  });
+  await page.click('#pause-button');
+  await page.waitForSelector('#pause-veil:not(.hidden)');
+  // elementFromPoint, not isVisible: the veil is an overlay, and a control
+  // under it rather than on it would be unclickable while looking fine.
+  const reachable = await page.evaluate(() => {
+    const b = document.getElementById('sound-toggle');
+    const r = b.getBoundingClientRect();
+    return document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2) === b;
+  });
+  assert(reachable, 'the toggle is on the veil, not under it');
+
+  await page.click('#sound-toggle');
+  const nowMuted = await page.evaluate(() => ({
+    muted: isMuted(), label: document.getElementById('sound-toggle').textContent,
+    pressed: document.getElementById('sound-toggle').getAttribute('aria-pressed'),
+    note: document.getElementById('sound-note').textContent
+  }));
+  assert(nowMuted.muted === true, 'pressing it mutes');
+  assert(nowMuted.label !== soundStart.label && nowMuted.pressed === 'true',
+         `and the control says so ("${nowMuted.label}", aria-pressed ${nowMuted.pressed})`);
+  assert(/silent/i.test(nowMuted.note), `with a note that means it ("${nowMuted.note.trim()}")`);
+
+  // Muted, the game still plays — it just makes no sound doing it.
+  await page.click('#pause-resume');
+  await page.waitForFunction(() => !state.paused, { timeout: 6000 });
+  const silent = await page.evaluate(() => {
+    // Count every hit type: the speed bands decide which one, and pinning
+    // the assertion to a single bucket would make it a test of the bands.
+    const total = () => Object.values(state.hits).reduce((a, b) => a + b, 0);
+    const before = audioStatus().played;
+    const outsBefore = state.outs, hitsBefore = total();
+    resolvePitch(300, true);
+    return { rang: audioStatus().played - before, hit: state.atBat.hit,
+             scored: total() === hitsBefore + 1, outs: state.outs === outsBefore };
+  });
+  assert(silent.rang === 0, 'a hit makes no sound while muted');
+  assert(silent.hit && silent.scored && silent.outs,
+         `but it is still a hit and still scored (${silent.hit}) — mute silences, it does not change the game`);
+  await page.waitForTimeout(1700);
+
+  // Unmuting takes effect straight away: the context was never closed, so
+  // there is no second gesture to find.
+  await page.click('#pause-button');
+  await page.waitForSelector('#pause-veil:not(.hidden)');
+  await page.click('#sound-toggle');
+  await page.click('#pause-resume');
+  await page.waitForFunction(() => !state.paused, { timeout: 6000 });
+  const backOn = await page.evaluate(() => {
+    const before = audioStatus().played;
+    state.deck[state.index] = VOCAB.find(w => w.tag === 'TRIPLE');
+    startAtBat();
+    resolvePitch(300, true);
+    return { muted: isMuted(), rang: audioStatus().played - before, last: audioStatus().last };
+  });
+  assert(backOn.muted === false && backOn.rang === 1 && backOn.last === 'SAFE',
+         'unmuting is immediate — no second unlock gesture needed');
+
+  // And it is the shared layer being silenced, not one call site.
+  await page.evaluate(() => setMuted(true));
+  const everything = await page.evaluate(() => soundNames().map(n => playSound(n)));
+  assert(everything.every(r => r === false),
+         `muting silences every sound in the bank, not just the umpire (${everything.length} checked)`);
+  await page.evaluate(() => { setMuted(false); renderSound(); });
+  await page.waitForTimeout(1700);
+
   section('The baseball ladder');
 
   // Back to the start card: the gate was opened at the top of the suite, so

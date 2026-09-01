@@ -343,6 +343,21 @@ const show = state => state.map((on, i) => on ? ['1B', '2B', '3B'][i] : null)
     // Not because it cannot: the layer works here, Classic just never calls it.
     const canPlay = await page.evaluate(() => playSound('CRACK'));
     assert(canPlay, 'the layer would work in Classic — it is silent by having no call sites, not by being broken');
+
+    // Mute is the shared layer's, so Classic inherits the mechanism. It has
+    // no pause veil to put the control on, which is worth knowing rather
+    // than discovering: the flag is reachable here and nothing exposes it.
+    const mute = await page.evaluate(() => ({
+      dflt: isMuted(),
+      silenced: (setMuted(true), playSound('CRACK')),
+      restored: (setMuted(false), playSound('CRACK')),
+      control: !!document.getElementById('sound-toggle')
+    }));
+    assert(mute.dflt === false, 'sound is on by default in Classic too');
+    assert(mute.silenced === false && mute.restored === true,
+           'and the shared mute works here, so silencing Classic is a control away rather than a rebuild');
+    assert(!mute.control,
+           'though Classic has no control for it yet — it has no pause screen to hang one on');
   }
 
   const inningWas = await page.evaluate(() => state.inning);

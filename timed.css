@@ -814,6 +814,27 @@ body {
   color: #fff;
 }
 
+/* The sound toggle. Same chip language as the level picker, because it
+   sits in the same panel and does the same kind of job — one setting the
+   player changes about how the game behaves, not a play they make. */
+.sound-toggle {
+  font: inherit;
+  font-size: 0.76rem; font-weight: 600;
+  padding: 6px 14px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: #b5713f; color: #fff;
+  cursor: pointer;
+}
+
+.sound-toggle:hover { background: #a2632f; }
+
+.sound-toggle.off {
+  background: #fff;
+  border-color: var(--line);
+  color: var(--muted);
+}
+
 .level-note {
   margin: 7px 0 0;
   font-size: 0.72rem;
