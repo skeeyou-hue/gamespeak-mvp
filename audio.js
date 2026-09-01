@@ -140,9 +140,37 @@ let lastPlayed = null;
    gesture and throwing it away would mean needing another one to come back,
    which a pause screen cannot ask for. Silence here is a decision not to
    start a sound, nothing more. */
-let muted = false;
+const MUTE_KEY = 'gamespeak.muted';
 
-function setMuted(on) { muted = !!on; return muted; }
+/* Remembered across reloads, because a tester who silenced the game once
+   should not have to do it again every time they open it.
+
+   Every access is wrapped: localStorage THROWS rather than returning null
+   in a private window and wherever site data is blocked, and a game that
+   fails to start because it could not read a sound preference would be a
+   far worse bug than the one this is fixing. A read that throws means the
+   default, and a write that throws means the setting lasts for this session
+   only — both are fine, and neither reaches the player. */
+function readMuted() {
+  try {
+    return localStorage.getItem(MUTE_KEY) === '1';
+  } catch (err) {
+    return false;
+  }
+}
+
+let muted = readMuted();
+
+function setMuted(on) {
+  muted = !!on;
+  try {
+    localStorage.setItem(MUTE_KEY, muted ? '1' : '0');
+  } catch (err) {
+    // Silenced for this session only. Nothing else to do about it.
+  }
+  return muted;
+}
+
 function isMuted() { return muted; }
 
 // A pitched note with an attack-decay envelope. Scheduled rather than
@@ -233,5 +261,5 @@ function soundNames() { return Object.keys(SOUNDS); }
 
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = { unlockAudio, audioStatus, audioSupported, playSound, soundNames,
-                     setMuted, isMuted };
+                     setMuted, isMuted, MUTE_KEY };
 }
