@@ -20,6 +20,18 @@
 
    Nothing here makes a noise. It creates one context, resumes it, and
    plays a single silent buffer.
+
+   VERIFIED ON A REAL DEVICE, which is the only thing that settles this.
+   iPhone, Safari, at 35ff783: the start press is silent as designed, and
+   the first correct answer and the first wrong one both sound. Headless
+   Chromium reports the context 'running' and has always reported it
+   'running', so it could never have caught a failure here — the whole
+   reason this file exists is a bug that only appears on hardware.
+
+   One device, not a matrix. iPadOS, older iOS, Android browsers and
+   in-app webviews are unmeasured. If a report comes in of a silent build,
+   the question to ask first is whether the game still PLAYED, because that
+   is the boundary this file is built to hold.
    ========================================================================= */
 
 // One context for the page. Creating a second one per press would leak them
