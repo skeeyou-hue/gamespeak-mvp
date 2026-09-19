@@ -1,0 +1,284 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Outfielder — mockup</title>
+<!--
+  DESIGN MOCKUP. Not a build, not wired to anything, no rules imported.
+  Its only job is to answer "what does the fielding screen look like"
+  before any of it is written.
+
+  Add ?notes to the URL for the annotated version.
+-->
+<style>
+  :root{
+    --sky-1:#0E4C5C; --sky-2:#1B5C74; --sky-0:#06222F;
+    --wall:#12313B;  --wall-2:#1D3A46;
+    --grass:#0A3D24; --grass-2:#0d4a2c;
+    --dirt:#8E4519;  --dirt-2:#8A5A2B;
+    --bone:#F4EDE0;  --bone-2:#FBF6EA;
+    --gold:#F2A73B;  --gold-2:#F6C445;
+    --steel:#B9C2C0;
+    --ink:#02070A;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%}
+  body{
+    background:var(--ink); color:var(--bone);
+    font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+    display:flex; flex-direction:column;
+    image-rendering:pixelated;
+  }
+
+  /* ---- HUD strip ------------------------------------------------- */
+  .hud{
+    display:flex; flex-wrap:wrap; gap:6px; align-items:center;
+    padding:8px 10px; background:#081b24;
+    border-bottom:3px solid var(--wall-2);
+    font-size:13px; letter-spacing:.06em;
+  }
+  .chip{
+    background:var(--wall); border:2px solid var(--wall-2);
+    padding:4px 8px; color:var(--bone); white-space:nowrap;
+  }
+  .chip b{color:var(--gold-2); font-weight:700}
+  .outs{display:inline-flex; gap:4px; vertical-align:-1px; margin-left:6px}
+  .out-pip{width:9px;height:9px;background:#26414b;border:2px solid #0b2029}
+  .out-pip.on{background:#E0483C}
+  .spacer{flex:1}
+
+  /* ---- the air ---------------------------------------------------- */
+  .air{position:relative; flex:1 1 auto; min-height:200px; overflow:hidden}
+  .air .park{position:absolute;inset:0;width:100%;height:100%}
+
+  .ball{position:absolute; transform:translate(-50%,-50%); text-align:center}
+  .ball .orb{
+    width:16px;height:16px;margin:0 auto 4px;
+    background:var(--bone-2); border:2px solid #cdbfa6;
+    box-shadow:0 0 0 2px #0e3140;
+  }
+  .ball .word{
+    display:inline-block; padding:4px 8px; font-size:15px; font-weight:700;
+    background:#0b2833; border:2px solid var(--steel); color:var(--bone);
+    box-shadow:3px 3px 0 #041019;
+  }
+  /* the correct ball is NOT marked in the real game — flagged only in notes */
+  body.notes .ball.right .word{border-color:var(--gold); color:var(--gold-2)}
+  .fielder{position:absolute; left:50%; bottom:6px; transform:translateX(-50%); z-index:1}
+  .trail{position:absolute;width:5px;height:5px;background:#2d5e6e;transform:translate(-50%,-50%)}
+
+  /* ---- the sentence ----------------------------------------------- */
+  .deck{flex:0 0 auto; background:#071a22; border-top:3px solid var(--wall-2); padding:12px 10px}
+  .sentence{
+    font-size:17px; line-height:2.2; letter-spacing:.02em;
+    display:flex; flex-wrap:wrap; align-items:center; gap:6px;
+  }
+  .w{color:#9fb3b8}
+  .slot{
+    display:inline-block; min-width:92px; text-align:center;
+    padding:3px 8px; border:2px solid #24454f; background:#0b2530;
+  }
+  .slot.done{
+    background:var(--gold); border-color:var(--gold-2); color:var(--ink);
+    font-weight:700;
+  }
+  .slot.live{
+    border-color:var(--gold-2); background:#123443; color:var(--gold-2);
+    box-shadow:0 0 0 3px rgba(242,167,59,.35);
+  }
+  .slot.live{position:relative}
+  .slot.live::before{
+    content:'\25B2'; position:absolute; left:50%; top:-16px;
+    transform:translateX(-50%); font-size:11px; color:var(--gold-2);
+  }
+  .slot.todo{color:#3f6572}
+
+  /* ---- basepaths --------------------------------------------------- */
+  .strip{flex:0 0 auto; display:flex; gap:12px; align-items:center; padding:10px;
+         background:#05141b; border-top:3px solid var(--wall-2)}
+  .strip svg{flex:0 0 auto}
+  .legend{font-size:12px; line-height:1.7; color:#7f9aa2}
+  .legend b{color:var(--bone)}
+
+  /* ---- annotation layer -------------------------------------------- */
+  .note{display:none}
+  body.notes .note{
+    display:block; position:absolute; z-index:5;
+    font-size:11px; letter-spacing:.04em; color:#0b1f28;
+    background:var(--gold-2); border:2px solid #b8791d;
+    padding:2px 6px; max-width:190px; line-height:1.4;
+  }
+  body.notes .deck, body.notes .strip, body.notes .hud{position:relative}
+</style>
+
+<div class="hud">
+  <span class="chip">OUTS
+    <span class="outs"><i class="out-pip on"></i><i class="out-pip"></i><i class="out-pip"></i></span>
+  </span>
+  <span class="chip">RUNS <b>1</b></span>
+  <span class="chip">DOUBLE&#8209;A</span>
+  <span class="spacer"></span>
+  <span class="chip">&#9836;</span>
+  <span class="chip">&#9613;&#9613;</span>
+  <div class="note" style="top:46px;left:10px">an out is a <b>finished sentence</b>, not a caught ball</div>
+  <div class="note" style="top:46px;right:10px">level sets sentence length only — one ladder, not two</div>
+</div>
+
+<div class="air" id="air">
+  <svg class="park" viewBox="0 0 400 260" preserveAspectRatio="none" shape-rendering="crispEdges" aria-hidden="true"></svg>
+  <div class="note" style="top:8px;left:50%;transform:translateX(-50%)">four candidates for the <b>one live slot</b>. three are near-misses of the same lemma</div>
+  <svg class="fielder" viewBox="0 0 36 48" width="58" height="77" shape-rendering="crispEdges" aria-hidden="true"></svg>
+  <div class="note" style="bottom:8px;left:10px">letting them drop costs <b>time, not outs</b> — they come round again</div>
+</div>
+
+<div class="deck">
+  <div class="sentence" id="sentence"></div>
+  <div class="note" style="top:-14px;left:10px">blanks fill strictly <b>left to right</b>; caught word drops into the gold slot</div>
+</div>
+
+<div class="strip">
+  <svg width="104" height="104" viewBox="0 0 104 104" shape-rendering="crispEdges" id="diamond"></svg>
+  <div class="legend">
+    <b>Runners on 1st and 3rd.</b><br>
+    They got there on wrong catches.<br>
+    Finish the next two sentences clean<br>
+    and they are <b>stranded</b>.
+  </div>
+  <div class="note" style="top:-14px;right:10px">wrong catch &rarr; hit, scaled by how fast you grabbed</div>
+</div>
+
+<script>
+if (location.search.includes('notes')) document.body.classList.add('notes');
+
+/* ---------------- the ballpark behind the balls ------------------- */
+const svg = document.querySelector('.air .park');
+const R = (x,y,w,h,f) => `<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="${f}"/>`;
+let s = '';
+s += R(0,0,400,260,'#0E4C5C');
+s += R(0,0,400,70,'#06222F');                       // upper sky
+for (let i=0;i<400;i+=8) s += R(i,66,4,4,'#0E4C5C'); // dither band
+for (let i=4;i<400;i+=8) s += R(i,70,4,4,'#06222F');
+s += R(0,74,400,10,'#1B5C74');
+// crowd: two dithered decks
+s += R(0,84,400,26,'#12313B');
+for (let y=86;y<108;y+=4)
+  for (let x=(y%8?0:4);x<400;x+=8)
+    s += R(x,y,4,4, ['#1D3A46','#2b4f5c','#3a3550','#4a3a4e'][(x+y)%4]);
+s += R(0,110,400,4,'#06222F');
+// outfield wall + padding stripe
+s += R(0,114,400,22,'#12313B');
+s += R(0,114,400,4,'#1D3A46');
+for (let x=0;x<400;x+=40) s += R(x,118,3,18,'#0b242c');
+s += R(0,132,400,4,'#0b242c');
+// warning track, then grass in mowed stripes
+s += R(0,136,400,10,'#8A5A2B');
+for (let i=0;i<400;i+=28) s += R(i,146,14,114,'#0A3D24');
+for (let i=14;i<400;i+=28) s += R(i,146,14,114,'#0d4a2c');
+/* The fielder is NOT drawn here. This background stretches to fit with
+   preserveAspectRatio="none", which is right for bands and stripes and
+   wrong for anything with a shape — a sprite in here comes out smeared
+   vertically. It gets its own aspect-preserving svg below. */
+svg.innerHTML = s;
+
+/* ---------------- four balls in the air ---------------------------- */
+/* Seed sentence, shape only. The shipped bank must come from a real
+   source and go to a language adviser — none of this is a corpus. */
+const CANDIDATES = [
+  { word:'conectó',    x:20, y:26, right:true  },   // correct: 3sg preterite
+  { word:'conecta',    x:52, y:12, right:false },   // wrong tense (present)
+  { word:'conecté',    x:78, y:44, right:false },   // wrong person (1sg)
+  { word:'conectaron', x:26, y:66, right:false }    // wrong number (3pl)
+];
+const air = document.getElementById('air');
+for (const c of CANDIDATES) {
+  for (let k=1;k<=3;k++) {                            // pixel trail
+    const t = document.createElement('div');
+    t.className = 'trail';
+    t.style.left = c.x + '%';
+    t.style.top  = (c.y - k*5.5) + '%';
+    t.style.opacity = 0.55 - k*0.15;
+    air.appendChild(t);
+  }
+  const b = document.createElement('div');
+  b.className = 'ball' + (c.right ? ' right' : '');
+  b.style.left = c.x + '%';
+  b.style.top  = c.y + '%';
+  b.innerHTML = '<div class="orb"></div><span class="word">' + c.word + '</span>';
+  air.appendChild(b);
+}
+
+/* The fielder, in a sprite of its own so it keeps its proportions. */
+const F = document.querySelector('.fielder');
+F.innerHTML =
+  R(6,44,24,4,'#062a18') +      // shadow
+  R(20,2,8,4,'#8E4519')  +      // glove, raised
+  R(18,6,12,8,'#8E4519') +
+  R(22,8,4,4,'#a8632a')  +      // pocket
+  R(12,12,6,4,'#F6C08A') +      // reaching arm
+  R(12,6,10,4,'#1D3A46') +      // cap
+  R(13,10,8,6,'#F6C08A') +      // head
+  R(10,16,16,16,'#F4EDE0')+     // jersey
+  R(10,16,16,4,'#1D3A46') +     // yoke
+  R(16,20,4,8,'#F2A73B') +      // number panel
+  R(10,32,16,4,'#17375F')+      // belt
+  R(11,36,6,8,'#17375F')+       // legs
+  R(19,36,6,8,'#17375F');
+
+/* Keep every candidate wholly on screen. A ball whose word box leaves the
+   viewport is an uncatchable ball — the mockup clipped 'conectaron' off the
+   right edge at 390px before this existed, which is the same defect as a
+   fielder rendered outside the frame. Nudge after layout, measure, assert. */
+function clampBalls() {
+  const M = 6;
+  for (const b of document.querySelectorAll('.ball')) {
+    b.style.marginLeft = '0px';
+    const r = b.getBoundingClientRect();
+    let dx = 0;
+    if (r.right > innerWidth - M) dx = (innerWidth - M) - r.right;
+    if (r.left + dx < M)          dx = M - r.left;
+    if (dx) b.style.marginLeft = dx + 'px';
+  }
+}
+clampBalls();
+addEventListener('resize', clampBalls);
+
+/* ---------------- the blanked sentence ----------------------------- */
+const SENTENCE = [
+  { t:'El' },
+  { slot:'bateador', state:'done' },
+  { slot:'',         state:'live' },
+  { t:'un' },
+  { slot:'',         state:'todo' },
+  { t:'y tuvo dos' },
+  { slot:'',         state:'todo' },
+  { slot:'',         state:'todo', tail:'.' }
+];
+document.getElementById('sentence').innerHTML = SENTENCE.map(p =>
+  p.t ? `<span class="w">${p.t}</span>`
+      : `<span class="slot ${p.state}">${p.slot || '&nbsp;'}</span>` +
+        (p.tail ? `<span class="w">${p.tail}</span>` : '')
+).join('');
+
+/* ---------------- basepaths ---------------------------------------- */
+const d = document.getElementById('diamond');
+let g = R(0,0,104,104,'#0A3D24');
+/* A stepped pixel diamond: half-width grows to the middle row and shrinks
+   back. Drawing the top and bottom wedges separately produced a bowtie —
+   two triangles with the middle knocked out by the inner-grass rect. The
+   inner grass has to be a diamond too, not a rectangle. */
+const diamond = (cx, cy, half, colour) => {
+  let out = '';
+  for (let dy = -half; dy <= half; dy += 2) {
+    const w = 2 * (half - Math.abs(dy));
+    if (w > 0) out += R(cx - w/2, cy + dy, w, 2, colour);
+  }
+  return out;
+};
+g += diamond(52, 52, 48, '#8E4519');                  // basepath dirt
+g += diamond(52, 52, 30, '#0A3D24');                  // infield grass
+const base = (x,y,on) => R(x-6,y-6,12,12, on ? '#F2A73B' : '#F4EDE0');
+g += base(52,10,false);   // second
+g += base(88,52,true);    // first  — runner on
+g += base(16,52,true);    // third  — runner on
+g += base(52,94,false);   // home
+d.innerHTML = g;
+</script>
