@@ -68,6 +68,16 @@
 
   /* ---- the sentence ----------------------------------------------- */
   .deck{flex:0 0 auto; background:#071a22; border-top:3px solid var(--wall-2); padding:12px 10px}
+  /* The English gloss. Not decoration — a noun slot's distractors have to
+     be lexical (Spanish nouns inflect for number and nothing else), and
+     carreras / entradas / bases are all feminine plural, so no amount of
+     Spanish context separates them. Without this line those slots are a
+     guess, which breaks the promise that a failed slot is the player's
+     own error. */
+  .gloss{
+    font-size:13px; letter-spacing:.03em; color:#6f8c95;
+    margin-bottom:8px; font-style:italic;
+  }
   .sentence{
     font-size:17px; line-height:2.2; letter-spacing:.02em;
     display:flex; flex-wrap:wrap; align-items:center; gap:6px;
@@ -131,8 +141,10 @@
 </div>
 
 <div class="deck">
+  <div class="gloss" id="gloss"></div>
   <div class="sentence" id="sentence"></div>
   <div class="note" style="top:-14px;left:10px">blanks fill strictly <b>left to right</b>; caught word drops into the gold slot</div>
+  <div class="note" style="bottom:-10px;right:10px">the gloss makes <b>noun slots fair</b> — grammar alone cannot separate carreras / entradas / bases</div>
 </div>
 
 <div class="strip">
@@ -252,6 +264,8 @@ const SENTENCE = [
   { slot:'',         state:'todo' },
   { slot:'',         state:'todo', tail:'.' }
 ];
+document.getElementById('gloss').textContent =
+  'The batter connected for a double and drove in two runs.';
 document.getElementById('sentence').innerHTML = SENTENCE.map(p =>
   p.t ? `<span class="w">${p.t}</span>`
       : `<span class="slot ${p.state}">${p.slot || '&nbsp;'}</span>` +

@@ -185,8 +185,119 @@ const ENTRY = {
   /* A free slot — the spec's "random unrelated noun" — is marked, not
      accidental, so the rate can be counted and held to a target. None in
      this entry. */
-  freeSlots: []
+  freeSlots: [],
+
+  /* The highest rung this sentence can serve, which is a PROPERTY OF THE
+     SENTENCE rather than a free choice. See DETERMINABILITY below. */
+  maxSlots: null          // computed by slotCeiling(), not authored
 };
+
+/* ---------------------------------------------------------------------
+   DETERMINABILITY — the constraint that decides which rungs a sentence
+   can serve.
+
+   One bank for every rung means the same sentence is shown with more of
+   it blanked as the rung rises. That works only while every slot is
+   still ANSWERABLE from what the player can see: the tokens left given,
+   plus the slots already filled to its left, plus whatever else is on
+   screen. Blank past that point and the sentence stops determining its
+   own answers, and a failed slot stops being the player's error — which
+   is the one promise the design makes.
+
+   Each slot names what it needs. A morphological distractor is settled
+   by grammar: "conecta vs conectó" is decided by the tense of the rest
+   of the narration, "impulsadas vs impulsados" by the gender of the noun
+   to its left. A LEXICAL distractor is not: carreras, entradas and bases
+   are all feminine plural nouns, so grammar cannot separate them and no
+   amount of Spanish context will.
+   ------------------------------------------------------------------- */
+
+const NEEDS = {
+  morphological: 'grammar — resolvable from given tokens or earlier slots',
+  lexical:       'meaning — NOT resolvable from Spanish grammar at all'
+};
+
+function slotCeiling(entry, { glossShown }) {
+  const report = [];
+  for (const t of entry.tokens) {
+    const slot = entry.slots.find(s => s.token === t.i);
+    // function words are never blanked: nothing to learn and nothing to
+    // resolve them against
+    if (['CONJ', 'PREP'].includes(t.pos)) {
+      report.push({ i: t.i, form: t.form, blankable: false,
+                    why: 'function word' });
+      continue;
+    }
+    const kinds = slot ? slot.distractors.map(d => d.axis) : ['morphological'];
+    const needsMeaning = kinds.includes('lexical');
+    report.push({
+      i: t.i, form: t.form,
+      blankable: !needsMeaning || glossShown,
+      why: !needsMeaning ? 'grammar settles it'
+         : glossShown   ? 'lexical, settled by the gloss'
+                        : 'LEXICAL and no gloss — grammar cannot separate the four'
+    });
+  }
+  return report;
+}
+
+/* ---------------------------------------------------------------------
+   WHAT THIS COSTS, COUNTED
+
+   This entry, at the Double-A rung:
+
+     10  token morphology records
+      5  slot definitions
+     20  balls (5 slots x 4 candidates), each with an axis and a reason
+      4  blocked forms with reasons
+      1  source block, 1 translation, 1 adviser signature
+
+   So roughly 20 authored candidates and 40 authored items in total for
+   ONE sentence at ONE rung — not the 4 a naive count suggests.
+
+   ---------------------------------------------------------------------
+   ONE BANK, ALL RUNGS: WHAT IT MEANS FOR THE DIFFICULTY LEVER
+
+   The lever does not change, because it was never sentence length. The
+   brief said "sentence length is the difficulty lever" and then measured
+   it in SLOTS — three at Rookie up to six or seven at Major League. One
+   sentence serving every rung means the same sentence shown with more of
+   it blanked, and the lever is the slot count, exactly as specified.
+
+   What changes is that the lever gets better for free. At Rookie three
+   of ten tokens are blank and seven are given; at Major League seven are
+   blank and three are given. Difficulty rises on two axes at once — more
+   slots to fill AND less context to fill them from — where a bank of
+   longer sentences would only have moved the first. Nobody designed that
+   second axis; it falls out of the decision.
+
+   It also means a sentence's ceiling is a property OF THE SENTENCE. A
+   sentence cannot serve Major League unless seven of its tokens are
+   independently blankable, which is a thing to test at authoring time
+   and a reason to reject a sentence, not a thing to discover in play.
+
+   ---------------------------------------------------------------------
+   THE RUNG PROBLEM, WHICH HAS TO BE DECIDED BEFORE ANYONE IS COMMISSIONED
+
+   Sentence length is the difficulty lever: 3 slots at Rookie up to 7 at
+   Major League. Two ways to get there, and they cost very differently:
+
+     A. ONE SENTENCE SERVES EVERY RUNG. Blank 3 of its tokens at Rookie
+        and 7 at Major League. Then every content token needs a full
+        verified distractor set, because any of them might be the live
+        slot. For this sentence that is 9 slots x 4 = 36 balls, and the
+        bank is ~1.8x the work per sentence but serves all five rungs.
+
+     B. A BANK PER RUNG. Short sentences for Rookie, long ones for Major
+        League, each authored only for the slots it uses. Cheaper per
+        sentence, but five banks to source, and a Rookie player never
+        meets the sentences a Major League player does.
+
+   A is the better buy and it is not close — 1.8x the authoring for 5x the
+   reuse — but it changes the brief you hand an author, so it is a
+   decision and not an implementation detail.
+
+   ADOPTED: A.
 
 /* ---------------------------------------------------------------------
    WHAT THIS COSTS, COUNTED
@@ -239,4 +350,4 @@ const ENTRY = {
    marks a player wrong for a right answer.
    ------------------------------------------------------------------- */
 
-module.exports = { ENTRY };
+module.exports = { ENTRY, slotCeiling, NEEDS };
