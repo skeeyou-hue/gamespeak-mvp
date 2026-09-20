@@ -83,8 +83,14 @@
     display:flex; flex-wrap:wrap; align-items:center; gap:6px;
   }
   .w{color:#9fb3b8}
+  /* 72px, not 92px. A seven-slot Major League line wraps to five rows at
+     320px and overflows the page; 72px saves a row and it fits. Below
+     72px nothing further happens — the cost is row COUNT, and no further
+     narrowing removes another row — so this is the whole of the lever
+     and there is no reason to go smaller. It is a min-width, so a long
+     word still expands its own slot. */
   .slot{
-    display:inline-block; min-width:92px; text-align:center;
+    display:inline-block; min-width:72px; text-align:center;
     padding:3px 8px; border:2px solid #24454f; background:#0b2530;
   }
   .slot.done{

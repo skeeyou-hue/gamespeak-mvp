@@ -190,46 +190,66 @@ the constant moves.
 
 ---
 
-## 7. The 320px problem, measured rather than assumed
+## 7. The 320px problem — measured, fixed, and 320 x 568 dropped
 
-A seven-slot Major League line was measured against the real styles at
-four viewports, using a width probe built from the longest real forms in
-`rules.js` VOCAB and the worked entry — a ruler, not a sentence.
+A seven-slot Major League line was measured against the real styles,
+using a width probe built from the longest real forms in `rules.js`
+VOCAB and the worked entry — a ruler, not a sentence, making no
+grammatical claim. `?probe` on the mockup renders it.
 
-| viewport | deck | air | result |
-|---|---|---|---|
-| 390 x 844 | 181px | 490px | fits, 4/4 balls on screen |
-| 1024 x 700 | 74px | 453px | fits |
-| 320 x 640 | 235px | 200px | **overflows 19px** |
-| 320 x 568 | 235px | 200px | **overflows 91px** |
+**What it found.** At a 92px slot min-width, seven slots wrapped to five
+rows and took the sentence strip from 154px to 208px, while the ball
+area was already on its 200px floor. 320 x 640 overflowed by 19px and
+320 x 568 by 91px.
 
-Seven slots take the sentence strip from 154px to 208px — five wrapped
-rows instead of three — while the ball area is already at its 200px
-floor, so the page scrolls.
+**The fix, and why it is the whole of the fix.** Slot min-width is now
+**72px**. That saves one wrapped row, which brings the seven-slot strip
+back to 154px — the same height five slots took before — and 320 x 640
+fits with 234px of ball area and four of four candidates on screen.
 
-**Typography does not fix it.** Dropping the slot min-width from 92px to
-72px saves a row and makes 320 x 640 fit. Below 72px nothing further
-happens, because the cost is row COUNT and no further narrowing removes
-another row. 320 x 568 still overflows 24px with the slot width and font
-size both at their most aggressive.
+Below 72px nothing further happens. The cost is row COUNT, and no
+further narrowing removes another row, so 64px and 56px measure
+identically to 72px. There is no reason to go smaller and no gain hiding
+below. It remains a min-width, so a long word still expands its own
+slot.
 
-The budget at 320 x 568 is the whole story: HUD 79px (it wraps to two
-rows at this width) plus basepath strip 145px plus deck 168px at best
-leaves 176px for a ball area whose floor is 200px. Twenty-four short,
-and none of the three is typography.
+| viewport | before | after |
+|---|---|---|
+| 320 x 640 | overflows 19px | **fits**, air 234px |
+| 320 x 568 | overflows 91px | overflows 38px — **not a target** |
+| 390 x 844 | fits | fits, air 490px |
+| 1024 x 700 | fits | fits, air 453px |
 
-So the fix is structural and belongs to item 5, but the candidates are
-known now rather than discovered later: the strip's 104px diamond could
-shrink or move onto the field as an overlay; the HUD could stop wrapping
-at 320; or the ball area's floor could come down, which trades against
-the balls needing room to be distinguishable and tappable.
+### 320 x 568 IS DROPPED. Do not re-derive this at UI time.
 
-**What this does not threaten.** 390px and up is fine at every rung, with
-four of four candidates on screen and nothing overlapping the sentence.
-The live slot is reachable by `elementFromPoint` at every viewport
-tested. This is a 320px problem specifically, and 320 x 568 is the first
-iPhone SE — worth deciding whether it is still a target before anything
-is rebuilt for it.
+320 x 568 is the first-generation iPhone SE, a 2016 phone. It is **not a
+support target** and nothing should be rebuilt for it.
+
+This is recorded because the arithmetic looks like an open problem and
+will invite someone to solve it. It is not open — it was decided.
+
+The budget at 320 x 568 is: HUD 79px (it wraps to two rows at this
+width) plus basepath strip 145px plus deck 168px at its most aggressive
+typography, leaving 176px for a ball area whose floor is 200px. Twenty-
+four short, and **none of the three is typography** — which is exactly
+why it reads as a layout bug worth chasing.
+
+The three structural fixes that would close it, all of them rejected:
+
+- **Shrink or overlay the 104px basepath diamond.** The runners are the
+  scoreboard for a mode whose whole point is that errors put people on
+  base. Shrinking them for a phone nobody targets is the wrong trade.
+- **Stop the HUD wrapping at 320.** The wrap is what stopped the base
+  diamond going off screen at 320-412px in the timed mode. Undoing it
+  reintroduces a regression that has already been fixed once.
+- **Lower the ball area's 200px floor.** Balls need room to be
+  distinguishable and, now that catching is a direct tap, room to be a
+  generous hit target. This trades against the input model.
+
+Each costs something real on phones that ARE targets, to buy a phone
+that is not. 390px and up is fine at every rung, with four of four
+candidates on screen, nothing overlapping the sentence, and the live
+slot reachable by `elementFromPoint` at every viewport tested.
 
 ---
 
@@ -256,7 +276,7 @@ should be set by how the screen feels, and that is a playtest.
 | 4 | Catch input + shared flight | — | **settled** |
 | 5 | UI | 1, 2, 3, 4 | after those |
 | 6 | Tests | 1–3, then 5 | alongside |
-| 7 | 320px layout | — measured, fix belongs to 5 | decided at UI time |
+| 7 | 320px layout | — | **done** — 72px slot, 320x568 dropped |
 | 8 | Constants | 5 + content | last, by playtest |
 
 Items 1, 2, 3 and 4 are all unblocked today. Item 0 is unblocked today
