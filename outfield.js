@@ -25,24 +25,48 @@
    rather than inventing a second one.
 
    ---------------------------------------------------------------------
-   THE OPEN RULE THIS FILE HAD TO PIN DOWN
+   DECIDED, AFTER THE FIRST PASS
 
-   The spec says a wrong catch gives up a hit. It does not say what happens
-   to the slot. Two readings, and they are not close:
+   1. GRACE = 2. The count the mirror dropped. The third wrong catch on a
+      slot concedes. Exhausting the grace RESOLVES the slot to the correct
+      word, shown plainly, and play continues — REVEAL_MS. That reveal is
+      the teaching moment the batting mode cannot give, because batting
+      never shows you the word you missed.
 
-     STAYS LIVE   the blank is still unfilled; you keep fielding it until
-                  you catch the right word. Every sentence therefore ends
-                  in an out, errors cost hits and time, and the half-inning
-                  is always exactly three sentences long.
-     FILLS WRONG  the blank takes the wrong word and play moves on. The
-                  sentence finishes faster and finishes wrong.
+   2. BAND = 'PACE'. The hit band is measured against the player's own
+      rolling pace, not against a fixed fraction of the flight. See the
+      block above PACE_BANDS for why the fixed version inverted.
 
-   STAYS LIVE is modelled as primary: it is the reading consistent with
-   "the correct word is always among the four, so a failed slot is always
-   the player's error" and with "a fielder who slows down and finishes
-   clean can strand them" — stranding only means anything if finishing is
-   guaranteed. FILLS WRONG is measured alongside it so the cost of the
-   choice is a number rather than an opinion.
+   3. STAYS_LIVE. A wrong catch concedes the hit and the slot stays open.
+      The reason is pedagogical rather than balance: FILLS WRONG leaves an
+      ungrammatical sentence standing as the completed artifact, and the
+      last thing a learner should see is the wrong form assembled.
+
+   AND THE THING THOSE TWO DECISIONS DO TOGETHER, WHICH NEITHER DOES ALONE
+
+   Decision 1 says exhausting the grace resolves the slot and play
+   continues. Decision 3 says the slot stays open on a wrong catch. Put
+   together, "stays open" means stays open THROUGH THE GRACE — it cannot
+   also mean forever, because the reveal ends it. So the slot no longer
+   loops, and `onExhaust` replaces the old STAYS_LIVE / FILLS_WRONG flag:
+
+     RESOLVE     adopted. Concede the hit, show the correct word, move on.
+     FILL_WRONG  concede, put the WRONG word in the blank, move on.
+     LOOP        the old STAYS_LIVE: concede and keep fielding the same
+                 slot until it is caught right. Kept only because the
+                 earlier grace table was measured against it.
+
+   This matters to the numbers, not just the wording. The grace table that
+   the grace-2 recommendation came from was measured with LOOP, where an
+   unbounded run of errors inside one slot is possible. Under RESOLVE it
+   is not, so every cell in that table moves and the recommendation has to
+   be re-checked against the rule that was actually adopted.
+
+   RESOLVE and FILL_WRONG concede the identical hit and advance the
+   identical runners; they differ only in which word is left on the screen
+   and in REVEAL_MS of clock. So decision 3 bought the pedagogy for the
+   price of the reveal animation and nothing else, which is the strongest
+   possible ground for making it.
 
    ---------------------------------------------------------------------
    CONSTANTS THIS MECHANIC NEEDS AND DOES NOT HAVE
@@ -64,7 +88,59 @@ const { LEVELS, hitForResponse, advanceOnHit, HIT_ADVANCE, SPEED_BANDS } = T;
 const FLIGHT_MS   = 4000;
 const SETTLE_MS   = 600;
 const HIT_BEAT_MS = 1500;
+const REVEAL_MS   = 1200;         // proposed: the resolved word, shown plainly
 const OUTS_PER_HALF = 3;          // three completed sentences
+const GRACE = 2;                  // wrong catches a slot absorbs before one concedes
+
+/* THE HIT BAND, MEASURED AGAINST THE PLAYER RATHER THAN THE CLOCK.
+
+   The first version read the band off a fixed fraction of the flight, and
+   it punished good players hardest: a fluent fielder's unhurried 850ms
+   read is 0.21 of a 4000ms flight, which is the home-run band. They were
+   not panicking, that is just their pace. Home runs were 3% of a
+   beginner's conceded hits and 94% of a fluent player's, so the mechanic
+   taught the opposite of what it meant to.
+
+   It is the same error this file's own player model made an hour earlier
+   with a fixed "time a considered read takes", and it has the same fix:
+   the threshold moves with the player. The ratio t / pace is distributed
+   the same way for every fielder, which is exactly the property "panic"
+   needs in order to mean one thing.
+
+   Ratios, not milliseconds and not fractions of the flight — this IS
+   genuinely a proportion, of the player's own norm. */
+const PACE_BANDS = [
+  { within: 0.50, hit: 'HOMERUN' },   // half your own pace: a grab, not a read
+  { within: 0.75, hit: 'TRIPLE'  },
+  { within: 1.00, hit: 'DOUBLE'  },
+  { within: Infinity, hit: 'SINGLE' } // at or over your norm, and still wrong
+];
+/* Window and warm-up, set from the sweeps in pace-band.js rather than
+   proposed. A median of 5 samples is off by 16% at p50 and 40% at p90, so
+   5 was too few to score anyone on; 20 costs 20% verdict disagreement
+   against a perfect oracle where 12 costs 24% and 40 costs 16%, and past
+   20 the returns stop paying for a window that no longer tracks a player
+   who is improving. */
+const PACE_WINDOW = 20;           // catches the rolling median keeps
+const PACE_MIN    = 8;            // samples before the pace band engages
+
+/* Built from ALL catches, not correct ones only. The brief said
+   time-to-correct-catch, on the reasoning that a wrong catch is not
+   evidence of how long this player needs. That is right about knowledge
+   and wrong about timing, and the median is a timing estimate: dropping
+   wrong catches drops the fast tail, which is the part that sets the
+   norm. It costs +8% on a skilled player's median and roughly doubles
+   the residual home-run gradient — 7.7x against an oracle's 2.3x, where
+   using every catch lands on 3.3x. Measured, not argued. */
+const PACE_FROM = 'ALL';          // 'ALL' | 'CORRECT'
+
+/* Before the median exists, concede the mildest thing. Every alternative
+   measured is harsher than the warm verdict most of the time — the old
+   flight band by 65-82% above Rookie, a seed from the rung's answer clock
+   by 78-90% — and being harsh on a call the system cannot yet make is the
+   one failure worth designing out. SINGLE disagrees often and is never
+   harsh. */
+const WARMUP = 'SINGLE';
 
 // Sentence length by rung, indexed off the real ladder so a level added or
 // reordered there cannot leave this behind. Rookie shortest, ML longest.
@@ -109,6 +185,30 @@ function rushFactor(t, rt) {
   return Math.max(RUSH_FLOOR, Math.min(1, t / rt));
 }
 
+/* The rolling pace. Built from CORRECT catches only, per the decision —
+   a wrong catch is by definition not evidence of how long this player
+   needs. That choice biases the median slow, because rushing is what
+   causes errors, so the catches that survive are the considered ones.
+   The bias is measured rather than assumed; see pace-band.js. */
+function makePace(windowSize = PACE_WINDOW, seed = []) {
+  const buf = seed.slice(-windowSize);
+  return {
+    push(t) { buf.push(t); if (buf.length > windowSize) buf.shift(); },
+    n: () => buf.length,
+    median() {
+      const a = [...buf].sort((x, y) => x - y);
+      const h = a.length >> 1;
+      return a.length % 2 ? a[h] : (a[h - 1] + a[h]) / 2;
+    }
+  };
+}
+
+function hitForPace(t, pace) {
+  const r = t / pace;
+  for (const b of PACE_BANDS) if (r <= b.within) return b.hit;
+  return 'SINGLE';
+}
+
 const FIELDERS = [
   { name: 'first encounter', rt: 2600, pKnow: 0.45 },
   { name: 'shaky',           rt: 2100, pKnow: 0.62 },
@@ -143,10 +243,27 @@ function fieldSlot(p, flight) {
    spec does not have. grace = 0 is the spec exactly: every wrong catch is
    a hit. It is a parameter because the spec's own value turns out to be
    the thing that breaks the scoreline. */
-function halfInning(p, slots, flight, mode, grace = 0) {
-  let outs = 0, runs = 0, ms = 0, hits = 0, drops = 0, slotsPlayed = 0, fouls = 0;
+function halfInning(p, slots, flight, onExhaust = 'RESOLVE', grace = GRACE, opt = {}) {
+  const band   = opt.band   || 'PACE';       // 'PACE' | 'FLIGHT'
+  const warmup = opt.warmup || WARMUP;        // what to do before PACE_MIN samples
+  const pace   = opt.pace   || makePace(opt.paceWindow, opt.seed);
+  const paceFrom = opt.paceFrom || PACE_FROM;   // 'CORRECT' | 'ALL'
+
+  let outs = 0, runs = 0, ms = 0, hits = 0, drops = 0, slotsPlayed = 0;
+  let fouls = 0, reveals = 0, cold = 0, wrongs = 0;
   let bases = [false, false, false];
   const mix = { SINGLE: 0, DOUBLE: 0, TRIPLE: 0, HOMERUN: 0 };
+
+  /* What a wrong catch concedes. Under 'PACE' this is the player's own
+     rolling norm; before the norm exists, `warmup` decides. */
+  const concede = (t) => {
+    if (band === 'FLIGHT') return hitForResponse(t, flight) || 'SINGLE';
+    if (pace.n() >= PACE_MIN) return hitForPace(t, pace.median());
+    cold++;
+    if (warmup === 'SINGLE') return 'SINGLE';                    // mildest
+    if (warmup === 'PRIOR')  return hitForPace(t, opt.prior);    // rung's estimate
+    return hitForResponse(t, flight) || 'SINGLE';                // 'FLIGHT'
+  };
 
   while (outs < OUTS_PER_HALF) {
     for (let slot = 0; slot < slots; ) {
@@ -156,159 +273,135 @@ function halfInning(p, slots, flight, mode, grace = 0) {
         ms += r.ms + SETTLE_MS;
         slotsPlayed++;
         drops += Math.floor(r.ms / flight);
-        if (r.right) { slot++; break; }
+        if (paceFrom === 'ALL') pace.push(r.at);
+        if (r.right) { if (paceFrom === 'CORRECT') pace.push(r.at); slot++; break; }
+        wrongs++;
 
         // Wrong ball. Inside the grace it is a foul: costs time, not a base.
         if (missed++ < grace) { fouls++; ms += HIT_BEAT_MS; continue; }
 
-        // The batter gets a hit, and WHEN it was caught decides what kind —
-        // the shipped ladder, read the other way round.
-        const hit = hitForResponse(r.at, flight) || 'SINGLE';
+        const hit = concede(r.at);
         hits++; mix[hit]++;
         const play = advanceOnHit(bases, HIT_ADVANCE[hit]);
         bases = play.bases; runs += play.runs;
         ms += HIT_BEAT_MS;
-        missed = 0;                                    // grace refreshes
-        if (mode === 'FILLS_WRONG') { slot++; break; }
+
+        /* Grace exhausted. */
+        missed = 0;
+        if (onExhaust === 'LOOP') continue;            // old STAYS_LIVE
+        if (onExhaust === 'RESOLVE') { reveals++; ms += REVEAL_MS; }
+        slot++; break;
       }
     }
     outs++;                                            // sentence completed
   }
-  return { runs, ms, hits, drops, fouls, slotsPlayed, bases, mix };
+  return { runs, ms, hits, wrongs, drops, fouls, reveals, cold, slotsPlayed, bases, mix };
 }
 
 const mean = xs => xs.reduce((a, b) => a + b, 0) / xs.length;
 const pct  = (a, b) => b === 0 ? 0 : 100 * a / b;
 
-function cell(p, slots, flight = FLIGHT_MS, mode = 'STAYS_LIVE', n = 4000, grace = 0) {
-  const R = [], M = [], H = [], E = [], LOB = [], D = [];
+function cell(p, slots, flight = FLIGHT_MS, onExhaust = 'RESOLVE', n = 4000, grace = GRACE, opt = {}) {
+  const R = [], M = [], H = [], E = [], LOB = [], D = [], RV = [], CO = [], CR = [];
   const mix = { SINGLE: 0, DOUBLE: 0, TRIPLE: 0, HOMERUN: 0 };
   for (let k = 0; k < n; k++) {
-    const r = halfInning(p, slots, flight, mode, grace);
+    const r = halfInning(p, slots, flight, onExhaust, grace, opt);
     R.push(r.runs); M.push(r.ms); H.push(r.hits);
-    E.push(pct(r.hits, r.slotsPlayed));
-    D.push(r.drops);
+    E.push(pct(r.wrongs, r.slotsPlayed));
+    D.push(r.drops); RV.push(r.reveals); CO.push(r.cold);
+    CR.push(pct(r.hits, r.slotsPlayed));
     LOB.push(r.bases.filter(Boolean).length);
     for (const key of Object.keys(mix)) mix[key] += r.mix[key];
   }
   M.sort((a, b) => a - b);
   return {
     runs: mean(R), hits: mean(H), errRate: mean(E), lob: mean(LOB),
-    drops: mean(D),
+    drops: mean(D), reveals: mean(RV), cold: mean(CO),
+    concedeRate: mean(CR),
     minMed: M[Math.floor(0.5 * M.length)] / 60000,
     minP90: M[Math.floor(0.9 * M.length)] / 60000,
     mix
   };
 }
 
-module.exports = { FLIGHT_MS, SETTLE_MS, HIT_BEAT_MS, OUTS_PER_HALF,
-                   SLOTS_BY_LEVEL, FIELDERS, RUSH_FLOOR,
-                   cell, halfInning, fieldSlot, rushFactor };
+module.exports = { FLIGHT_MS, SETTLE_MS, HIT_BEAT_MS, REVEAL_MS, OUTS_PER_HALF,
+                   GRACE, PACE_BANDS, PACE_WINDOW, PACE_MIN, PACE_FROM, WARMUP,
+                   SLOTS_BY_LEVEL, FIELDERS, RUSH_FLOOR, SIGMA, lognormal,
+                   cell, halfInning, fieldSlot, rushFactor, makePace, hitForPace };
 
 
 /* ---------------------------------------------------------------------
    THE REPORT
    ------------------------------------------------------------------- */
 
-const pad = (s, w) => String(s).padStart(w);
+const pad  = (s, w) => String(s).padStart(w);
 const padr = (s, w) => String(s).padEnd(w);
+const RUNGS = LEVELS.map((lv, i) => ({ name: lv.name, slots: SLOTS_BY_LEVEL[i],
+                                       prior: lv.clock.medium }));
 
 function rungHeader() {
-  return padr('', 18) + LEVELS.map((lv, i) =>
-    pad(`${lv.name.slice(0, 6)}/${SLOTS_BY_LEVEL[i]}`, 11)).join('');
+  return padr('', 18) + RUNGS.map(r => pad(`${r.name.slice(0, 6)}/${r.slots}`, 11)).join('');
 }
 
-function table(title, note, rows, fmt, mode = 'STAYS_LIVE') {
+function table(title, note, rows, fmt, opt = {}, grace = GRACE, onExhaust = 'RESOLVE') {
   console.log(`\n${title}`);
   if (note) console.log(`  ${note}`);
   console.log(rungHeader());
   for (const p of rows) {
-    const cells = SLOTS_BY_LEVEL.map(s => pad(fmt(cell(p, s, FLIGHT_MS, mode)), 11));
+    const cells = RUNGS.map(r =>
+      pad(fmt(cell(p, r.slots, FLIGHT_MS, onExhaust, 4000, grace,
+                   { ...opt, prior: opt.prior === 'RUNG' ? r.prior : opt.prior })), 11));
     console.log(padr('  ' + p.name, 18) + cells.join(''));
   }
 }
 
 if (require.main === module) {
-  console.log(`OUTFIELDER — ${OUTS_PER_HALF} completed sentences a half-inning, ` +
-              `${FLIGHT_MS}ms flight, ${SETTLE_MS}ms settle, ${HIT_BEAT_MS}ms hit beat`);
-  console.log(`Sentence length by rung: ${LEVELS.map((lv, i) =>
-    `${lv.name} ${SLOTS_BY_LEVEL[i]}`).join(' · ')}`);
+  console.log('OUTFIELDER — the adopted rules');
+  console.log(`  ${OUTS_PER_HALF} completed sentences a half-inning · GRACE ${GRACE} · reveal on exhaust (${REVEAL_MS}ms)`);
+  console.log(`  flight ${FLIGHT_MS}ms · settle ${SETTLE_MS}ms · hit beat ${HIT_BEAT_MS}ms`);
+  console.log(`  band PACE: ${PACE_BANDS.map(b => `${b.hit} <=${b.within}x`).join(' · ')}`);
+  console.log(`  rolling median of the last ${PACE_WINDOW} catches (${PACE_FROM}), live after ${PACE_MIN}; cold -> ${WARMUP}`);
+  console.log(`  sentence length: ${RUNGS.map(r => `${r.name} ${r.slots}`).join(' · ')}`);
 
-  // ---- QUESTION 1: how long does a half-inning run -------------------
-  table('Q1  HALF-INNING LENGTH, minutes  median / p90',
-        'a dropped volley costs the flight and nothing else',
-        FIELDERS, c => `${c.minMed.toFixed(1)}/${c.minP90.toFixed(1)}`);
-
-  // ---- QUESTION 2: what does an error rate cost ----------------------
-  table('Q2a RUNS GIVEN UP a half-inning',
-        'error rate emerges from pKnow and rushing, not pinned',
-        FIELDERS, c => c.runs.toFixed(2));
-
-  table('Q2b ERROR RATE, % of slots fielded wrong', '',
-        FIELDERS, c => c.errRate.toFixed(1) + '%');
-
-  // Error rate pinned as an input, so the mapping reads straight.
-  const PINNED = [0.02, 0.05, 0.10, 0.15, 0.20, 0.30]
-    .map(e => ({ name: `${(e * 100).toFixed(0)}% error`, rt: 1600, pErr: e }));
-  table('Q2c RUNS GIVEN UP at a PINNED error rate',
-        'rt held at 1600ms so only the error rate moves',
-        PINNED, c => c.runs.toFixed(2));
-
-  /* ---- the lever the spec is missing ---------------------------------
-     Q2a is not a playable scoreline, so the next question is what it would
-     take to be one. In the batting mode a wrong answer costs a STRIKE and
-     the count absorbs it; only a fast correct answer is a hit. This mirror
-     has no count, so every wrong catch scores. `grace` puts the count back:
-     the number of wrong catches a slot absorbs before one concedes. */
-  console.log('\nGRACE  wrong catches a slot absorbs before one concedes');
-  console.log('  runs a half-inning. grace 0 is the spec exactly. grace 2 is the three-strike mirror.');
+  // ---- 1. the correction: the grace table under the rule ACTUALLY adopted
+  console.log('\n1. GRACE, RE-DERIVED UNDER onExhaust=RESOLVE');
+  console.log('  The table the grace-2 call was made from used LOOP, where one slot can');
+  console.log('  concede without bound. Under RESOLVE it cannot, so every cell moves.');
+  console.log('  runs a half-inning, LOOP -> RESOLVE, at each grace:');
   for (const g of [0, 1, 2, 3]) {
     console.log(`  grace ${g}`);
     console.log(rungHeader());
     for (const p of FIELDERS) {
-      const cells = SLOTS_BY_LEVEL.map(s =>
-        pad(cell(p, s, FLIGHT_MS, 'STAYS_LIVE', 2500, g).runs.toFixed(2), 11));
+      const cells = RUNGS.map(r => {
+        const L = cell(p, r.slots, FLIGHT_MS, 'LOOP',    2500, g, { band: 'FLIGHT' });
+        const R = cell(p, r.slots, FLIGHT_MS, 'RESOLVE', 2500, g, { band: 'FLIGHT' });
+        return pad(`${L.runs.toFixed(1)}->${R.runs.toFixed(1)}`, 11);
+      });
       console.log(padr('    ' + p.name, 18) + cells.join(''));
     }
   }
 
-  /* The rung a player is actually on. Every other row of these tables is a
-     mismatch the ladder exists to prevent, so the diagonal is the number
-     that decides whether the mechanic is playable. */
-  console.log('\nTHE DIAGONAL  each fielder on the rung meant for them');
-  console.log(padr('  rung / fielder', 26) + ['min med', 'err %', 'g=0 runs', 'g=1 runs', 'g=2 runs'].map(h => pad(h, 10)).join(''));
-  FIELDERS.forEach((p, i) => {
-    const s = SLOTS_BY_LEVEL[i];
-    const c0 = cell(p, s, FLIGHT_MS, 'STAYS_LIVE');
-    const c1 = cell(p, s, FLIGHT_MS, 'STAYS_LIVE', 2500, 1);
-    const c2 = cell(p, s, FLIGHT_MS, 'STAYS_LIVE', 2500, 2);
-    console.log(padr(`  ${LEVELS[i].name} / ${p.name}`, 26) +
-      [c0.minMed.toFixed(1), c0.errRate.toFixed(0) + '%',
-       c0.runs.toFixed(2), c1.runs.toFixed(2), c2.runs.toFixed(2)]
-      .map(v => pad(v, 10)).join(''));
-  });
-
-  // ---- the open rule -------------------------------------------------
-  console.log('\nOPEN RULE  what a wrong catch does to the slot');
-  console.log('  runs a half-inning, STAYS_LIVE -> FILLS_WRONG');
-  console.log(rungHeader());
+  // ---- 2. does the pace band clear the inversion --------------------
+  console.log('\n2. THE INVERSION  share of conceded hits that are HOME RUNS');
+  console.log('  FLIGHT band (as first specified) -> PACE band (adopted). Flat is the goal:');
+  console.log('  panic should mean the same thing whoever you are.');
+  console.log(padr('', 18) + RUNGS.map(r => pad(`${r.name.slice(0, 6)}/${r.slots}`, 13)).join(''));
   for (const p of FIELDERS) {
-    const cells = SLOTS_BY_LEVEL.map(s => {
-      const a = cell(p, s, FLIGHT_MS, 'STAYS_LIVE');
-      const b = cell(p, s, FLIGHT_MS, 'FILLS_WRONG');
-      return pad(`${a.runs.toFixed(1)}->${b.runs.toFixed(1)}`, 11);
+    const cells = RUNGS.map(r => {
+      const f = cell(p, r.slots, FLIGHT_MS, 'RESOLVE', 2500, GRACE, { band: 'FLIGHT' });
+      const q = cell(p, r.slots, FLIGHT_MS, 'RESOLVE', 2500, GRACE, { band: 'PACE', warmup: 'FLIGHT' });
+      const hr = m => pct(m.HOMERUN, Object.values(m).reduce((a, b) => a + b, 0)).toFixed(0);
+      return pad(`${hr(f.mix)}% -> ${hr(q.mix)}%`, 13);
     });
     console.log(padr('  ' + p.name, 18) + cells.join(''));
   }
 
-  // ---- what the hits actually are ------------------------------------
-  console.log('\nHIT MIX conceded, all rungs pooled  (band boundaries read from SPEED_BANDS)');
-  console.log('  ' + SPEED_BANDS.map(b => `${b.hit} <=${b.within}`).join('  '));
+  console.log('\n   full conceded mix under the PACE band, all rungs pooled');
   console.log(padr('', 18) + ['SINGLE', 'DOUBLE', 'TRIPLE', 'HOMERUN'].map(h => pad(h, 11)).join(''));
   for (const p of FIELDERS) {
     const tot = { SINGLE: 0, DOUBLE: 0, TRIPLE: 0, HOMERUN: 0 };
-    for (const s of SLOTS_BY_LEVEL) {
-      const c = cell(p, s, FLIGHT_MS, 'STAYS_LIVE', 1500);
+    for (const r of RUNGS) {
+      const c = cell(p, r.slots, FLIGHT_MS, 'RESOLVE', 1500, GRACE, { band: 'PACE' });
       for (const k of Object.keys(tot)) tot[k] += c.mix[k];
     }
     const n = Object.values(tot).reduce((a, b) => a + b, 0);
@@ -316,36 +409,30 @@ if (require.main === module) {
       Object.keys(tot).map(k => pad(pct(tot[k], n).toFixed(0) + '%', 11)).join(''));
   }
 
-  /* ---- the strategy the spec asserts exists -------------------------
-     "a fielder who slows down and finishes clean can strand them." That is
-     a claim about a strategy, so it gets measured rather than assumed.
-     A player choosing a pace multiplies their own rt: 0.5 is grabbing at
-     twice their natural speed, 2.0 is taking twice as long as usual. */
-  const comp = FIELDERS[2];
-  console.log(`\nPACE  ${comp.name} fielder choosing a pace, ${SLOTS_BY_LEVEL[2]}-slot sentence`);
-  console.log('  x1.0 is their own considered read. Accuracy ceilings at pKnow.');
-  const PACES = [0.4, 0.6, 0.8, 1.0, 1.5, 2.0, 3.0];
-  console.log(padr('  pace', 18) + PACES.map(x => pad('x' + x.toFixed(1), 11)).join(''));
-  const paceCells = PACES.map(x =>
-    cell({ name: 'p', rt: comp.rt * x, pKnow: comp.pKnow, ownRt: comp.rt },
-         SLOTS_BY_LEVEL[2], FLIGHT_MS, 'STAYS_LIVE'));
-  for (const [label, fmt] of [['error rate', c => c.errRate.toFixed(1) + '%'],
-                              ['runs', c => c.runs.toFixed(2)],
-                              ['minutes med', c => c.minMed.toFixed(1)],
-                              ['LOB', c => c.lob.toFixed(2)]]) {
-    console.log(padr('  ' + label, 18) + paceCells.map(c => pad(fmt(c), 11)).join(''));
-  }
+  // ---- 3. the adopted build ------------------------------------------
+  table('3. RUNS GIVEN UP a half-inning, adopted rules',
+        `grace ${GRACE}, RESOLVE, PACE band`,
+        FIELDERS, c => c.runs.toFixed(2), { band: 'PACE' });
 
-  // ---- does the flight clock matter ----------------------------------
-  console.log(`\nFLIGHT SWEEP  competent fielder, ${SLOTS_BY_LEVEL[2]}-slot sentence`);
-  console.log(padr('  flight ms', 18) + [3000, 3500, 4000, 5000, 6000].map(f => pad(f, 11)).join(''));
-  for (const [label, fmt] of [['minutes med', c => c.minMed.toFixed(1)],
-                              ['runs', c => c.runs.toFixed(2)],
-                              ['drops/inning', c => c.drops.toFixed(1)]]) {
-    const cells = [3000, 3500, 4000, 5000, 6000].map(f => {
-      const c = cell(comp, SLOTS_BY_LEVEL[2], f, 'STAYS_LIVE');
-      return pad(fmt(c), 11);
-    });
-    console.log(padr('  ' + label, 18) + cells.join(''));
-  }
+  table('   HALF-INNING LENGTH, minutes  median / p90', '',
+        FIELDERS, c => `${c.minMed.toFixed(1)}/${c.minP90.toFixed(1)}`, { band: 'PACE' });
+
+  table('   REVEALS a half-inning  (the teaching moment firing)',
+        'a slot that exhausted its grace and resolved to the correct word',
+        FIELDERS, c => c.reveals.toFixed(1), { band: 'PACE' });
+
+  // ---- 4. the diagonal ------------------------------------------------
+  console.log('\n4. THE DIAGONAL  each fielder on the rung meant for them, adopted rules');
+  console.log(padr('  rung / fielder', 26) +
+    ['min med', 'wrong %', 'conceded%', 'runs', 'reveals', 'cold hits'].map(h => pad(h, 11)).join(''));
+  FIELDERS.forEach((p, i) => {
+    const r = RUNGS[i];
+    const c = cell(p, r.slots, FLIGHT_MS, 'RESOLVE', 4000, GRACE, { band: 'PACE' });
+    console.log(padr(`  ${r.name} / ${p.name}`, 26) +
+      [c.minMed.toFixed(1), c.errRate.toFixed(0) + '%', c.concedeRate.toFixed(1) + '%',
+       c.runs.toFixed(2), c.reveals.toFixed(1), c.cold.toFixed(2)].map(v => pad(v, 11)).join(''));
+  });
+  console.log('  "cold hits" are hits conceded before the rolling median had ' +
+              PACE_MIN + ' samples,');
+  console.log('  i.e. scored by the warm-up fallback rather than by the player\'s own pace.');
 }

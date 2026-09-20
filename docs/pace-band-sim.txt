@@ -1,0 +1,106 @@
+PACE BAND — what the rolling median needs before it can be trusted
+  bands HOMERUN <=0.5x · TRIPLE <=0.75x · DOUBLE <=1x · SINGLE <=Infinityx
+  window 20 correct catches, live after 8
+
+1. HOW WRONG IS A MEDIAN OF n SAMPLES
+   lognormal, sigma 0.45. |sample median / true median - 1|, over 20000 trials.
+   n samples         p50 err     p90 err  within 20%
+   3                   20.1%       50.5%         50%
+   4                   16.8%       41.9%         58%
+   5                   16.1%       39.9%         60%
+   6                   14.0%       34.3%         66%
+   8                   12.4%       30.5%         72%
+   12                  10.3%       25.3%         81%
+   20                   8.3%       20.1%         90%
+   30                   6.8%       16.7%         95%
+
+2. SLOTS UNTIL THE MEDIAN HAS 8 CORRECT CATCHES
+   and how many sentences that is at the rung the fielder plays
+   fielder             med slots   p90 slots  rung slots   sentences
+   first encounter            21          29           3         7.0
+   shaky                      15          20           4         3.8
+   competent                  12          15           5         2.4
+   sharp                      10          13           6         1.7
+   fluent                      9          11           7         1.3
+
+3. WARM-UP FALLBACKS  disagreement with the warm verdict, cold catches only
+   FLIGHT = the old fixed fraction of flight · SINGLE = concede the mildest
+   PRIOR  = seed the median from the rung's own medium answer clock
+   each cell: disagreement %, and how much of it is HARSHER than warm
+   harsh matters more than disagreement — punishing a player for a call
+   the system cannot yet make is the failure worth avoiding.
+   fielder / rung                 FLIGHT        SINGLE         PRIOR      prior ms
+   first encounter / Rookie      21% / 7%      65% / 0%     90% / 90%          6500
+   shaky / Single-A            34% / 32%      63% / 0%     89% / 89%          5000
+   competent / Double-A        66% / 66%      67% / 0%     87% / 87%          4000
+   sharp / Triple-A            81% / 81%      78% / 0%     82% / 82%          3500
+   fluent / Major League       78% / 78%      91% / 0%     77% / 77%          2500
+
+4. ROLLING WINDOW SIZE  median error against the player's true pace
+   competent fielder, steady state (well past warm-up)
+   window                  p50 err           p90 err  verdict disagree
+   5                         15.0%             40.0%             32.9%
+   8                         11.9%             31.7%             28.8%
+   12                        10.2%             27.1%             23.3%
+   20                         8.6%             22.5%             18.6%
+   40                         7.6%             18.0%             16.3%
+
+5. IS THE RESIDUAL GRADIENT REAL RUSHING OR AN ARTIFACT
+   ratio = catch time / the player's TRUE pace. If wrong catches sit below
+   all catches, the fielder really did grab, and the band is reporting it.
+   fielder            all: med ratio      wrong: med     wrong <0.5x   correct-catch
+                                                                         median bias
+   first encounter             0.91x           0.86x             10%            +-2%
+   shaky                       0.95x           0.85x             11%             +4%
+   competent                   0.99x           0.80x             13%             +7%
+   sharp                       1.00x           0.72x             17%             +8%
+   fluent                      1.00x           0.64x             23%             +8%
+   "correct-catch median bias" is how much slower the median of CORRECT
+   catches runs than the player's true median — the cost of building the
+   pace from correct catches only, which inflates every ratio downward.
+
+6. BAND THRESHOLDS  conceded mix at each candidate set
+   proposed  .50/.75/1.00
+                          SINGLE    DOUBLE    TRIPLE   HOMERUN
+     first encounter         35%       28%       27%       10%
+     shaky                   36%       25%       28%       11%
+     competent               33%       23%       31%       13%
+     sharp                   22%       23%       38%       17%
+     fluent                   9%       22%       46%       22%
+   tighter   .40/.65/0.90
+                          SINGLE    DOUBLE    TRIPLE   HOMERUN
+     first encounter         45%       30%       22%        3%
+     shaky                   45%       28%       23%        4%
+     competent               40%       29%       26%        5%
+     sharp                   29%       31%       34%        6%
+     fluent                  14%       36%       42%        8%
+   tightest  .35/.55/0.80
+                          SINGLE    DOUBLE    TRIPLE   HOMERUN
+     first encounter         57%       29%       13%        2%
+     shaky                   57%       28%       13%        2%
+     competent               50%       32%       16%        2%
+     sharp                   39%       37%       21%        3%
+     fluent                  25%       45%       26%        4%
+
+7. WHAT THE ROLLING MEDIAN IS BUILT FROM
+   home-run share of conceded hits, 5-slot sentence, grace 2
+   fielder             FLIGHT band  CORRECT only   ALL catches        oracle
+   first encounter              3%            3%            5%           10%
+   shaky                        8%            6%            6%           11%
+   competent                   29%            9%            9%           13%
+   sharp                       66%           12%            8%           17%
+   fluent                      95%           14%            6%           23%
+   SPREAD fluent/beginner         35.1x          4.9x          1.4x          2.4x
+   Flat is the goal. CORRECT-only lands halfway between the band it
+   replaced and the oracle; ALL-catches lands on the oracle.
+
+8. DOES WARM-UP FIT INSIDE A HALF-INNING
+   rung / fielder            slots needed  slots in half          fits?      cold hits
+   Rookie / first encounter             21             9+             NO           0.69
+   Single-A / shaky                    15            12+             NO           0.34
+   Double-A / competent                12            15+            yes           0.14
+   Triple-A / sharp                    10            18+            yes           0.04
+   Major League / fluent                9            21+            yes           0.02
+   "slots in half" is the floor — three sentences with no wrong catches.
+   Where warm-up does not fit, the band never engages inside one inning
+   and the fallback scores every hit the player gives up.
