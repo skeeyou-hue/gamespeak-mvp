@@ -85,6 +85,12 @@ const ENTRY = {
     {
       token: 1, answer: 'bateador',
       teaches: 'noun gender and number, and the agreement with El',
+      /* Lexical distractors are on this slot, so it carries a gloss — and
+         the gloss is the English LEMMA, never the inflected form. "batter"
+         settles WHICH word without settling its number; "batters" would
+         hand over the morphology as well and turn the slot into a lookup. */
+      gloss: 'batter',
+      requires: [{ token: 0, why: 'gender and number come from the article' }],
       distractors: [
         { form: 'bateadores', axis: 'number',
           wrongHere: 'El is singular; "El bateadores" does not agree' },
@@ -103,6 +109,15 @@ const ENTRY = {
       token: 2, answer: 'conectó',
       teaches: 'preterite, third person singular — the richest slot in the ' +
                'sentence, because a verb has three independent axes',
+      /* No gloss. Every distractor here is separated by grammar, so an
+         English hint would replace the retrieval with a lookup. */
+      gloss: null,
+      requires: [
+        { token: 1, why: 'person and number come from the subject' },
+        { token: 6, why: 'TENSE has no anchor unless another finite verb ' +
+                         'in the sentence is given — blank every verb and ' +
+                         'nothing says the narration is preterite' }
+      ],
       distractors: [
         { form: 'conecta',    axis: 'tense',
           wrongHere: 'present; the narration is preterite throughout' },
@@ -123,6 +138,8 @@ const ENTRY = {
     {
       token: 4, answer: 'doble',
       teaches: 'number on a noun, and the baseball vocabulary around it',
+      gloss: 'double',
+      requires: [{ token: 3, why: 'number comes from the determiner' }],
       distractors: [
         { form: 'dobles',   axis: 'number',
           wrongHere: 'un is singular' },
@@ -146,6 +163,8 @@ const ENTRY = {
     {
       token: 8, answer: 'carreras',
       teaches: 'number agreement with the numeral dos',
+      gloss: 'run',
+      requires: [{ token: 7, why: 'number comes from the numeral' }],
       distractors: [
         { form: 'carrera',  axis: 'number',
           wrongHere: 'dos requires the plural' },
@@ -162,6 +181,8 @@ const ENTRY = {
       teaches: 'participle agreeing with a feminine plural noun — the ' +
                'agreement is with token 8, which is itself a slot, so this ' +
                'slot is only solvable after that one is filled',
+      gloss: null,
+      requires: [{ token: 8, why: 'gender and number come from the noun' }],
       distractors: [
         { form: 'impulsados', axis: 'gender',
           wrongHere: 'carreras is feminine' },
@@ -212,33 +233,88 @@ const ENTRY = {
    amount of Spanish context will.
    ------------------------------------------------------------------- */
 
-const NEEDS = {
-  morphological: 'grammar — resolvable from given tokens or earlier slots',
-  lexical:       'meaning — NOT resolvable from Spanish grammar at all'
+/* Tokens that are never blanked: function words carry nothing to learn
+   and nothing to resolve them against. */
+const NEVER_BLANK = ['CONJ', 'PREP'];
+
+/* The slots this sentence COULD carry, beyond the five authored above.
+   Under one-bank-all-rungs every content token is a potential slot, so
+   each needs its requirement recorded even where nobody has written its
+   distractors yet. */
+const LATENT = {
+  0: { gloss: null, requires: [{ token: 1,
+       why: 'the article agrees with a noun to its RIGHT — blank the noun ' +
+            'and nothing has filled it yet when the article goes live' }] },
+  3: { gloss: null, requires: [{ token: 4,
+       why: 'same shape as El/bateador: the determiner leans right' }] },
+  6: { gloss: null, requires: [{ token: 2, why: 'tense anchor, see token 2' }] },
+  7: { gloss: 'two', requires: [] }
 };
 
-function slotCeiling(entry, { glossShown }) {
-  const report = [];
-  for (const t of entry.tokens) {
-    const slot = entry.slots.find(s => s.token === t.i);
-    // function words are never blanked: nothing to learn and nothing to
-    // resolve them against
-    if (['CONJ', 'PREP'].includes(t.pos)) {
-      report.push({ i: t.i, form: t.form, blankable: false,
-                    why: 'function word' });
-      continue;
-    }
-    const kinds = slot ? slot.distractors.map(d => d.axis) : ['morphological'];
-    const needsMeaning = kinds.includes('lexical');
-    report.push({
-      i: t.i, form: t.form,
-      blankable: !needsMeaning || glossShown,
-      why: !needsMeaning ? 'grammar settles it'
-         : glossShown   ? 'lexical, settled by the gloss'
-                        : 'LEXICAL and no gloss — grammar cannot separate the four'
-    });
+function slotSpec(entry, i) {
+  const authored = entry.slots.find(s => s.token === i);
+  if (authored) return { gloss: authored.gloss, requires: authored.requires || [] };
+  return LATENT[i] || { gloss: null, requires: [] };
+}
+
+/* A slot is answerable when everything it requires is resolvable AT THE
+   MOMENT IT GOES LIVE. Blanks fill left to right, so a requirement is met
+   if the token it names is given, or if it is blanked but sits to the
+   LEFT and has therefore already been filled. A requirement pointing
+   right at another blank is not met — nothing has put a word there yet.
+
+   The earlier version of this function ignored direction entirely and
+   only asked whether a slot's distractors were lexical. That made
+   El/bateador and un/doble look independently blankable when they are
+   not, and it inflated the ceiling.
+
+   GLOSS POLICY: a slot carries an English lemma only where Spanish
+   grammar genuinely cannot separate the four balls — which is exactly
+   the slots with lexical distractors. Where morphology does the
+   separating, a gloss would replace retrieval with translation, so
+   there is none, and the slot is answerable on grammar alone. */
+function answerable(entry, blanked, i) {
+  const spec = slotSpec(entry, i);
+  for (const r of spec.requires) {
+    if (blanked.includes(r.token) && r.token > i) return false;
   }
-  return report;
+  return true;
+}
+
+function validSet(entry, blanked) {
+  return blanked.every(i => answerable(entry, blanked, i));
+}
+
+/* The largest set of tokens this sentence can carry as slots at once,
+   by exhaustive search over the content tokens. This is the sentence's
+   rung ceiling and it is a property of the sentence. */
+function slotCeiling(entry) {
+  const content = entry.tokens
+    .filter(t => !NEVER_BLANK.includes(t.pos))
+    .map(t => t.i);
+  let best = [];
+  for (let mask = 0; mask < (1 << content.length); mask++) {
+    const set = content.filter((_, k) => mask & (1 << k));
+    if (set.length <= best.length) continue;
+    if (validSet(entry, set)) best = set;
+  }
+  return { content, max: best.length, example: best };
+}
+
+/* Why a token had to be left out of the maximum set — the exclusions,
+   stated as pairs, so an author can see what to change. */
+function exclusions(entry) {
+  const content = entry.tokens
+    .filter(t => !NEVER_BLANK.includes(t.pos)).map(t => t.i);
+  const out = [];
+  for (const i of content) {
+    for (const r of slotSpec(entry, i).requires) {
+      if (r.token > i && content.includes(r.token)) {
+        out.push({ slot: i, blocks: r.token, why: r.why });
+      }
+    }
+  }
+  return out;
 }
 
 /* ---------------------------------------------------------------------
@@ -350,4 +426,5 @@ function slotCeiling(entry, { glossShown }) {
    marks a player wrong for a right answer.
    ------------------------------------------------------------------- */
 
-module.exports = { ENTRY, slotCeiling, NEEDS };
+module.exports = { ENTRY, slotCeiling, exclusions, validSet, answerable,
+                   slotSpec, NEVER_BLANK, LATENT };

@@ -110,14 +110,27 @@
   .legend b{color:var(--bone)}
 
   /* ---- annotation layer -------------------------------------------- */
+  /* One rail under the screen, at every width, rather than pins on top of
+     it. Absolute callouts collided with each other and with the live slot
+     at phone width, and lengthening a single note put them back on top of
+     the game at desktop width too. A note that covers the thing it
+     annotates is worse than no note, and a layout that breaks when the
+     text grows will break again. */
   .note{display:none}
-  body.notes .note{
-    display:block; position:absolute; z-index:5;
-    font-size:11px; letter-spacing:.04em; color:#0b1f28;
-    background:var(--gold-2); border:2px solid #b8791d;
-    padding:2px 6px; max-width:190px; line-height:1.4;
+  body.notes .note-rail{
+    padding:12px 10px; background:#0a1c24;
+    border-top:3px solid var(--wall-2);
   }
-  body.notes .deck, body.notes .strip, body.notes .hud{position:relative}
+  body.notes .note-rail h4{
+    font-size:11px; letter-spacing:.12em; color:#6f8c95;
+    font-weight:400; margin-bottom:6px;
+  }
+  body.notes .note{
+    display:block; position:static; max-width:none;
+    font-size:11px; letter-spacing:.04em; line-height:1.5;
+    color:#0b1f28; background:var(--gold-2); border:2px solid #b8791d;
+    padding:3px 6px; margin:0 0 4px;
+  }
 </style>
 
 <div class="hud">
@@ -129,22 +142,22 @@
   <span class="spacer"></span>
   <span class="chip">&#9836;</span>
   <span class="chip">&#9613;&#9613;</span>
-  <div class="note" style="top:46px;left:10px">an out is a <b>finished sentence</b>, not a caught ball</div>
-  <div class="note" style="top:46px;right:10px">level sets sentence length only — one ladder, not two</div>
+  <div class="note">an out is a <b>finished sentence</b>, not a caught ball</div>
+  <div class="note">level sets sentence length only — one ladder, not two</div>
 </div>
 
 <div class="air" id="air">
   <svg class="park" viewBox="0 0 400 260" preserveAspectRatio="none" shape-rendering="crispEdges" aria-hidden="true"></svg>
-  <div class="note" style="top:8px;left:50%;transform:translateX(-50%)">four candidates for the <b>one live slot</b>. three are near-misses of the same lemma</div>
+  <div class="note">four candidates for the <b>one live slot</b>. three are near-misses of the same lemma</div>
   <svg class="fielder" viewBox="0 0 36 48" width="58" height="77" shape-rendering="crispEdges" aria-hidden="true"></svg>
-  <div class="note" style="bottom:8px;left:10px">letting them drop costs <b>time, not outs</b> — they come round again</div>
+  <div class="note">letting them drop costs <b>time, not outs</b> — they come round again</div>
 </div>
 
 <div class="deck">
   <div class="gloss" id="gloss"></div>
   <div class="sentence" id="sentence"></div>
-  <div class="note" style="top:-14px;left:10px">blanks fill strictly <b>left to right</b>; caught word drops into the gold slot</div>
-  <div class="note" style="bottom:-10px;right:10px">the gloss makes <b>noun slots fair</b> — grammar alone cannot separate carreras / entradas / bases</div>
+  <div class="note">blanks fill strictly <b>left to right</b>; caught word drops into the gold slot</div>
+  <div class="note">this slot is a <b>verb</b>, so no gloss — tense, person and number separate the four. A noun slot would show its English lemma here, because <i>carreras / entradas / bases</i> are all feminine plural and grammar cannot tell them apart</div>
 </div>
 
 <div class="strip">
@@ -155,11 +168,24 @@
     Finish the next two sentences clean<br>
     and they are <b>stranded</b>.
   </div>
-  <div class="note" style="top:-14px;right:10px">wrong catch &rarr; hit, scaled by how fast you grabbed</div>
+  <div class="note">wrong catch &rarr; hit, scaled by how fast you grabbed</div>
 </div>
 
 <script>
 if (location.search.includes('notes')) document.body.classList.add('notes');
+
+/* Every callout goes into one rail at the foot of the page, at any
+   width, so nothing ever covers the screen it describes. */
+function reflowNotes() {
+  if (!document.body.classList.contains('notes')) return;
+  const rail = document.createElement('div');
+  rail.className = 'note-rail';
+  rail.innerHTML = '<h4>WHAT YOU ARE LOOKING AT</h4>';
+  for (const n of document.querySelectorAll('.note')) rail.appendChild(n);
+  document.body.appendChild(rail);
+}
+
+reflowNotes();
 
 /* ---------------- the ballpark behind the balls ------------------- */
 const svg = document.querySelector('.air .park');
@@ -264,8 +290,20 @@ const SENTENCE = [
   { slot:'',         state:'todo' },
   { slot:'',         state:'todo', tail:'.' }
 ];
-document.getElementById('gloss').textContent =
-  'The batter connected for a double and drove in two runs.';
+/* Per-slot, not per-sentence. A whole-sentence translation under every
+   blank turns morphology slots into a lookup; this one appears only on
+   the live slot, and only when that slot's distractors are lexical —
+   which is the noun slots, because a Spanish noun inflects for number
+   and nothing else. The live slot here is a VERB, separated by grammar,
+   so it carries none. */
+const LIVE_GLOSS = null;
+const glossEl = document.getElementById('gloss');
+/* When there is no gloss the line is simply absent. An explicit "no gloss
+   here" would be mockup commentary on the game surface — the player does
+   not need telling that a hint they were never owed is missing. The
+   explanation lives in the ?notes layer instead. */
+if (LIVE_GLOSS) glossEl.textContent = `this blank: \u201c${LIVE_GLOSS}\u201d`;
+else            glossEl.remove();
 document.getElementById('sentence').innerHTML = SENTENCE.map(p =>
   p.t ? `<span class="w">${p.t}</span>`
       : `<span class="slot ${p.state}">${p.slot || '&nbsp;'}</span>` +
