@@ -353,6 +353,71 @@ function exclusions(entry) {
    and a reason to reject a sentence, not a thing to discover in play.
 
    ---------------------------------------------------------------------
+   THE AUTHORING RULE. PUT THIS AT THE TOP OF THE BRIEF.
+
+   ===================================================================
+   A SLOT'S DISAMBIGUATING TOKEN CANNOT BE A LATER BLANK.
+   ===================================================================
+
+   Blanks fill strictly left to right, one live slot at a time. When a
+   slot goes live, everything to its right that is also blanked is still
+   empty. So if what decides a slot's answer sits to its RIGHT and is
+   itself a blank, the player is being asked a question the screen has
+   not finished asking.
+
+   This is the rule authors will get wrong, because nothing about it is
+   visible while writing a single slot. Each slot looks fine on its own.
+   The defect only exists in the combination.
+
+   In Spanish it bites in three predictable places:
+
+     DETERMINERS LEAN RIGHT.  "El ___" cannot be answered until the noun
+       is there — the article agrees with a word that comes after it. So
+       El and bateador cannot both be blanks. Nor un and doble. This is
+       the most common instance and it is the one that looks most
+       harmless.
+
+     PARTICIPLES AND ADJECTIVES LEAN LEFT, and are therefore SAFE. The
+       participle in "carreras impulsadas" agrees with a noun already to
+       its left, which the player has already placed. Blank both and it
+       still works — the agreement is taught as a consequence of what
+       they just did. This is the good case and it is worth authoring
+       towards.
+
+     FINITE VERBS ANCHOR EACH OTHER'S TENSE. "conectó ... y tuvo" tells
+       the player the narration is preterite only while at least one of
+       them is given. Blank every finite verb in a sentence and nothing
+       on screen says which tense it is in. One verb must stay.
+
+   ---------------------------------------------------------------------
+   THE TWELVE-TOKEN RULE, WHICH FALLS OUT OF THE ABOVE
+
+   The ceiling is: CONTENT TOKENS, MINUS ONE FOR EVERY RIGHT-LEANING
+   PAIR. Function words never count as content.
+
+   The worked entry: 9 content tokens, 3 right-leaning pairs
+   (El/bateador, un/doble, the two verbs) = 6 slots. It serves Rookie
+   through Triple-A and CANNOT serve Major League, whoever authors it.
+
+   A sentence that must reach Major League's 7 slots therefore needs
+   roughly TWELVE TOKENS — 7 slots plus the 2-3 tokens held back as
+   agreement anchors plus the function words that are never blanked.
+   Ten will usually not do it. Commission for twelve and up.
+
+   A sentence is not wrong for topping out at Triple-A. It is wrong for
+   being SOLD as a Major League sentence when it is not, which is why
+   slotCeiling() runs in the validator and the ceiling is stored on the
+   entry rather than assumed from its length.
+
+   The subtraction above is a PLANNING HEURISTIC, not the definition.
+   It matches slotCeiling() exactly on the worked entry, but overlapping
+   pairs — one token anchoring two others, or a chain — need not behave
+   additively, and no attempt has been made to prove they do.
+   slotCeiling()'s exhaustive search is the authority and the validator
+   is where the number comes from. Use the subtraction to brief an
+   author and to sanity-check a draft; use the function to accept one.
+
+   ---------------------------------------------------------------------
    THE RUNG PROBLEM, WHICH HAS TO BE DECIDED BEFORE ANYONE IS COMMISSIONED
 
    Sentence length is the difficulty lever: 3 slots at Rookie up to 7 at
@@ -388,6 +453,71 @@ function exclusions(entry) {
 
    So roughly 20 authored candidates and 40 authored items in total for
    ONE sentence at ONE rung — not the 4 a naive count suggests.
+
+   ---------------------------------------------------------------------
+   THE AUTHORING RULE. PUT THIS AT THE TOP OF THE BRIEF.
+
+   ===================================================================
+   A SLOT'S DISAMBIGUATING TOKEN CANNOT BE A LATER BLANK.
+   ===================================================================
+
+   Blanks fill strictly left to right, one live slot at a time. When a
+   slot goes live, everything to its right that is also blanked is still
+   empty. So if what decides a slot's answer sits to its RIGHT and is
+   itself a blank, the player is being asked a question the screen has
+   not finished asking.
+
+   This is the rule authors will get wrong, because nothing about it is
+   visible while writing a single slot. Each slot looks fine on its own.
+   The defect only exists in the combination.
+
+   In Spanish it bites in three predictable places:
+
+     DETERMINERS LEAN RIGHT.  "El ___" cannot be answered until the noun
+       is there — the article agrees with a word that comes after it. So
+       El and bateador cannot both be blanks. Nor un and doble. This is
+       the most common instance and it is the one that looks most
+       harmless.
+
+     PARTICIPLES AND ADJECTIVES LEAN LEFT, and are therefore SAFE. The
+       participle in "carreras impulsadas" agrees with a noun already to
+       its left, which the player has already placed. Blank both and it
+       still works — the agreement is taught as a consequence of what
+       they just did. This is the good case and it is worth authoring
+       towards.
+
+     FINITE VERBS ANCHOR EACH OTHER'S TENSE. "conectó ... y tuvo" tells
+       the player the narration is preterite only while at least one of
+       them is given. Blank every finite verb in a sentence and nothing
+       on screen says which tense it is in. One verb must stay.
+
+   ---------------------------------------------------------------------
+   THE TWELVE-TOKEN RULE, WHICH FALLS OUT OF THE ABOVE
+
+   The ceiling is: CONTENT TOKENS, MINUS ONE FOR EVERY RIGHT-LEANING
+   PAIR. Function words never count as content.
+
+   The worked entry: 9 content tokens, 3 right-leaning pairs
+   (El/bateador, un/doble, the two verbs) = 6 slots. It serves Rookie
+   through Triple-A and CANNOT serve Major League, whoever authors it.
+
+   A sentence that must reach Major League's 7 slots therefore needs
+   roughly TWELVE TOKENS — 7 slots plus the 2-3 tokens held back as
+   agreement anchors plus the function words that are never blanked.
+   Ten will usually not do it. Commission for twelve and up.
+
+   A sentence is not wrong for topping out at Triple-A. It is wrong for
+   being SOLD as a Major League sentence when it is not, which is why
+   slotCeiling() runs in the validator and the ceiling is stored on the
+   entry rather than assumed from its length.
+
+   The subtraction above is a PLANNING HEURISTIC, not the definition.
+   It matches slotCeiling() exactly on the worked entry, but overlapping
+   pairs — one token anchoring two others, or a chain — need not behave
+   additively, and no attempt has been made to prove they do.
+   slotCeiling()'s exhaustive search is the authority and the validator
+   is where the number comes from. Use the subtraction to brief an
+   author and to sanity-check a draft; use the function to accept one.
 
    ---------------------------------------------------------------------
    THE RUNG PROBLEM, WHICH HAS TO BE DECIDED BEFORE ANYONE IS COMMISSIONED
