@@ -280,6 +280,32 @@ clampBalls();
 addEventListener('resize', clampBalls);
 
 /* ---------------- the blanked sentence ----------------------------- */
+/* MAJOR LEAGUE WIDTH PROBE — ?probe
+
+   Seven slots and twelve tokens, which is the shape the rung ceiling
+   analysis says a Major League sentence has to have. It is NOT a
+   sentence and makes no grammatical claim: it is a ruler, built from
+   word forms that already exist in rules.js VOCAB and in the worked
+   entry, so the glyph widths are real ones rather than invented ones.
+   Its only job is to answer whether seven slots fit at 320px without
+   the sentence strip eating the ball area.
+
+   The longest real forms in the tree are used deliberately — the fit
+   check is worthless at median width. */
+const PROBE = [
+  { t:'El' },
+  { slot:'', state:'done', word:'jardinero' },
+  { slot:'', state:'live' },
+  { t:'de' },
+  { slot:'', state:'todo' },
+  { t:'y el' },
+  { slot:'', state:'todo' },
+  { slot:'', state:'todo' },
+  { t:'con' },
+  { slot:'', state:'todo' },
+  { slot:'', state:'todo', tail:'.' }
+];
+
 const SENTENCE = [
   { t:'El' },
   { slot:'bateador', state:'done' },
@@ -304,9 +330,10 @@ const glossEl = document.getElementById('gloss');
    explanation lives in the ?notes layer instead. */
 if (LIVE_GLOSS) glossEl.textContent = `this blank: \u201c${LIVE_GLOSS}\u201d`;
 else            glossEl.remove();
-document.getElementById('sentence').innerHTML = SENTENCE.map(p =>
+const LINE = location.search.includes('probe') ? PROBE : SENTENCE;
+document.getElementById('sentence').innerHTML = LINE.map(p =>
   p.t ? `<span class="w">${p.t}</span>`
-      : `<span class="slot ${p.state}">${p.slot || '&nbsp;'}</span>` +
+      : `<span class="slot ${p.state}">${p.word || p.slot || '&nbsp;'}</span>` +
         (p.tail ? `<span class="w">${p.tail}</span>` : '')
 ).join('');
 

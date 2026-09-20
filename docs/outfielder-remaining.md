@@ -113,24 +113,32 @@ player's first inning rather than an edge case.
 
 ---
 
-## 4. Two things the spec does not yet say, and the UI cannot be built without
+## 4. ~~Two things the spec does not yet say~~ — SETTLED
 
-These are decisions, not work. Both are cheap to settle and both block
-item 5.
+**4a. How a ball is caught. DECIDED.** Tap the ball directly, generous
+hit target. An ambiguous mis-tap — between two balls, or on nothing —
+catches nothing and costs nothing: it is not a wrong catch, it does not
+touch the grace, and it does not end the volley. Only the flight running
+out drops the volley.
 
-**4a. How a ball is caught.** The spec says "you catch the one" and never
-says how. Tap the ball on a phone, click on desktop, is the obvious
-answer, but it decides hit-target size, whether a mis-tap between two
-balls counts as a catch or as nothing, and whether there is a keyboard
-path. The mockup shows four static candidates and dodges the question.
+That last clause matters more than it looks. A mis-tap that counted as a
+wrong catch would make the input model part of the difficulty, and the
+pace band would then be measuring finger accuracy alongside retrieval.
+Costing nothing keeps the band measuring the one thing it is for.
 
-**4b. Whether the four balls share one flight.** "Four balls in the air
-at once" plus "letting balls drop costs time, not outs" reads as one
-shared window: four arrive, you take one, and if you take none the whole
-volley re-pitches. The simulation assumes exactly that. It should be said
-out loud before it is animated, because the alternative — staggered
-arrivals, each ball its own window — is a different game and a different
-`FLIGHT_MS`.
+**4b. Whether the four balls share one flight. DECIDED: one shared
+window.** All four are catchable for the same `FLIGHT_MS`, and if none
+is taken the whole volley re-pitches together. Every simulation here
+assumed exactly this.
+
+Staggered per-ball windows were rejected for a specific reason rather
+than a stylistic one: staggering removes the cost of stalling. With one
+shared window, taking longer than the flight costs a whole re-pitch,
+which is what makes deliberation a trade rather than a free action — and
+the strand strategy, the pace band's entire meaning, is built on that
+trade existing. With per-ball windows a player can simply wait for the
+next ball at no cost, and "slow down and finish clean" stops being a
+decision.
 
 ---
 
@@ -154,9 +162,8 @@ screen, no mode switcher, per the standing instruction.
 - Basepaths and the HUD: outs as completed sentences, runs, level, mute.
 - Level select on the start screen, pause veil with level change and
   mute, matching the seam the timed mode already uses.
-- **Layout at seven slots.** A Major League sentence is mostly blanks and
-  is long. Nothing has checked that it fits a 320px screen without the
-  sentence strip eating the ball area. Measure it, do not assume it.
+- **Layout at seven slots — MEASURED, AND IT DOES NOT FIT AT 320px.**
+  See section 8.
 
 **Audio needs no work.** A correct catch plays the existing `STRIKE`
 sting from `audio.js`, which is a call, not a change. `audio.js` is
@@ -183,7 +190,50 @@ the constant moves.
 
 ---
 
-## 7. The constants, which need a playtest and not a sim
+## 7. The 320px problem, measured rather than assumed
+
+A seven-slot Major League line was measured against the real styles at
+four viewports, using a width probe built from the longest real forms in
+`rules.js` VOCAB and the worked entry — a ruler, not a sentence.
+
+| viewport | deck | air | result |
+|---|---|---|---|
+| 390 x 844 | 181px | 490px | fits, 4/4 balls on screen |
+| 1024 x 700 | 74px | 453px | fits |
+| 320 x 640 | 235px | 200px | **overflows 19px** |
+| 320 x 568 | 235px | 200px | **overflows 91px** |
+
+Seven slots take the sentence strip from 154px to 208px — five wrapped
+rows instead of three — while the ball area is already at its 200px
+floor, so the page scrolls.
+
+**Typography does not fix it.** Dropping the slot min-width from 92px to
+72px saves a row and makes 320 x 640 fit. Below 72px nothing further
+happens, because the cost is row COUNT and no further narrowing removes
+another row. 320 x 568 still overflows 24px with the slot width and font
+size both at their most aggressive.
+
+The budget at 320 x 568 is the whole story: HUD 79px (it wraps to two
+rows at this width) plus basepath strip 145px plus deck 168px at best
+leaves 176px for a ball area whose floor is 200px. Twenty-four short,
+and none of the three is typography.
+
+So the fix is structural and belongs to item 5, but the candidates are
+known now rather than discovered later: the strip's 104px diamond could
+shrink or move onto the field as an overlay; the HUD could stop wrapping
+at 320; or the ball area's floor could come down, which trades against
+the balls needing room to be distinguishable and tappable.
+
+**What this does not threaten.** 390px and up is fine at every rung, with
+four of four candidates on screen and nothing overlapping the sentence.
+The live slot is reachable by `elementFromPoint` at every viewport
+tested. This is a 320px problem specifically, and 320 x 568 is the first
+iPhone SE — worth deciding whether it is still a target before anything
+is rebuilt for it.
+
+---
+
+## 8. The constants, which need a playtest and not a sim
 
 `FLIGHT_MS` 4000, `SETTLE_MS` 600, `HIT_BEAT_MS` 1500, `REVEAL_MS` 1200.
 None are in the tree and none have been checked against a human reading
@@ -203,10 +253,11 @@ should be set by how the screen feels, and that is a playtest.
 | 1 | Bank file + validator | nothing | now |
 | 2 | Rules layer | 1 | now |
 | 3 | Pace store | nothing | now |
-| 4 | Catch input + shared flight | nothing — decisions | now |
+| 4 | Catch input + shared flight | — | **settled** |
 | 5 | UI | 1, 2, 3, 4 | after those |
 | 6 | Tests | 1–3, then 5 | alongside |
-| 7 | Constants | 5 + content | last, by playtest |
+| 7 | 320px layout | — measured, fix belongs to 5 | decided at UI time |
+| 8 | Constants | 5 + content | last, by playtest |
 
 Items 1, 2, 3 and 4 are all unblocked today. Item 0 is unblocked today
 and has the longest lead, so it is the one to start even though it is the
