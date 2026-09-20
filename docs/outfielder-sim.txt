@@ -1,5 +1,5 @@
 OUTFIELDER — the adopted rules
-  3 completed sentences a half-inning · GRACE 2 · reveal on exhaust (1200ms)
+  3 completed sentences a half-inning · GRACE 1 · reveal on exhaust (1200ms)
   flight 4000ms · settle 600ms · hit beat 1500ms
   band PACE: HOMERUN <=0.5x · TRIPLE <=0.75x · DOUBLE <=1x · SINGLE <=Infinityx
   rolling median of the last 20 catches (ALL), live after 8; cold -> SINGLE
@@ -11,30 +11,30 @@ OUTFIELDER — the adopted rules
   runs a half-inning, LOOP -> RESOLVE, at each grace:
   grace 0
                      Rookie/3   Single/4   Double/5   Triple/6   Major /7
-    first encounter  13.6->4.3  18.5->6.1  23.8->8.0  28.7->9.9 34.1->11.8
-    shaky            7.0->3.2   9.8->4.7  12.6->6.0  15.1->7.5  17.8->8.9
-    competent        3.8->2.3   5.2->3.2   6.6->4.2   8.0->5.2   9.6->6.2
-    sharp            2.3->1.7   3.2->2.3   4.0->3.1   4.9->3.7   5.8->4.4
-    fluent           1.7->1.4   2.3->1.9   2.9->2.4   3.5->2.9   4.1->3.4
+    first encounter  13.8->4.3  18.7->6.3  23.4->8.1 28.8->10.1 33.7->11.8
+    shaky            7.1->3.2   9.8->4.7  12.3->6.0  15.3->7.4  17.6->8.9
+    competent        3.7->2.2   5.2->3.2   6.7->4.2   8.1->5.2   9.6->6.2
+    sharp            2.3->1.7   3.1->2.3   4.0->3.0   5.0->3.7   5.8->4.4
+    fluent           1.7->1.5   2.3->1.9   2.9->2.4   3.5->2.9   4.1->3.4
   grace 1
                      Rookie/3   Single/4   Double/5   Triple/6   Major /7
-    first encounter   4.4->2.3   6.4->3.4   8.4->4.5  10.3->5.8  12.1->7.0
-    shaky            1.7->1.1   2.5->1.7   3.3->2.3   4.2->3.0   5.0->3.7
-    competent        0.6->0.5   0.9->0.8   1.2->1.0   1.6->1.3   2.0->1.7
-    sharp            0.4->0.3   0.5->0.4   0.6->0.6   0.7->0.7   0.9->0.8
-    fluent           0.2->0.2   0.3->0.3   0.4->0.4   0.5->0.5   0.6->0.5
+    first encounter   4.6->2.2   6.4->3.5   8.3->4.6  10.1->5.7  12.1->6.9
+    shaky            1.6->1.1   2.5->1.7   3.4->2.3   4.1->3.0   5.0->3.7
+    competent        0.6->0.5   0.9->0.8   1.2->1.0   1.5->1.3   1.9->1.6
+    sharp            0.3->0.3   0.5->0.4   0.6->0.6   0.8->0.7   0.9->0.8
+    fluent           0.2->0.2   0.3->0.3   0.4->0.4   0.5->0.4   0.5->0.5
   grace 2
                      Rookie/3   Single/4   Double/5   Triple/6   Major /7
-    first encounter   1.9->1.1   2.7->1.8   3.7->2.4   4.5->3.1   5.4->3.8
-    shaky            0.4->0.3   0.7->0.5   1.0->0.8   1.3->1.0   1.5->1.3
+    first encounter   1.8->1.1   2.6->1.7   3.6->2.4   4.6->3.1   5.5->3.9
+    shaky            0.5->0.4   0.7->0.6   1.0->0.8   1.2->1.0   1.6->1.3
     competent        0.1->0.1   0.2->0.2   0.2->0.2   0.3->0.3   0.4->0.4
     sharp            0.1->0.1   0.1->0.1   0.1->0.1   0.1->0.1   0.2->0.2
-    fluent           0.0->0.0   0.0->0.1   0.1->0.1   0.1->0.1   0.1->0.1
+    fluent           0.0->0.0   0.1->0.1   0.1->0.1   0.1->0.1   0.1->0.1
   grace 3
                      Rookie/3   Single/4   Double/5   Triple/6   Major /7
-    first encounter   0.7->0.5   1.1->0.8   1.6->1.1   2.1->1.6   2.6->2.0
+    first encounter   0.8->0.5   1.1->0.8   1.5->1.2   2.1->1.6   2.5->2.0
     shaky            0.1->0.1   0.2->0.2   0.3->0.2   0.4->0.3   0.4->0.4
-    competent        0.0->0.0   0.1->0.0   0.1->0.1   0.1->0.1   0.1->0.1
+    competent        0.0->0.0   0.0->0.0   0.1->0.1   0.1->0.1   0.1->0.1
     sharp            0.0->0.0   0.0->0.0   0.0->0.0   0.0->0.0   0.0->0.0
     fluent           0.0->0.0   0.0->0.0   0.0->0.0   0.0->0.0   0.0->0.0
 
@@ -42,52 +42,52 @@ OUTFIELDER — the adopted rules
   FLIGHT band (as first specified) -> PACE band (adopted). Flat is the goal:
   panic should mean the same thing whoever you are.
                        Rookie/3     Single/4     Double/5     Triple/6     Major /7
-  first encounter      3% -> 5%     3% -> 5%     3% -> 5%     3% -> 6%     3% -> 6%
-  shaky                8% -> 9%     8% -> 9%     9% -> 8%     9% -> 8%     9% -> 8%
-  competent          29% -> 16%   28% -> 14%   28% -> 14%   27% -> 15%   27% -> 14%
-  sharp              66% -> 39%   62% -> 34%   68% -> 27%   67% -> 22%   65% -> 25%
-  fluent             96% -> 55%   87% -> 43%   96% -> 35%   93% -> 36%   93% -> 30%
+  first encounter      3% -> 4%     3% -> 5%     3% -> 5%     3% -> 5%     3% -> 5%
+  shaky                9% -> 9%     9% -> 9%     8% -> 9%     8% -> 8%     9% -> 8%
+  competent          26% -> 20%   28% -> 18%   28% -> 16%   28% -> 16%   27% -> 15%
+  sharp              67% -> 41%   64% -> 35%   67% -> 32%   65% -> 28%   65% -> 27%
+  fluent             94% -> 59%   93% -> 50%   94% -> 43%   93% -> 40%   93% -> 38%
 
    full conceded mix under the PACE band, all rungs pooled
                        SINGLE     DOUBLE     TRIPLE    HOMERUN
-  first encounter         55%        24%        17%         5%
-  shaky                   54%        22%        18%         6%
-  competent               51%        22%        19%         8%
-  sharp                   46%        20%        23%        10%
-  fluent                  38%        22%        26%        14%
+  first encounter         58%        22%        15%         4%
+  shaky                   58%        20%        16%         6%
+  competent               55%        19%        18%         8%
+  sharp                   50%        19%        22%        10%
+  fluent                  44%        20%        25%        11%
 
 3. RUNS GIVEN UP a half-inning, adopted rules
-  grace 2, RESOLVE, PACE band
+  grace 1, RESOLVE, PACE band
                      Rookie/3   Single/4   Double/5   Triple/6   Major /7
-  first encounter        0.87       1.51       2.28       2.92       3.68
-  shaky                  0.20       0.37       0.59       0.82       1.07
-  competent              0.03       0.07       0.11       0.16       0.20
-  sharp                  0.01       0.02       0.03       0.04       0.04
-  fluent                 0.00       0.01       0.01       0.01       0.01
+  first encounter        1.95       3.19       4.34       5.53       6.72
+  shaky                  0.67       1.34       1.97       2.63       3.35
+  competent              0.21       0.39       0.63       0.90       1.18
+  sharp                  0.06       0.13       0.20       0.30       0.40
+  fluent                 0.03       0.06       0.08       0.12       0.17
 
    HALF-INNING LENGTH, minutes  median / p90
                      Rookie/3   Single/4   Double/5   Triple/6   Major /7
-  first encounter     1.5/1.9    2.0/2.4    2.5/3.0    3.0/3.5    3.5/4.1
-  shaky               1.0/1.3    1.3/1.6    1.6/2.0    1.9/2.4    2.3/2.7
-  competent           0.6/0.8    0.8/1.1    1.0/1.3    1.2/1.5    1.5/1.8
-  sharp               0.4/0.6    0.6/0.7    0.7/0.9    0.9/1.1    1.0/1.2
+  first encounter     1.2/1.5    1.6/2.0    2.0/2.4    2.5/2.8    2.9/3.3
+  shaky               0.9/1.1    1.2/1.4    1.4/1.7    1.7/2.0    2.0/2.4
+  competent           0.6/0.8    0.8/1.0    1.0/1.2    1.2/1.4    1.4/1.6
+  sharp               0.4/0.5    0.6/0.7    0.7/0.9    0.8/1.0    1.0/1.2
   fluent              0.3/0.4    0.4/0.5    0.5/0.6    0.6/0.8    0.7/0.9
 
    REVEALS a half-inning  (the teaching moment firing)
   a slot that exhausted its grace and resolved to the correct word
                      Rookie/3   Single/4   Double/5   Triple/6   Major /7
-  first encounter         2.2        3.0        3.6        4.4        5.2
-  shaky                   0.9        1.3        1.5        1.9        2.2
-  competent               0.3        0.4        0.6        0.6        0.8
-  sharp                   0.1        0.1        0.2        0.2        0.2
-  fluent                  0.0        0.1        0.1        0.1        0.1
+  first encounter         3.5        4.7        5.9        7.1        8.2
+  shaky                   2.0        2.7        3.4        4.1        4.7
+  competent               1.0        1.3        1.6        1.9        2.3
+  sharp                   0.5        0.6        0.8        0.9        1.1
+  fluent                  0.3        0.3        0.4        0.5        0.5
 
 4. THE DIAGONAL  each fielder on the rung meant for them, adopted rules
   rung / fielder              min med    wrong %  conceded%       runs    reveals  cold hits
-  Rookie / first encounter        1.5        61%      11.5%       0.86        2.2       0.67
-  Single-A / shaky                1.3        46%       6.0%       0.37        1.3       0.35
-  Double-A / competent            1.0        32%       2.4%       0.10        0.5       0.12
-  Triple-A / sharp                0.9        22%       0.8%       0.04        0.2       0.05
-  Major League / fluent           0.7        16%       0.3%       0.02        0.1       0.02
+  Rookie / first encounter        1.2        61%      23.5%       1.89        3.5       1.52
+  Single-A / shaky                1.2        46%      14.7%       1.33        2.7       0.93
+  Double-A / competent            1.0        33%       8.1%       0.66        1.7       0.52
+  Triple-A / sharp                0.8        22%       4.0%       0.28        0.9       0.27
+  Major League / fluent           0.7        16%       2.2%       0.16        0.6       0.15
   "cold hits" are hits conceded before the rolling median had 8 samples,
   i.e. scored by the warm-up fallback rather than by the player's own pace.

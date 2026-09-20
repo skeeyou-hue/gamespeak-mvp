@@ -297,6 +297,200 @@ function persistence() {
   console.log('   and the fallback scores every hit the player gives up.');
 }
 
+/* ------------------------------------------------------------------
+   9. A STORED MEDIAN THAT IS WRONG
+   Persistence across sessions raises two ways the stored value can be
+   off: the player has improved since (stale), or it was earned on a
+   different rung where the reading task is a different size. Both are
+   the same measurement — a median off by some factor — so sweep the
+   factor rather than the story.
+   ------------------------------------------------------------------ */
+function staleMedian() {
+  console.log('\n9. A STORED MEDIAN THAT IS OFF BY SOME FACTOR');
+  console.log('   verdict disagreement against the player\'s true pace, and how much');
+  console.log('   of it is HARSHER than the truth. competent fielder.');
+  console.log(padr('   stored median', 20) +
+    ['disagree', 'harsher', 'kinder'].map(h => pad(h, 12)).join(''));
+  const RANK = { SINGLE: 1, DOUBLE: 2, TRIPLE: 3, HOMERUN: 4 };
+  const p = FIELDERS[2];
+  for (const f of [0.6, 0.7, 0.8, 0.9, 1.0, 1.1, 1.25, 1.5, 2.0]) {
+    let dis = 0, harsh = 0, kind = 0, n = 0;
+    for (let k = 0; k < 60000; k++) {
+      const c = draw(p);
+      if (c.right) continue;
+      n++;
+      const truth = hitForPace(c.t, p.rt);
+      const got   = hitForPace(c.t, p.rt * f);
+      if (got !== truth) dis++;
+      if (RANK[got] > RANK[truth]) harsh++;
+      if (RANK[got] < RANK[truth]) kind++;
+    }
+    const label = f === 1 ? '  1.00x (correct)' : `  ${f.toFixed(2)}x`;
+    console.log(padr(' ' + label, 20) +
+      [dis, harsh, kind].map(v => pad(pct(v, n).toFixed(0) + '%', 12)).join(''));
+  }
+  console.log('   The error is one-directional, which decides the policy. A median');
+  console.log('   stored too FAST (below 1.00x) makes every catch look slow against the');
+  console.log('   norm: kinder, never harsh. Too SLOW makes ordinary catches look like');
+  console.log('   panic, and is harsh in every single disagreement.');
+}
+
+/* ------------------------------------------------------------------
+   10. HOW A WRONG STORED MEDIAN ACTUALLY DECAYS
+
+   The first version of this measured "catches until the rolling median
+   is within 10% of the truth" and reported ~17 regardless of how the
+   window was seeded, which read as "seed depth does not matter". It was
+   measuring the sampling noise floor: a median of 20 lognormal samples
+   is 8% off at p50 whatever it was seeded with, so the threshold was
+   reached at the same moment in every arm. Running the same sweep with
+   a CORRECT seed as a control showed the error sitting at exactly 0%
+   while the stale arms sat at exactly 30% — nothing was healing at all
+   for the first ten catches, and the metric could not see it.
+
+   The truth is worse and more specific. Seeding the window with N
+   identical copies puts a solid block of the same value in the middle of
+   the sorted buffer, so the median IS that value — exactly, with zero
+   variance — until enough real catches land above it to push the
+   midpoint out. The stale value does not decay. It holds, then snaps.
+   ------------------------------------------------------------------ */
+function healing() {
+  console.log('\n10. HOW A WRONG STORED MEDIAN ACTUALLY DECAYS');
+  console.log(`   median error vs truth after k real catches. competent, window ${PACE_WINDOW}.`);
+  console.log('   stored value is 1.5x the truth — the harsh direction.');
+  console.log(padr('   seed depth', 16) +
+    [0, 2, 5, 10, 20].map(k => pad(`k=${k}`, 12)).join(''));
+  const p = FIELDERS[2];
+  for (const depth of [1, 2, 4, 8, 20]) {
+    const cells = [0, 2, 5, 10, 20].map(k => {
+      const errs = [];
+      for (let trial = 0; trial < 3000; trial++) {
+        const pace = makePace(PACE_WINDOW, Array(depth).fill(p.rt * 1.5));
+        for (let j2 = 0; j2 < k; j2++) pace.push(draw(p).t);
+        errs.push(Math.abs(pace.median() / p.rt - 1));
+      }
+      return (100 * quant(errs, 0.5)).toFixed(0) + '%';
+    });
+    console.log(padr('   ' + depth, 16) + cells.map(c => pad(c, 12)).join(''));
+  }
+  console.log(`   the floor is ~8%: a median of ${PACE_WINDOW} real samples is that far off anyway.`);
+
+  /* The alternative to seeding: keep the stored median as the pace value
+     while the real window fills, then drop it entirely. The stale value
+     then governs exactly PACE_MIN catches instead of pinning the median
+     for as long as the seed block survives. */
+  console.log('\n   POLICY COMPARISON  verdicts scored against a 1.5x-stale stored median');
+  console.log(`   before the window has ${PACE_MIN} real catches of its own`);
+  console.log(padr('   policy', 38) +
+    ['harsh verdicts', 'scored cold'].map(h => pad(h, 16)).join(''));
+  const RANK = { SINGLE: 1, DOUBLE: 2, TRIPLE: 3, HOMERUN: 4 };
+  /* The verdict a policy reaches, as a hit name rather than a pace value,
+     so "concede a SINGLE" can be expressed at all. Passing Infinity as a
+     pace does NOT mean that — t/Infinity is 0, which is the home-run
+     band, the exact opposite. */
+  const measure = (label, verdictFor, span) => {
+    let harsh = 0, n = 0, cold = 0;
+    for (let trial = 0; trial < 6000; trial++) {
+      const pace = makePace(PACE_WINDOW, verdictFor.seed());
+      for (let k = 0; k < span; k++) {
+        const c = draw(p);
+        if (!c.right) {
+          n++;
+          if (pace.n() < PACE_MIN) cold++;
+          if (RANK[verdictFor.verdict(pace, c.t)] > RANK[hitForPace(c.t, p.rt)]) harsh++;
+        }
+        pace.push(c.t);
+      }
+    }
+    console.log(padr('   ' + label, 38) +
+      pad(pct(harsh, n).toFixed(0) + '%', 16) + pad(pct(cold, n).toFixed(0) + '%', 16));
+  };
+  const STALE = p.rt * 1.5;
+  measure(`seed ${PACE_MIN} copies of it`, {
+    seed: () => Array(PACE_MIN).fill(STALE),
+    verdict: (pc, t) => hitForPace(t, pc.median())
+  }, 20);
+  measure('seed 1 copy of it', {
+    seed: () => [STALE],
+    verdict: (pc, t) => hitForPace(t, pc.median())
+  }, 20);
+  measure('use it, then drop it', {
+    seed: () => [],
+    verdict: (pc, t) => hitForPace(t, pc.n() >= PACE_MIN ? pc.median() : STALE)
+  }, 20);
+  measure('SINGLE while cold, no store', {
+    seed: () => [],
+    verdict: (pc, t) => pc.n() >= PACE_MIN ? hitForPace(t, pc.median()) : 'SINGLE'
+  }, 20);
+
+  /* A player who is improving gets FASTER, so their stored median is too
+     SLOW, which section 9 shows is the harsh direction in every single
+     disagreement. Staleness is therefore not a symmetric risk to hedge —
+     it has a known sign, and a cap on the harsh end handles it exactly.
+     CAP keeps the stored value's texture and refuses to let it concede
+     more than a double until the real window has warmed. */
+  const CAP = 'DOUBLE';
+  const capped = v => RANK[v] > RANK[CAP] ? CAP : v;
+  measure(`use it, capped at ${CAP} while cold`, {
+    seed: () => [],
+    verdict: (pc, t) => pc.n() >= PACE_MIN
+      ? hitForPace(t, pc.median()) : capped(hitForPace(t, STALE))
+  }, 20);
+  measure(`seed 1, capped at ${CAP} while cold`, {
+    seed: () => [STALE],
+    verdict: (pc, t) => pc.n() >= PACE_MIN
+      ? hitForPace(t, pc.median()) : capped(hitForPace(t, pc.median()))
+  }, 20);
+}
+
+/* ---------------------------------------------------------------------
+   THE ADOPTED PERSISTENCE POLICY, written from the numbers above.
+
+   STORED SHAPE
+     { v: 1, median: <ms>, samples: <n>, rung: <index>, updated: <epoch> }
+
+   Written after a half-inning, only when the window holds at least
+   PACE_MIN real samples. Read once at start.
+
+   EVERY ACCESS GUARDED, same discipline as the mute key. A private
+   window throws on write, cleared storage returns null, and a partial
+   write parses to garbage. The game has to play correctly when the read
+   gives nothing back, which is not an edge case — it is every new
+   player's first inning.
+
+   VALIDATE ON READ, in order: wrong version, not a finite positive
+   number, or fewer than PACE_MIN samples behind it, and the value is
+   discarded outright. A different rung or an old timestamp are NOT
+   discard conditions; both are handled by the cap below, because
+   throwing the value away costs more than keeping it (44% of a
+   beginner's conceded hits go unscored with no stored median at all).
+
+   NEVER SEED THE WINDOW WITH COPIES OF IT. Seeding PACE_MIN copies puts
+   a block of identical values in the middle of the sorted buffer, and
+   the median IS that value — exactly, with no variance — until enough
+   real catches push the midpoint past the block. It measured 59% harsh
+   verdicts, the worst of every option, and it does something worse than
+   that: the window reports itself as warm, so the cold path never fires
+   and nothing in the game can tell it is running on a stale number.
+   Keep the stored value BESIDE the window, use it while the window
+   fills, drop it the moment the window has PACE_MIN real catches.
+
+   CAP THE HARSH END WHILE COLD. Staleness has a known sign. A player who
+   improves gets faster, so a stored median is too SLOW, and section 9
+   shows too-slow is harsh in 100% of its disagreements — never kind.
+   That is not a symmetric risk to hedge, it is a one-directional error
+   with a one-directional fix: while cold, no verdict from the stored
+   value may exceed DOUBLE. A 1.5x-stale median concedes 37% harsh
+   verdicts uncapped and 16% capped, against 7% for not persisting at
+   all — so the cap buys back most of the safety and keeps the texture.
+
+   AND IT HEALS ITSELF. Whatever the stored value was, the rolling window
+   is within ~8% of the truth after about 20 real catches, which is the
+   sampling floor rather than anything to do with the stored value. So
+   staleness is bounded by one inning of play, not by how long ago the
+   player last opened the game.
+   ------------------------------------------------------------------- */
+
 if (require.main === module) {
   console.log('PACE BAND — what the rolling median needs before it can be trusted');
   console.log(`  bands ${PACE_BANDS.map(b => `${b.hit} <=${b.within}x`).join(' · ')}`);
@@ -309,4 +503,6 @@ if (require.main === module) {
   thresholds();
   paceSource();
   persistence();
+  staleMedian();
+  healing();
 }

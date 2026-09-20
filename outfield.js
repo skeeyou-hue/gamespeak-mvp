@@ -27,8 +27,8 @@
    ---------------------------------------------------------------------
    DECIDED, AFTER THE FIRST PASS
 
-   1. GRACE = 2. The count the mirror dropped. The third wrong catch on a
-      slot concedes. Exhausting the grace RESOLVES the slot to the correct
+   1. GRACE = 1. The count the mirror dropped. The second wrong catch on
+      a slot concedes. Exhausting the grace RESOLVES the slot to the correct
       word, shown plainly, and play continues — REVEAL_MS. That reveal is
       the teaching moment the batting mode cannot give, because batting
       never shows you the word you missed.
@@ -90,7 +90,14 @@ const SETTLE_MS   = 600;
 const HIT_BEAT_MS = 1500;
 const REVEAL_MS   = 1200;         // proposed: the resolved word, shown plainly
 const OUTS_PER_HALF = 3;          // three completed sentences
-const GRACE = 2;                  // wrong catches a slot absorbs before one concedes
+/* Wrong catches a slot absorbs before one concedes. Two was proposed as
+   the three-strike mirror and measured under a rule that later changed;
+   under RESOLVE plus the pace band it was a shutout above Single-A and
+   fired the reveal once every ten innings at the top of the ladder. One
+   bounds the runs the same way and buys back the teaching: 0.17-1.88
+   runs and 0.6-3.5 reveals a half-inning across the diagonal. The mirror
+   was never the point — the reveal was. */
+const GRACE = 1;
 
 /* THE HIT BAND, MEASURED AGAINST THE PLAYER RATHER THAN THE CLOCK.
 
