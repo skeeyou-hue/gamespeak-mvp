@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="es">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>GameSpeak — Outfielder</title>
+<link rel="stylesheet" href="outfield.css">
+
+<div class="hud">
+  <span class="chip">OUT <span class="outs" id="outs"></span></span>
+  <span class="chip" title="Carreras">C <b id="runs">0</b></span>
+  <span class="chip" id="levelChip">—</span>
+  <span class="spacer"></span>
+  <button class="chip" id="muteBtn" aria-pressed="false" title="Silenciar (M)">&#9836;</button>
+  <button class="chip" id="pauseBtn" title="Pausa">&#9613;&#9613;</button>
+</div>
+
+<div class="air" id="air">
+  <svg class="park" viewBox="0 0 400 260" preserveAspectRatio="none"
+       shape-rendering="crispEdges" aria-hidden="true"></svg>
+  <svg class="fielder" viewBox="0 0 36 48" width="58" height="77"
+       shape-rendering="crispEdges" aria-hidden="true"></svg>
+  <div class="callout" id="callout" role="status" aria-live="polite" hidden></div>
+</div>
+
+<div class="deck">
+  <div class="gloss" id="gloss" hidden></div>
+  <div class="sentence" id="sentence" aria-live="polite"></div>
+</div>
+
+<div class="strip">
+  <svg width="104" height="104" viewBox="0 0 104 104" shape-rendering="crispEdges"
+       id="diamond" role="img" aria-label="Corredores en base"></svg>
+  <div class="legend" id="legend"></div>
+</div>
+
+<!-- start ------------------------------------------------------------- -->
+<div class="veil" id="startVeil">
+  <div class="card">
+    <h1>OUTFIELDER</h1>
+    <p>Cae una frase con huecos. Cuatro pelotas en el aire, cada una con una
+       palabra. <b>Toca la que llena el hueco.</b> Se llenan de izquierda a
+       derecha.</p>
+    <p>Falla dos veces en un hueco y el bateador conecta un hit. Tres frases
+       completas terminan la entrada.</p>
+    <div class="levels" id="levels" role="group" aria-label="Nivel"></div>
+    <button class="go" id="goBtn">&iexcl;Juguemos!</button>
+    <div class="caveat" id="startCaveat"></div>
+  </div>
+</div>
+
+<!-- pause ------------------------------------------------------------- -->
+<div class="veil" id="pauseVeil" hidden>
+  <div class="card">
+    <h2>PAUSA</h2>
+    <p>El nivel cambia en la próxima frase.</p>
+    <div class="levels" id="pauseLevels" role="group" aria-label="Nivel"></div>
+    <div class="row">
+      <button class="chip" id="pauseMute" aria-pressed="false">Sonido</button>
+      <button class="chip" id="quitBtn">Salir</button>
+    </div>
+    <button class="go" id="resumeBtn" style="margin-top:10px">Seguir</button>
+  </div>
+</div>
+
+<!-- end --------------------------------------------------------------- -->
+<div class="veil" id="endVeil" hidden>
+  <div class="card">
+    <h2 id="endTitle">FIN DE LA ENTRADA</h2>
+    <div class="tally" id="tally"></div>
+    <button class="go" id="againBtn">Otra entrada</button>
+    <div class="row"><button class="chip" id="backBtn">Cambiar nivel</button></div>
+    <div class="caveat" id="endCaveat"></div>
+  </div>
+</div>
+
+<script src="rules.js"></script>
+<script src="timed.js"></script>
+<script src="audio.js"></script>
+<script src="outfield-rules.js"></script>
+<script src="outfield-bank.js"></script>
+<script src="outfield-ui.js"></script>
+</html>

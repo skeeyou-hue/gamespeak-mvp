@@ -1,0 +1,157 @@
+/* OUTFIELDER — the fielding screen.
+   Own file. scene.css is shared with both batting modes and is not touched
+   or read here, so nothing in this build can reach Classic. */
+
+:root{
+  --sky-1:#0E4C5C; --sky-2:#1B5C74; --sky-0:#06222F;
+  --wall:#12313B;  --wall-2:#1D3A46;
+  --grass:#0A3D24; --grass-2:#0d4a2c;
+  --dirt:#8E4519;  --dirt-2:#8A5A2B;
+  --bone:#F4EDE0;  --bone-2:#FBF6EA;
+  --gold:#F2A73B;  --gold-2:#F6C445;
+  --steel:#B9C2C0; --ink:#02070A;
+  --red:#E0483C;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{
+  background:var(--ink); color:var(--bone);
+  font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  display:flex; flex-direction:column;
+  image-rendering:pixelated;
+  overflow:hidden;
+  -webkit-tap-highlight-color:transparent;
+}
+
+/* ---- HUD ------------------------------------------------------------ */
+.hud{
+  flex:0 0 auto;
+  display:flex; flex-wrap:wrap; gap:6px; align-items:center;
+  padding:6px 8px; background:#081b24;
+  border-bottom:3px solid var(--wall-2);
+  font-size:12px; letter-spacing:.04em;
+}
+.chip{
+  background:var(--wall); border:2px solid var(--wall-2);
+  padding:4px 7px; color:var(--bone); white-space:nowrap;
+}
+.chip b{color:var(--gold-2); font-weight:700}
+button.chip{font:inherit; cursor:pointer; min-height:32px; min-width:34px}
+button.chip:focus-visible{outline:3px solid var(--gold-2); outline-offset:2px}
+.outs{display:inline-flex; gap:4px; vertical-align:-1px; margin-left:6px}
+.out-pip{width:9px;height:9px;background:#26414b;border:2px solid #0b2029}
+.out-pip.on{background:var(--red)}
+.spacer{flex:1}
+
+/* ---- the air -------------------------------------------------------- */
+.air{position:relative; flex:1 1 auto; min-height:200px; overflow:hidden}
+.air .park{position:absolute;inset:0;width:100%;height:100%}
+.fielder{position:absolute; left:50%; bottom:6px; transform:translateX(-50%); z-index:1}
+
+/* A ball is a button so it is tappable, focusable and reachable by
+   keyboard without a second input path being invented. */
+.ball{
+  position:absolute; z-index:3;
+  transform:translate(-50%,-50%);
+  background:none; border:0; padding:14px;   /* the generous hit target */
+  font:inherit; color:inherit; cursor:pointer;
+  text-align:center; line-height:1;
+  transition:top linear;
+}
+.ball .orb{
+  /* display:block, because a span is inline and an inline box ignores
+     width and height — it collapsed to a hairline. */
+  display:block; width:16px;height:16px;margin:0 auto 4px;
+  background:var(--bone-2); border:2px solid #cdbfa6;
+  box-shadow:0 0 0 2px #0e3140;
+}
+.ball .word{
+  display:inline-block; padding:5px 9px; font-size:15px; font-weight:700;
+  background:#0b2833; border:2px solid var(--steel); color:var(--bone);
+  box-shadow:3px 3px 0 #041019;
+}
+.ball:focus-visible .word{border-color:var(--gold-2); box-shadow:0 0 0 3px var(--gold-2)}
+.ball.taken .word{background:var(--gold); border-color:var(--gold-2); color:var(--ink)}
+.ball.wrong .word{background:#7a2b22; border-color:var(--red); color:#ffd9d4}
+.ball.gone{opacity:0; transition:opacity .18s linear}
+
+/* The call-out that names what just happened. */
+.callout{
+  position:absolute; left:50%; top:16px; transform:translateX(-50%);
+  z-index:4; max-width:92%; text-align:center;
+  background:#0b2833; border:2px solid var(--steel);
+  padding:6px 10px; font-size:13px; line-height:1.5;
+  box-shadow:4px 4px 0 #041019;
+}
+.callout.good{border-color:var(--gold-2); color:var(--gold-2)}
+.callout.bad{border-color:var(--red); color:#ffd9d4; background:#3a1512}
+.callout b{color:var(--bone-2)}
+.callout[hidden]{display:none}
+
+/* ---- the sentence --------------------------------------------------- */
+.deck{flex:0 0 auto; background:#071a22; border-top:3px solid var(--wall-2); padding:12px 10px}
+.gloss{font-size:13px; letter-spacing:.03em; color:#7f9aa2; margin-bottom:8px; font-style:italic}
+.gloss[hidden]{display:none}
+.sentence{font-size:17px; line-height:2.2; letter-spacing:.02em;
+          display:flex; flex-wrap:wrap; align-items:center; gap:6px}
+.w{color:#9fb3b8}
+/* 72px, not 92px: seven slots wrap to five rows at 320px and overflow the
+   page at 92px. 72 saves a row. Below 72 nothing further happens, because
+   the cost is row COUNT. It is a min-width, so a long word still expands. */
+.slot{display:inline-block; min-width:72px; text-align:center;
+      padding:3px 8px; border:2px solid #24454f; background:#0b2530; color:#3f6572}
+.slot.done{background:var(--gold); border-color:var(--gold-2); color:var(--ink); font-weight:700}
+.slot.revealed{background:#4a3a1a; border-color:var(--gold); color:var(--gold-2); font-weight:700}
+.slot.live{border-color:var(--gold-2); background:#123443; color:var(--gold-2); position:relative}
+.slot.live::before{content:'\25B2'; position:absolute; left:50%; top:-16px;
+                   transform:translateX(-50%); font-size:11px; color:var(--gold-2)}
+
+/* ---- basepaths ------------------------------------------------------ */
+.strip{flex:0 0 auto; display:flex; gap:12px; align-items:center; padding:10px;
+       background:#05141b; border-top:3px solid var(--wall-2)}
+.legend{font-size:12px; line-height:1.7; color:#7f9aa2}
+.legend b{color:var(--bone)}
+
+/* ---- veils (start, pause, end) -------------------------------------- */
+.veil{
+  position:fixed; inset:0; z-index:20; display:flex;
+  align-items:center; justify-content:center; padding:16px;
+  background:rgba(2,7,10,.94);
+}
+.veil[hidden]{display:none}
+.card{
+  width:100%; max-width:440px; max-height:100%; overflow-y:auto;
+  background:#0b2833; border:3px solid var(--wall-2);
+  padding:18px 16px; box-shadow:6px 6px 0 #041019;
+}
+.card h1{font-size:19px; letter-spacing:.08em; color:var(--gold-2); margin-bottom:6px}
+.card h2{font-size:15px; letter-spacing:.06em; color:var(--gold-2); margin-bottom:10px}
+.card p{font-size:13px; line-height:1.7; color:#b9c8cc; margin-bottom:10px}
+.card .es{color:var(--bone); font-size:15px}
+.levels{display:flex; flex-wrap:wrap; gap:6px; margin:10px 0 14px}
+.levels button{
+  font:inherit; font-size:13px; cursor:pointer; padding:7px 10px; min-height:38px;
+  background:var(--wall); border:2px solid var(--wall-2); color:var(--bone);
+}
+.levels button[aria-pressed="true"]{background:var(--gold); border-color:var(--gold-2); color:var(--ink); font-weight:700}
+.levels button:focus-visible{outline:3px solid var(--gold-2); outline-offset:2px}
+.go{
+  display:block; width:100%; font:inherit; font-size:17px; font-weight:700;
+  cursor:pointer; padding:13px; min-height:48px;
+  background:var(--gold); border:3px solid var(--gold-2); color:var(--ink);
+  box-shadow:4px 4px 0 #6b4410;
+}
+.go:focus-visible{outline:3px solid var(--bone); outline-offset:2px}
+.row{display:flex; gap:8px; margin-top:10px}
+.row button{flex:1}
+.caveat{
+  margin-top:14px; padding:9px; background:#12313B; border-left:4px solid var(--gold);
+  font-size:11.5px; line-height:1.6; color:#b9c8cc;
+}
+.caveat b{color:var(--gold-2)}
+.tally{font-size:13px; line-height:1.9; color:#b9c8cc; margin-bottom:12px}
+.tally b{color:var(--bone-2)}
+
+@media (prefers-reduced-motion: reduce){
+  .ball{transition:none}
+}
