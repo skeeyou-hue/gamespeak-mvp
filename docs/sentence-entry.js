@@ -27,191 +27,17 @@
    it and so the adviser's reasoning survives them.
    ------------------------------------------------------------------- */
 
-const ENTRY = {
-  id: 'SENT-0001',
+/* THE DATA LIVES IN outfield-bank.js, NOT HERE.
 
-  /* Provenance. No invented sentences, so every entry has to say where it
-     came from and be re-checkable. */
-  source: {
-    text:     'El bateador conectó un doble y tuvo dos carreras impulsadas.',
-    origin:   'PLACEHOLDER — seed example, no real source',
-    citation: null,
-    retrieved: null,
-    licence:  null
-  },
+   This file is the commissioning brief: the schema, the reasoning, and
+   the rules an author has to work to. It used to carry its own copy of
+   the worked entry, which made two copies of the same sentence that
+   nothing kept in sync — the defect this codebase already names for
+   constants, in a file whose whole subject is not restating things.
 
-  /* The adviser is a gate, not a review. Nothing ships unsigned. */
-  adviser: { name: null, reviewed: null, verdict: null, notes:
-    'The seed itself needs checking: "tuvo dos carreras impulsadas" reads ' +
-    'as a calque of "had two RBIs" and a native sports register may prefer ' +
-    '"impulsó dos carreras". Flagged rather than silently corrected.' },
-
-  es: 'El bateador conectó un doble y tuvo dos carreras impulsadas.',
-  en: 'The batter connected for a double and drove in two runs.',
-
-  /* EVERY token, whether or not it is a slot. Two reasons: a token can
-     become a slot at a different rung, and the agreement targets have to
-     be resolvable even when they are not blanked themselves.
-
-     Note the article is its own token. In the shipped VOCAB it is glued
-     into the string ("el béisbol"), which makes agreement work impossible
-     before it is split. */
-  tokens: [
-    { i: 0, form: 'El',         lemma: 'el',       pos: 'DET',
-      morph: { gender: 'M', number: 'SG', definite: true } },
-    { i: 1, form: 'bateador',   lemma: 'bateador', pos: 'NOUN',
-      morph: { gender: 'M', number: 'SG' } },
-    { i: 2, form: 'conectó',    lemma: 'conectar', pos: 'VERB',
-      morph: { mood: 'IND', tense: 'PRET', person: 3, number: 'SG' } },
-    { i: 3, form: 'un',         lemma: 'uno',      pos: 'DET',
-      morph: { gender: 'M', number: 'SG', definite: false } },
-    { i: 4, form: 'doble',      lemma: 'doble',    pos: 'NOUN',
-      morph: { gender: 'M', number: 'SG' } },
-    { i: 5, form: 'y',          lemma: 'y',        pos: 'CONJ', morph: {} },
-    { i: 6, form: 'tuvo',       lemma: 'tener',    pos: 'VERB',
-      morph: { mood: 'IND', tense: 'PRET', person: 3, number: 'SG' } },
-    { i: 7, form: 'dos',        lemma: 'dos',      pos: 'NUM',
-      morph: { number: 'PL' } },
-    { i: 8, form: 'carreras',   lemma: 'carrera',  pos: 'NOUN',
-      morph: { gender: 'F', number: 'PL' } },
-    { i: 9, form: 'impulsadas', lemma: 'impulsar', pos: 'ADJ',
-      morph: { gender: 'F', number: 'PL', nonfinite: 'PART' },
-      agreesWith: 8, note: 'past participle used adjectivally' }
-  ],
-
-  /* Slots, left to right — the order they go live in. Five here, which is
-     the Double-A rung. See THE RUNG PROBLEM at the foot of this file. */
-  slots: [
-    {
-      token: 1, answer: 'bateador',
-      teaches: 'noun gender and number, and the agreement with El',
-      /* Lexical distractors are on this slot, so it carries a gloss — and
-         the gloss is the English LEMMA, never the inflected form. "batter"
-         settles WHICH word without settling its number; "batters" would
-         hand over the morphology as well and turn the slot into a lookup. */
-      gloss: 'batter',
-      requires: [{ token: 0, why: 'gender and number come from the article' }],
-      distractors: [
-        { form: 'bateadores', axis: 'number',
-          wrongHere: 'El is singular; "El bateadores" does not agree' },
-        { form: 'bateadora',  axis: 'gender',
-          wrongHere: 'El is masculine; the feminine takes La' },
-        { form: 'bateo',      axis: 'lexical',
-          wrongHere: 'same field, wrong word — the act, not the person' }
-      ],
-      blocked: [
-        { form: 'batear', why: 'infinitive after a determiner is a different ' +
-          'construction entirely, not a near-miss — the player rejects it on ' +
-          'shape without reading it' }
-      ]
-    },
-    {
-      token: 2, answer: 'conectó',
-      teaches: 'preterite, third person singular — the richest slot in the ' +
-               'sentence, because a verb has three independent axes',
-      /* No gloss. Every distractor here is separated by grammar, so an
-         English hint would replace the retrieval with a lookup. */
-      gloss: null,
-      requires: [
-        { token: 1, why: 'person and number come from the subject' },
-        { token: 6, why: 'TENSE has no anchor unless another finite verb ' +
-                         'in the sentence is given — blank every verb and ' +
-                         'nothing says the narration is preterite' }
-      ],
-      distractors: [
-        { form: 'conecta',    axis: 'tense',
-          wrongHere: 'present; the narration is preterite throughout' },
-        { form: 'conecté',    axis: 'person',
-          wrongHere: 'first person; the subject is el bateador' },
-        { form: 'conectaron', axis: 'number',
-          wrongHere: 'third plural; the subject is singular' }
-      ],
-      blocked: [
-        { form: 'conectado', why: 'participle — grammatical only with an ' +
-          'auxiliary that is not in this sentence, so it tests a different ' +
-          'thing than the slot is for' },
-        { form: 'conectara', why: 'imperfect subjunctive is a real form and ' +
-          'genuinely wrong here, but it is two steps of grammar away from ' +
-          'the target and reads as noise at this level. Adviser call.' }
-      ]
-    },
-    {
-      token: 4, answer: 'doble',
-      teaches: 'number on a noun, and the baseball vocabulary around it',
-      gloss: 'double',
-      requires: [{ token: 3, why: 'number comes from the determiner' }],
-      distractors: [
-        { form: 'dobles',   axis: 'number',
-          wrongHere: 'un is singular' },
-        { form: 'sencillo', axis: 'lexical',
-          wrongHere: 'a single, not a double — same field, wrong fact' },
-        { form: 'triple',   axis: 'lexical',
-          wrongHere: 'a triple, not a double — same field, wrong fact' }
-      ],
-      blocked: [
-        { form: 'doblar', why: 'verb; see the note on batear above' }
-      ],
-      /* THE NOUN PROBLEM, stated where it bites. A Spanish noun has ONE
-         morphological axis the learner can be tested on — number — because
-         its gender is inherent rather than inflected. So a noun slot yields
-         exactly one true morphological near-miss, and the other two balls
-         have to be lexical. Verbs yield three, participles two or three.
-         This caps how much of a sentence can teach morphology, and it is
-         a fact about Spanish, not about the design. */
-      note: 'only one morphological axis available; two distractors are lexical'
-    },
-    {
-      token: 8, answer: 'carreras',
-      teaches: 'number agreement with the numeral dos',
-      gloss: 'run',
-      requires: [{ token: 7, why: 'number comes from the numeral' }],
-      distractors: [
-        { form: 'carrera',  axis: 'number',
-          wrongHere: 'dos requires the plural' },
-        { form: 'entradas', axis: 'lexical',
-          wrongHere: 'innings, not runs' },
-        { form: 'bases',    axis: 'lexical',
-          wrongHere: 'bases, not runs' }
-      ],
-      blocked: [],
-      note: 'only one morphological axis available; two distractors are lexical'
-    },
-    {
-      token: 9, answer: 'impulsadas',
-      teaches: 'participle agreeing with a feminine plural noun — the ' +
-               'agreement is with token 8, which is itself a slot, so this ' +
-               'slot is only solvable after that one is filled',
-      gloss: null,
-      requires: [{ token: 8, why: 'gender and number come from the noun' }],
-      distractors: [
-        { form: 'impulsados', axis: 'gender',
-          wrongHere: 'carreras is feminine' },
-        { form: 'impulsada',  axis: 'number',
-          wrongHere: 'carreras is plural' },
-        { form: 'impulsar',   axis: 'finiteness',
-          wrongHere: 'infinitive cannot agree with anything' }
-      ],
-      blocked: [
-        { form: 'impulsando', why: 'gerund; ungrammatical here but for a ' +
-          'reason the player cannot see from the sentence alone' }
-      ],
-      /* Left-to-right filling earns its keep here. This slot's answer
-         depends on a noun the player has already placed, so the sentence
-         teaches agreement as a consequence rather than as a rule. Any
-         slot ordering other than left-to-right would break that. */
-      dependsOn: [8]
-    }
-  ],
-
-  /* A free slot — the spec's "random unrelated noun" — is marked, not
-     accidental, so the rate can be counted and held to a target. None in
-     this entry. */
-  freeSlots: [],
-
-  /* The highest rung this sentence can serve, which is a PROPERTY OF THE
-     SENTENCE rather than a free choice. See DETERMINABILITY below. */
-  maxSlots: null          // computed by slotCeiling(), not authored
-};
+   The worked example below is the bank's first entry, read from it. */
+const { ENTRIES } = require('../outfield-bank.js');
+const ENTRY = ENTRIES[0];
 
 /* ---------------------------------------------------------------------
    DETERMINABILITY — the constraint that decides which rungs a sentence
@@ -235,88 +61,18 @@ const ENTRY = {
 
 /* Tokens that are never blanked: function words carry nothing to learn
    and nothing to resolve them against. */
-const NEVER_BLANK = ['CONJ', 'PREP'];
-
-/* The slots this sentence COULD carry, beyond the five authored above.
-   Under one-bank-all-rungs every content token is a potential slot, so
-   each needs its requirement recorded even where nobody has written its
-   distractors yet. */
-const LATENT = {
-  0: { gloss: null, requires: [{ token: 1,
-       why: 'the article agrees with a noun to its RIGHT — blank the noun ' +
-            'and nothing has filled it yet when the article goes live' }] },
-  3: { gloss: null, requires: [{ token: 4,
-       why: 'same shape as El/bateador: the determiner leans right' }] },
-  6: { gloss: null, requires: [{ token: 2, why: 'tense anchor, see token 2' }] },
-  7: { gloss: 'two', requires: [] }
-};
-
-function slotSpec(entry, i) {
-  const authored = entry.slots.find(s => s.token === i);
-  if (authored) return { gloss: authored.gloss, requires: authored.requires || [] };
-  return LATENT[i] || { gloss: null, requires: [] };
-}
-
-/* A slot is answerable when everything it requires is resolvable AT THE
-   MOMENT IT GOES LIVE. Blanks fill left to right, so a requirement is met
-   if the token it names is given, or if it is blanked but sits to the
-   LEFT and has therefore already been filled. A requirement pointing
-   right at another blank is not met — nothing has put a word there yet.
-
-   The earlier version of this function ignored direction entirely and
-   only asked whether a slot's distractors were lexical. That made
-   El/bateador and un/doble look independently blankable when they are
-   not, and it inflated the ceiling.
-
-   GLOSS POLICY: a slot carries an English lemma only where Spanish
-   grammar genuinely cannot separate the four balls — which is exactly
-   the slots with lexical distractors. Where morphology does the
-   separating, a gloss would replace retrieval with translation, so
-   there is none, and the slot is answerable on grammar alone. */
-function answerable(entry, blanked, i) {
-  const spec = slotSpec(entry, i);
-  for (const r of spec.requires) {
-    if (blanked.includes(r.token) && r.token > i) return false;
-  }
-  return true;
-}
-
-function validSet(entry, blanked) {
-  return blanked.every(i => answerable(entry, blanked, i));
-}
-
-/* The largest set of tokens this sentence can carry as slots at once,
-   by exhaustive search over the content tokens. This is the sentence's
-   rung ceiling and it is a property of the sentence. */
-function slotCeiling(entry) {
-  const content = entry.tokens
-    .filter(t => !NEVER_BLANK.includes(t.pos))
-    .map(t => t.i);
-  let best = [];
-  for (let mask = 0; mask < (1 << content.length); mask++) {
-    const set = content.filter((_, k) => mask & (1 << k));
-    if (set.length <= best.length) continue;
-    if (validSet(entry, set)) best = set;
-  }
-  return { content, max: best.length, example: best };
-}
-
-/* Why a token had to be left out of the maximum set — the exclusions,
-   stated as pairs, so an author can see what to change. */
-function exclusions(entry) {
-  const content = entry.tokens
-    .filter(t => !NEVER_BLANK.includes(t.pos)).map(t => t.i);
-  const out = [];
-  for (const i of content) {
-    for (const r of slotSpec(entry, i).requires) {
-      if (r.token > i && content.includes(r.token)) {
-        out.push({ slot: i, blocks: r.token, why: r.why });
-      }
-    }
-  }
-  return out;
-}
-
+/* The determinability helpers are the RULES layer, not documentation —
+   the game runs on them, so they cannot live in docs/. Re-exported here
+   so this file still answers slotCeiling(ENTRY) for anyone reading the
+   brief. */
+const { NEVER_BLANK, slotSpec, answerable, validSet, slotCeiling,
+        exclusions } = (() => {
+  const R = require('../outfield-rules.js');
+  return { ...R, slotSpec: (entry, i) => ({
+    gloss: (entry.slots.find(s => s.token === i) || {}).gloss || null,
+    requires: (entry.tokens[i] || {}).requires || []
+  }) };
+})();
 /* ---------------------------------------------------------------------
    WHAT THIS COSTS, COUNTED
 
@@ -557,4 +313,4 @@ function exclusions(entry) {
    ------------------------------------------------------------------- */
 
 module.exports = { ENTRY, slotCeiling, exclusions, validSet, answerable,
-                   slotSpec, NEVER_BLANK, LATENT };
+                   slotSpec, NEVER_BLANK };
