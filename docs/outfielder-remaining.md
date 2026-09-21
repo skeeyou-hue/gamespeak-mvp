@@ -10,6 +10,13 @@ lexical slots only. What remains is content and code.
 
 ---
 
+> **STATUS, 21 Sep.** The hold on code was lifted to build a playable
+> slice for native-speaker review, on the reasoning that nobody reviews a
+> spec. Items 1, 2, 3, 4 and most of 5 and 6 are now built:
+> `outfield.html` plays Rookie through Double-A on the real rules.
+> Item 0, the corpus, is where it was — and is now the only thing between
+> the slice and a real bank. See §0 for why it did not move.
+
 ## 0. The corpus — the long pole, and it blocks almost everything
 
 Nothing is playable without sentences. This is the only item whose lead
@@ -19,6 +26,26 @@ first even though it is the one that cannot be coded.
 **Depends on:** nothing further. The schema, the gloss policy, the rung
 decision and the worked example are all settled, so an author can be
 briefed today from `docs/sentence-entry.js`.
+
+**WHY IT DID NOT MOVE.** Pulling sentences from published sources was
+attempted and is blocked at the network layer, not by effort.
+`es.wikipedia.org`, `www.wbsc.org`, `static.wbsc.org`, `www.rfebs.es`,
+`img.mlbstatic.com`, `www.lasmayores.com` and `espndeportes.espn.com` all
+fail at the egress proxy. Search returns summaries; a summary is not a
+verbatim quotation, and attributing one to a source as though it were
+would be inventing content with a citation stapled on — worse than
+inventing it plainly.
+
+The other two mission-spec seeds were tried and rejected on their merits,
+recorded in `outfield-bank.js`: both are subjectless, so the verb's
+person is undeterminable and each loses a slot, putting them below
+Rookie's three. **That turned up an authoring rule worth having: a finite
+verb can only be a slot if the sentence names its subject.** The worked
+entry gets away with blanking two verbs because "El bateador" is right
+there.
+
+So the bank is one sentence, and the slice plays it three times a
+half-inning at every rung. That repetition is visible on purpose.
 
 **What it is:**
 
@@ -48,7 +75,7 @@ told this up front or half the bank will top out at Triple-A.
 
 ---
 
-## 1. Bank file and its validator — buildable now, with no content
+## 1. Bank file and its validator — **BUILT**
 
 The first thing that should exist in code, because it is what an author
 delivers into and it can be written and tested against the one worked
@@ -69,7 +96,7 @@ delivery rather than in play.
 
 ---
 
-## 2. The rules layer — buildable now
+## 2. The rules layer — **BUILT**
 
 `outfield.js` today is a *simulation* that models the mechanic. The game
 needs the same rules as a pure module, in the shape `timed.js` already
@@ -95,7 +122,7 @@ lifting out, not inventing.
 
 ---
 
-## 3. The pace store — buildable now, small and independent
+## 3. The pace store — **BUILT**
 
 **Depends on:** nothing.
 
@@ -142,7 +169,7 @@ decision.
 
 ---
 
-## 5. The UI — the largest build, and the one that needs everything else
+## 5. The UI — **BUILT for Rookie to Double-A**
 
 **Depends on:** 1, 2, 3, 4a, 4b.
 
@@ -171,7 +198,7 @@ shared, so anything added there would reach Classic — nothing is.
 
 ---
 
-## 6. Tests
+## 6. Tests — **BUILT** (65 rules, 61 UI)
 
 **Depends on:** 1, 2, 3 for the rules suite; 5 for the UI suite.
 
