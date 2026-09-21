@@ -85,73 +85,19 @@
 const T = require('./timed.js');
 const { LEVELS, hitForResponse, advanceOnHit, HIT_ADVANCE, SPEED_BANDS } = T;
 
-const FLIGHT_MS   = 4000;
-const SETTLE_MS   = 600;
-const HIT_BEAT_MS = 1500;
-const REVEAL_MS   = 1200;         // proposed: the resolved word, shown plainly
-const OUTS_PER_HALF = 3;          // three completed sentences
-/* Wrong catches a slot absorbs before one concedes. Two was proposed as
-   the three-strike mirror and measured under a rule that later changed;
-   under RESOLVE plus the pace band it was a shutout above Single-A and
-   fired the reveal once every ten innings at the top of the ladder. One
-   bounds the runs the same way and buys back the teaching: 0.17-1.88
-   runs and 0.6-3.5 reveals a half-inning across the diagonal. The mirror
-   was never the point — the reveal was. */
-const GRACE = 1;
+/* The mechanic's constants live in outfield-rules.js, which is also what
+   the playable build runs on. This file reads them rather than declaring
+   its own, so a simulation cannot quietly be sweeping a value the game
+   does not have. Everything below that line — the player model — belongs
+   to the simulation and is not a rule.
 
-/* THE HIT BAND, MEASURED AGAINST THE PLAYER RATHER THAN THE CLOCK.
+   The reasoning behind each constant is in outfield-rules.js; the
+   findings that set them are in the commits and in Addenda 15-17. */
+const R = require('./outfield-rules.js');
+const { FLIGHT_MS, SETTLE_MS, HIT_BEAT_MS, REVEAL_MS, OUTS_PER_HALF, GRACE,
+        PACE_BANDS, PACE_WINDOW, PACE_MIN, PACE_FROM, WARMUP, SLOTS_BY_LEVEL,
+        makePace, hitForPace } = R;
 
-   The first version read the band off a fixed fraction of the flight, and
-   it punished good players hardest: a fluent fielder's unhurried 850ms
-   read is 0.21 of a 4000ms flight, which is the home-run band. They were
-   not panicking, that is just their pace. Home runs were 3% of a
-   beginner's conceded hits and 94% of a fluent player's, so the mechanic
-   taught the opposite of what it meant to.
-
-   It is the same error this file's own player model made an hour earlier
-   with a fixed "time a considered read takes", and it has the same fix:
-   the threshold moves with the player. The ratio t / pace is distributed
-   the same way for every fielder, which is exactly the property "panic"
-   needs in order to mean one thing.
-
-   Ratios, not milliseconds and not fractions of the flight — this IS
-   genuinely a proportion, of the player's own norm. */
-const PACE_BANDS = [
-  { within: 0.50, hit: 'HOMERUN' },   // half your own pace: a grab, not a read
-  { within: 0.75, hit: 'TRIPLE'  },
-  { within: 1.00, hit: 'DOUBLE'  },
-  { within: Infinity, hit: 'SINGLE' } // at or over your norm, and still wrong
-];
-/* Window and warm-up, set from the sweeps in pace-band.js rather than
-   proposed. A median of 5 samples is off by 16% at p50 and 40% at p90, so
-   5 was too few to score anyone on; 20 costs 20% verdict disagreement
-   against a perfect oracle where 12 costs 24% and 40 costs 16%, and past
-   20 the returns stop paying for a window that no longer tracks a player
-   who is improving. */
-const PACE_WINDOW = 20;           // catches the rolling median keeps
-const PACE_MIN    = 8;            // samples before the pace band engages
-
-/* Built from ALL catches, not correct ones only. The brief said
-   time-to-correct-catch, on the reasoning that a wrong catch is not
-   evidence of how long this player needs. That is right about knowledge
-   and wrong about timing, and the median is a timing estimate: dropping
-   wrong catches drops the fast tail, which is the part that sets the
-   norm. It costs +8% on a skilled player's median and roughly doubles
-   the residual home-run gradient — 7.7x against an oracle's 2.3x, where
-   using every catch lands on 3.3x. Measured, not argued. */
-const PACE_FROM = 'ALL';          // 'ALL' | 'CORRECT'
-
-/* Before the median exists, concede the mildest thing. Every alternative
-   measured is harsher than the warm verdict most of the time — the old
-   flight band by 65-82% above Rookie, a seed from the rung's answer clock
-   by 78-90% — and being harsh on a call the system cannot yet make is the
-   one failure worth designing out. SINGLE disagrees often and is never
-   harsh. */
-const WARMUP = 'SINGLE';
-
-// Sentence length by rung, indexed off the real ladder so a level added or
-// reordered there cannot leave this behind. Rookie shortest, ML longest.
-const SLOTS_BY_LEVEL = [3, 4, 5, 6, 7];
 if (SLOTS_BY_LEVEL.length !== LEVELS.length) {
   throw new Error(`sentence lengths (${SLOTS_BY_LEVEL.length}) and the ladder (${LEVELS.length}) disagree`);
 }
@@ -197,25 +143,6 @@ function rushFactor(t, rt) {
    needs. That choice biases the median slow, because rushing is what
    causes errors, so the catches that survive are the considered ones.
    The bias is measured rather than assumed; see pace-band.js. */
-function makePace(windowSize = PACE_WINDOW, seed = []) {
-  const buf = seed.slice(-windowSize);
-  return {
-    push(t) { buf.push(t); if (buf.length > windowSize) buf.shift(); },
-    n: () => buf.length,
-    median() {
-      const a = [...buf].sort((x, y) => x - y);
-      const h = a.length >> 1;
-      return a.length % 2 ? a[h] : (a[h - 1] + a[h]) / 2;
-    }
-  };
-}
-
-function hitForPace(t, pace) {
-  const r = t / pace;
-  for (const b of PACE_BANDS) if (r <= b.within) return b.hit;
-  return 'SINGLE';
-}
-
 const FIELDERS = [
   { name: 'first encounter', rt: 2600, pKnow: 0.45 },
   { name: 'shaky',           rt: 2100, pKnow: 0.62 },
@@ -334,7 +261,8 @@ function cell(p, slots, flight = FLIGHT_MS, onExhaust = 'RESOLVE', n = 4000, gra
 module.exports = { FLIGHT_MS, SETTLE_MS, HIT_BEAT_MS, REVEAL_MS, OUTS_PER_HALF,
                    GRACE, PACE_BANDS, PACE_WINDOW, PACE_MIN, PACE_FROM, WARMUP,
                    SLOTS_BY_LEVEL, FIELDERS, RUSH_FLOOR, SIGMA, lognormal,
-                   cell, halfInning, fieldSlot, rushFactor, makePace, hitForPace };
+                   cell, halfInning, fieldSlot, rushFactor, makePace, hitForPace,
+                   PACE_FROM, WARMUP };
 
 
 /* ---------------------------------------------------------------------
