@@ -19,7 +19,7 @@
                'gloss','sentence','diamond','legend','startVeil','levels','goBtn',
                'startCaveat','pauseVeil','pauseLevels','pauseMute','quitBtn',
                'resumeBtn','endVeil','endTitle','tally','againBtn','backBtn',
-               'endCaveat'];
+               'endCaveat','runsChip'];
   for (const id of ids) el[id] = document.getElementById(id);
   /* A missing id fails as `undefined.innerHTML` deep inside a render, which
      points at the render rather than at the typo. Name it here instead —
@@ -35,6 +35,153 @@
   let pendingLevel = level;      // applies at the next sentence
   let inning = null, pace = null, stored = null;
   let volleyStart = 0, ballEls = [], locked = true;
+
+
+  /* ---- LANGUAGE BY RUNG -------------------------------------------------
+
+     A first-time player met a screen that was Spanish end to end and it
+     was too much at once. The scaffolding now fades as you climb: the
+     chrome and the grammar notes are ENGLISH at Rookie and Single-A, and
+     SPANISH from Double-A up, where a player has earned it.
+
+     That also gives the bank's `wrongHere` strings somewhere honest to
+     live. They are an author's note written for the adviser — English,
+     detailed, explanatory — and showing them on a Spanish screen was a
+     register mismatch dressed up as a feature. At the English rungs they
+     are exactly right. At the Spanish rungs they are replaced by a terse
+     Spanish tag naming the axis, which is what a player at that level
+     needs and all they need.
+
+     The Spanish here is UI copy rather than corpus, but it is still
+     Spanish nobody has signed, so it carries the same provisional flag as
+     everything else. */
+  const LANG_BY_LEVEL = ['en', 'en', 'es', 'es', 'es'];
+  const langFor = i => LANG_BY_LEVEL[i] || 'es';
+
+  const COPY = {
+    en: {
+      hudOuts: 'OUT', hudRuns: 'R', runsTitle: 'Runs',
+      mute: 'Mute (M)', unmute: 'Unmute (M)', pause: 'Pause',
+      howPlay: 'A sentence drops in with gaps. Four balls in the air, each ' +
+               'carrying one word. <b>Tap the one that fills the gap.</b> ' +
+               'Gaps fill strictly left to right.',
+      howScore: 'Miss twice on one gap and the batter gets a hit. Three ' +
+                'finished sentences end the half-inning.',
+      play: 'Play ball!',
+      paused: 'PAUSED', levelNote: 'A level change takes effect next sentence.',
+      quit: 'Quit', resume: 'Keep going', again: 'Another inning',
+      changeLevel: 'Change level',
+      endTitle: 'END OF THE HALF', endShutout: 'SHUTOUT INNING',
+      caught: 'Caught it!',
+      dropped: 'They dropped. Again — <b>costs time, not outs</b>.',
+      foul: n => `Foul. ${n} left.`,
+      thisGap: g => `this gap: “${g}”`,
+      hit: { SINGLE: 'single', DOUBLE: 'double', TRIPLE: 'triple', HOMERUN: 'home run' },
+      conceded: (h, runs) => `The batter gets a <b>${h}</b>.` +
+        (runs ? ` ${runs} run${runs > 1 ? 's' : ''} in.` : ''),
+      cold: ' <i>(no read on your pace yet — mildest call)</i>',
+      atPace: r => ` <i>(${r} your own pace)</i>`,
+      wasWord: w => `The word was <b>${w}</b>.`,
+      sentenceDone: n => `Sentence complete. <b>Out ${n}</b>.`,
+      onBase: on => `<b>Runners on ${on}.</b><br>Finish clean and they stay there.`,
+      empty: '<b>Bases empty.</b><br>Every miss puts someone on.',
+      bases: ['1st', '2nd', '3rd'], and: ' and ',
+      basesAria: on => on.length ? 'Runners on ' + on.join(' and ') : 'Bases empty',
+      tally: (runs, hits, mix, lob, caught) =>
+        `Runs: <b>${runs}</b><br>Hits allowed: <b>${hits}</b>${mix}<br>` +
+        `Words revealed: <b>${hits}</b><br>Left on base: <b>${lob}</b><br>` +
+        `Clean catches: <b>${caught}</b>`,
+      mixNames: { SINGLE: 'singles', DOUBLE: 'doubles', TRIPLE: 'triples', HOMERUN: 'home runs' },
+      soundOn: 'Sound: on', soundOff: 'Sound: off',
+      oneSentence: '<b>One sentence so far.</b> The bank holds a single ' +
+        'sentence, so you will see it three times an inning. That is the ' +
+        'bank being small, not the game repeating itself.',
+      unreviewed: '<b>Unreviewed.</b> Nothing here has been signed off by a ' +
+        'native speaker — the sentence, the hints and the wrong-answer notes ' +
+        'are all provisional.',
+      reviewed: n => `<b>Reviewed by ${n}.</b>`
+    },
+    es: {
+      hudOuts: 'OUT', hudRuns: 'C', runsTitle: 'Carreras',
+      mute: 'Silenciar (M)', unmute: 'Activar sonido (M)', pause: 'Pausa',
+      howPlay: 'Cae una frase con huecos. Cuatro pelotas en el aire, cada una ' +
+               'con una palabra. <b>Toca la que llena el hueco.</b> Se llenan ' +
+               'de izquierda a derecha.',
+      howScore: 'Falla dos veces en un hueco y el bateador conecta un hit. ' +
+                'Tres frases completas terminan la entrada.',
+      play: '¡Juguemos!',
+      paused: 'PAUSA', levelNote: 'El nivel cambia en la próxima frase.',
+      quit: 'Salir', resume: 'Seguir', again: 'Otra entrada',
+      changeLevel: 'Cambiar nivel',
+      endTitle: 'FIN DE LA ENTRADA', endShutout: 'ENTRADA EN BLANCO',
+      caught: '¡Atrapada!',
+      dropped: 'Se cayeron. Otra vez — <b>cuesta tiempo, no outs</b>.',
+      foul: n => `Foul. Te queda ${n}.`,
+      thisGap: g => `este hueco: “${g}”`,
+      hit: { SINGLE: 'sencillo', DOUBLE: 'doble', TRIPLE: 'triple', HOMERUN: 'jonrón' },
+      conceded: (h, runs) => `El bateador conecta un <b>${h}</b>.` +
+        (runs ? ` ${runs} carrera${runs > 1 ? 's' : ''}.` : ''),
+      cold: ' <i>(aún sin tu ritmo — el más suave)</i>',
+      atPace: r => ` <i>(${r} tu ritmo)</i>`,
+      wasWord: w => `La palabra era <b>${w}</b>.`,
+      sentenceDone: n => `Frase completa. <b>Out ${n}</b>.`,
+      onBase: on => `<b>Corredores en ${on}.</b><br>Termina limpio y se quedan ahí.`,
+      empty: '<b>Bases limpias.</b><br>Cada error pone a alguien en base.',
+      bases: ['1ra', '2da', '3ra'], and: ' y ',
+      basesAria: on => on.length ? 'Corredores en ' + on.join(' y ') : 'Bases limpias',
+      tally: (runs, hits, mix, lob, caught) =>
+        `Carreras: <b>${runs}</b><br>Hits permitidos: <b>${hits}</b>${mix}<br>` +
+        `Palabras reveladas: <b>${hits}</b><br>Dejados en base: <b>${lob}</b><br>` +
+        `Atrapadas limpias: <b>${caught}</b>`,
+      mixNames: { SINGLE: 'sencillos', DOUBLE: 'dobles', TRIPLE: 'triples', HOMERUN: 'jonrones' },
+      soundOn: 'Sonido: sí', soundOff: 'Sonido: no',
+      oneSentence: '<b>Una sola frase por ahora.</b> El banco tiene una frase, ' +
+        'así que la verás tres veces por entrada. Es el banco, que es pequeño, ' +
+        'no el juego repitiéndose.',
+      unreviewed: '<b>Sin revisar.</b> Nada de esto lo ha firmado un hablante ' +
+        'nativo — la frase, las pistas y las notas son provisionales.',
+      reviewed: n => `<b>Revisado por ${n}.</b>`
+    }
+  };
+
+  /* Why a wrong ball was wrong. At an English rung the bank's own note,
+     which is written in English and explains. At a Spanish rung a terse
+     tag naming the axis — all a player at that level needs, and it avoids
+     inventing a Spanish sentence per distractor that nobody could check. */
+  const AXIS_ES = {
+    tense: 'tiempo equivocado',
+    person: 'persona equivocada',
+    number: 'número equivocado',
+    gender: 'género equivocado',
+    finiteness: 'no es una forma personal',
+    lexical: 'palabra equivocada'
+  };
+  const whyWrong = ev => lang() === 'en'
+    ? ev.wrongHere
+    : (AXIS_ES[ev.axis] || AXIS_ES.lexical);
+
+  /* Before the inning starts, the rung on show is the one being PICKED,
+     not the one last played — otherwise the card switches to Spanish
+     while the HUD chip behind it still reads Rookie. */
+  const shownLevel = () => el.startVeil.hidden ? level : pendingLevel;
+  const lang = () => langFor(shownLevel());
+  const t = () => COPY[lang()];
+
+  /* Static strings carry data-t; everything with one is re-rendered when
+     the rung changes, including on the start card as a level is picked,
+     so the switch is visible before a player commits to it. */
+  function applyCopy() {
+    const c = t();
+    for (const node of document.querySelectorAll('[data-t]')) {
+      const v = c[node.dataset.t];
+      if (typeof v === 'string') node.innerHTML = v;
+    }
+    el.runsChip.title = c.runsTitle;
+    el.pauseBtn.title = c.pause;
+    el.startCaveat.innerHTML = c.oneSentence + '<br><br>' + caveat();
+    el.endCaveat.innerHTML = c.oneSentence + '<br><br>' + caveat();
+    renderHud();
+  }
 
   /* ---- timers, all in one place ----------------------------------------
      A timer that outlives the state that scheduled it is the bug this
@@ -118,12 +265,10 @@
     el.diamond.innerHTML =
       R(0,0,104,104,'#0A3D24') + diamond(52,52,48,'#8E4519') + diamond(52,52,30,'#0A3D24') +
       base(52,10,bases[1]) + base(88,52,bases[0]) + base(16,52,bases[2]) + base(52,94,false);
-    const on = ['1ra','2da','3ra'].filter((_, i) => bases[i]);
-    el.diamond.setAttribute('aria-label',
-      on.length ? 'Corredores en ' + on.join(' y ') : 'Bases limpias');
-    el.legend.innerHTML = on.length
-      ? `<b>Corredores en ${on.join(' y ')}.</b><br>Termina limpio y se quedan ahí.`
-      : `<b>Bases limpias.</b><br>Cada error pone a alguien en base.`;
+    const c = t();
+    const on = c.bases.filter((_, i) => bases[i]);
+    el.diamond.setAttribute('aria-label', c.basesAria(on));
+    el.legend.innerHTML = on.length ? c.onBase(on.join(c.and)) : c.empty;
   }
 
   /* ---- rendering -------------------------------------------------------- */
@@ -132,12 +277,13 @@
     el.outs.innerHTML = [0,1,2]
       .map(i => `<i class="out-pip${i < st.outs ? ' on' : ''}"></i>`).join('');
     el.runs.textContent = st.runs;
-    el.levelChip.textContent = LEVELS[level].name;
-    const muted = isMuted();
+    el.levelChip.textContent = LEVELS[shownLevel()].name;
+    const muted = isMuted(), c = t();
     el.muteBtn.setAttribute('aria-pressed', String(muted));
     el.muteBtn.innerHTML = muted ? '&#128263;' : '&#9836;';
+    el.muteBtn.title = muted ? c.unmute : c.mute;
     el.pauseMute.setAttribute('aria-pressed', String(muted));
-    el.pauseMute.textContent = muted ? 'Sonido: no' : 'Sonido: sí';
+    el.pauseMute.textContent = muted ? c.soundOff : c.soundOn;
   }
 
   function renderSentence(revealToken) {
@@ -149,14 +295,14 @@
         return `<span class="${cls}">${st.filled[t.i]}</span>`;
       }
       return `<span class="slot${t.i === st.liveToken ? ' live' : ''}">&nbsp;</span>`;
-    }).join('') + '<span class="w">.</span>';
+    }).join('') + '<span class="w stop">.</span>';
 
     /* The gloss appears only where Spanish grammar cannot separate the four
        balls — the noun slots, whose distractors are lexical. A gloss on a
        slot the morphology already settles would replace retrieval with
        translation. It is the English LEMMA, never the inflected form. */
     const g = inning.gloss();
-    if (g && !st.completed) { el.gloss.textContent = `este hueco: “${g}”`; el.gloss.hidden = false; }
+    if (g && !st.completed) { el.gloss.textContent = t().thisGap(g); el.gloss.hidden = false; }
     else el.gloss.hidden = true;
   }
 
@@ -204,13 +350,14 @@
 
     const lanes = layoutBalls();
     void el.air.offsetHeight;                       // commit the start position
+    const flight = flightFor(level);
     for (const b of ballEls) {
-      b.style.transitionDuration = FLIGHT_MS + 'ms';
+      b.style.transitionDuration = flight + 'ms';
       b.style.top = b.dataset.end;
     }
     volleyStart = performance.now();
     locked = false;
-    later(onVolleyExpired, FLIGHT_MS);
+    later(onVolleyExpired, flight);
   }
 
   /* WHERE THE FOUR BALLS GO.
@@ -323,7 +470,7 @@
     locked = true;
     inning.dropVolley();
     for (const b of ballEls) b.classList.add('gone');
-    say('Se cayeron. Otra vez — <b>cuesta tiempo, no outs</b>.');
+    say(t().dropped);
     later(pitchVolley, 700);
   }
 
@@ -339,7 +486,7 @@
       node.classList.add('taken');
       for (const b of ballEls) if (b !== node) b.classList.add('gone');
       playSound('STRIKE');
-      say('&iexcl;Atrapada!', 'good');
+      say(t().caught, 'good');
       renderSentence();
       later(afterSlot, SETTLE_MS);
       return;
@@ -349,24 +496,21 @@
     for (const b of ballEls) if (b !== node) b.classList.add('gone');
 
     if (ev.type === 'FOUL') {
-      say(`<b>${ev.form}</b> — ${ev.wrongHere}.<br>Foul. Te queda ${ev.of - ev.used + 1}.`, 'bad');
+      say(`<b>${ev.form}</b> — ${whyWrong(ev)}.<br>${t().foul(ev.of - ev.used + 1)}`, 'bad');
       later(pitchVolley, HIT_BEAT_MS);
       return;
     }
 
     // CONCEDE
-    const names = { SINGLE: 'sencillo', DOUBLE: 'doble', TRIPLE: 'triple', HOMERUN: 'jonrón' };
-    const scored = ev.scored ? ` ${ev.scored} carrera${ev.scored > 1 ? 's' : ''}.` : '';
-    const how = ev.cold
-      ? ' <i>(aún sin tu ritmo — el más suave)</i>'
-      : ` <i>(${(ev.elapsedMs / ev.paceMs).toFixed(2)}x tu ritmo)</i>`;
-    say(`<b>${ev.form}</b> — ${ev.wrongHere}.<br>` +
-        `El bateador conecta un <b>${names[ev.hit]}</b>.${scored}${how}`, 'bad');
+    const c = t();
+    const how = ev.cold ? c.cold : c.atPace((ev.elapsedMs / ev.paceMs).toFixed(2) + 'x');
+    say(`<b>${ev.form}</b> — ${whyWrong(ev)}.<br>` +
+        c.conceded(c.hit[ev.hit], ev.scored) + how, 'bad');
     drawBases(ev.bases);
     renderHud();
     later(() => {
       renderSentence(ev.token);
-      say(`La palabra era <b>${ev.answer}</b>.`, 'good');
+      say(t().wasWord(ev.answer), 'good');
       later(afterSlot, REVEAL_MS);
     }, HIT_BEAT_MS);
   }
@@ -378,7 +522,7 @@
     if (st.completed) {
       renderSentence();
       el.gloss.hidden = true;
-      say(`Frase completa. <b>Out ${st.outs}</b>.`, 'good');
+      say(t().sentenceDone(st.outs), 'good');
       /* applyPendingLevel restarts the inning, which pitches for itself.
          Calling pitchVolley() after it as well threw a second volley on
          top of the first and reset the flight clock under it. */
@@ -409,7 +553,7 @@
       stored: stored ? stored.median : null, shuffle
     });
     drawBases([false, false, false]);
-    renderHud();
+    applyCopy();
     renderSentence();
     el.startVeil.hidden = true;
     el.endVeil.hidden = true;
@@ -426,15 +570,12 @@
     const mix = {};
     for (const h of hits) mix[h.hit] = (mix[h.hit] || 0) + 1;
     const lob = st.bases.filter(Boolean).length;
-    const names = { SINGLE: 'sencillos', DOUBLE: 'dobles', TRIPLE: 'triples', HOMERUN: 'jonrones' };
-    el.endTitle.textContent = st.runs === 0 ? 'ENTRADA EN BLANCO' : 'FIN DE LA ENTRADA';
-    el.tally.innerHTML =
-      `Carreras: <b>${st.runs}</b><br>` +
-      `Hits permitidos: <b>${hits.length}</b>` +
-      (hits.length ? ' — ' + Object.keys(mix).map(k => `${mix[k]} ${names[k]}`).join(', ') : '') + '<br>' +
-      `Palabras reveladas: <b>${hits.length}</b><br>` +
-      `Dejados en base: <b>${lob}</b><br>` +
-      `Atrapadas limpias: <b>${st.log.filter(e => e.type === 'CAUGHT').length}</b>`;
+    const c = t();
+    el.endTitle.textContent = st.runs === 0 ? c.endShutout : c.endTitle;
+    const mixStr = hits.length
+      ? ' — ' + Object.keys(mix).map(k => `${mix[k]} ${c.mixNames[k]}`).join(', ') : '';
+    el.tally.innerHTML = c.tally(st.runs, hits.length, mixStr, lob,
+      st.log.filter(e => e.type === 'CAUGHT').length);
     el.endVeil.hidden = false;
     el.againBtn.focus();
   }
@@ -464,6 +605,7 @@
       b.addEventListener('click', () => {
         pendingLevel = r.i;
         buildLevels(el.levels); buildLevels(el.pauseLevels);
+        applyCopy();
       });
       host.appendChild(b);
     }
@@ -474,10 +616,7 @@
      after somebody records a review. */
   function caveat() {
     const signed = entry.adviser && entry.adviser.verdict;
-    return signed
-      ? `<b>Revisado por ${entry.adviser.name}.</b>`
-      : `<b>Sin revisar.</b> Una sola frase, sin firma de un hablante nativo. ` +
-        `Todo — la frase, las pistas, los distractores — es provisional.`;
+    return signed ? t().reviewed(entry.adviser.name) : t().unreviewed;
   }
 
   /* ---- wiring ------------------------------------------------------------ */
@@ -485,9 +624,7 @@
   drawBases([false, false, false]);
   buildLevels(el.levels);
   buildLevels(el.pauseLevels);
-  el.startCaveat.innerHTML = caveat();
-  el.endCaveat.innerHTML = caveat();
-  renderHud();
+  applyCopy();
 
   el.goBtn.addEventListener('click', () => {
     unlockAudio();                       // the gesture that lets audio play at all
@@ -525,5 +662,6 @@
   });
   addEventListener('resize', () => { if (ballEls.length) clampBalls(); });
 
-  window.__outfield = { state: () => inning && inning.state(), pace: () => pace, PACE_KEY };
+  window.__outfield = { state: () => inning && inning.state(), pace: () => pace,
+                       PACE_KEY, lang, flight: () => flightFor(level), level: () => level };
 })();

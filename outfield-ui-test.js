@@ -67,8 +67,11 @@ const tap = (p, pick) => p.evaluate(pick => {
     assert(JSON.stringify(offered) === JSON.stringify(expect),
            `the level picker offers exactly the playable rungs (${offered.join(', ')})`);
 
-    assert((await page.locator('#startCaveat').innerText()).toLowerCase().includes('sin revisar'),
+    const startCav = (await page.locator('#startCaveat').innerText()).toLowerCase();
+    assert(startCav.includes('unreviewed'),
            'the start card says the content is unreviewed');
+    assert(startCav.includes('one sentence so far'),
+           'and warns that the bank holds one sentence, so three a half-inning is the bank and not a bug');
 
     await page.click('#goBtn');
     await page.waitForTimeout(350);
@@ -206,6 +209,80 @@ const tap = (p, pick) => p.evaluate(pick => {
   }
 
   /* ---------------------------------------------------------------- */
+  section('The flight is per rung, and Rookie is the slowest');
+  {
+    const page = await browser.newPage({ viewport: { width: 390, height: 844 } });
+    await page.goto(URL);
+    for (const r of R.rungsFor(entry)) {
+      await page.locator('#levels button', { hasText: R.LEVELS[r.i].name }).click();
+      await page.click('#goBtn');
+      await page.waitForTimeout(250);
+      const flight = await page.evaluate(() => window.__outfield.flight());
+      assert(flight === R.FLIGHT_BY_LEVEL[r.i],
+             `${R.LEVELS[r.i].name}: the volley runs for ${flight}ms, from the ladder`);
+      // the ball animation is driven by that same number, not a second copy
+      const dur = await page.evaluate(() =>
+        parseFloat(getComputedStyle(document.querySelector('.ball')).transitionDuration) * 1000);
+      assert(Math.round(dur) === flight,
+             `${R.LEVELS[r.i].name}: and the balls actually fall over it (${Math.round(dur)}ms)`);
+      await page.click('#pauseBtn'); await page.waitForTimeout(120);
+      await page.click('#quitBtn'); await page.waitForTimeout(120);
+    }
+    // The property the calibration was for: slowest rung, longest look.
+    const flights = R.rungsFor(entry).map(r => R.FLIGHT_BY_LEVEL[r.i]);
+    assert(flights.every((f, i) => i === 0 || f < flights[i - 1]),
+           `the flight shortens as the rung rises (${flights.join(' > ')}ms)`);
+    assert(R.FLIGHT_BY_LEVEL[0] === Math.max(...R.FLIGHT_BY_LEVEL),
+           'and Rookie is the longest look on the whole ladder');
+    await page.close();
+  }
+
+  /* ---------------------------------------------------------------- */
+  section('English at the low rungs, Spanish once a player has climbed');
+  {
+    const page = await browser.newPage({ viewport: { width: 390, height: 844 } });
+    await page.goto(URL);
+
+    // Switching on the start card, before committing to a rung.
+    for (const [name, want, marker] of [
+      ['Rookie', 'en', 'Play ball'],
+      ['Single-A', 'en', 'Play ball'],
+      ['Double-A', 'es', 'Juguemos']
+    ]) {
+      await page.locator('#levels button', { hasText: name }).click();
+      await page.waitForTimeout(80);
+      const got = await page.evaluate(() => window.__outfield.lang());
+      assert(got === want, `${name} is ${want}`);
+      assert((await page.locator('#goBtn').innerText()).includes(marker),
+             `${name}: the card follows (“${marker}”)`);
+    }
+
+    // And the grammar note changes register with it.
+    const noteFor = async (levelName) => {
+      await page.goto(URL);
+      await page.locator('#levels button', { hasText: levelName }).click();
+      await page.click('#goBtn');
+      await page.waitForTimeout(300);
+      const first = await tap(page, 'wrong');
+      const text = await page.locator('#callout').innerText();
+      return { form: first.word, axis: first.last.axis, text };
+    };
+    const en = await noteFor('Rookie');
+    const bankNote = entry.slots
+      .flatMap(s => s.distractors).find(d => d.form === en.form).wrongHere;
+    assert(en.text.includes(bankNote),
+           'at an English rung the bank\'s own explanation is shown in full');
+
+    const es = await noteFor('Double-A');
+    assert(!es.text.includes(entry.slots.flatMap(s => s.distractors)
+             .find(d => d.form === es.form).wrongHere),
+           'at a Spanish rung the English author note is NOT shown');
+    assert(/equivocad|forma personal/.test(es.text),
+           `and a terse Spanish tag names the axis instead (${es.axis})`);
+    await page.close();
+  }
+
+  /* ---------------------------------------------------------------- */
   section('A tap on nothing costs nothing');
   {
     const page = await browser.newPage({ viewport: { width: 390, height: 844 } });
@@ -241,9 +318,10 @@ const tap = (p, pick) => p.evaluate(pick => {
     const st = await live(page);
     assert(st.outs === R.OUTS_PER_HALF, `after exactly ${R.OUTS_PER_HALF} sentences`);
     const tally = await page.locator('#tally').innerText();
-    assert(/Carreras:\s*0/.test(tally), 'a clean inning concedes nothing');
-    assert((await page.locator('#endCaveat').innerText()).toLowerCase().includes('sin revisar'),
-           'and the end card repeats that the content is unreviewed');
+    assert(/Runs:\s*0/.test(tally), 'a clean inning concedes nothing');
+    const endCav = (await page.locator('#endCaveat').innerText()).toLowerCase();
+    assert(endCav.includes('unreviewed') && endCav.includes('one sentence so far'),
+           'and the end card repeats both notices');
 
     // A warm window is stored for next time; a cold one is not.
     const storedAfterClean = await page.evaluate(k => localStorage.getItem(k), 'gamespeak.outfield.pace.v1');

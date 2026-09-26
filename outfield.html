@@ -6,12 +6,12 @@
 <link rel="stylesheet" href="outfield.css">
 
 <div class="hud">
-  <span class="chip">OUT <span class="outs" id="outs"></span></span>
-  <span class="chip" title="Carreras">C <b id="runs">0</b></span>
+  <span class="chip"><span data-t="hudOuts">OUT</span> <span class="outs" id="outs"></span></span>
+  <span class="chip" id="runsChip"><span data-t="hudRuns">R</span> <b id="runs">0</b></span>
   <span class="chip" id="levelChip">—</span>
   <span class="spacer"></span>
-  <button class="chip" id="muteBtn" aria-pressed="false" title="Silenciar (M)">&#9836;</button>
-  <button class="chip" id="pauseBtn" title="Pausa">&#9613;&#9613;</button>
+  <button class="chip" id="muteBtn" aria-pressed="false">&#9836;</button>
+  <button class="chip" id="pauseBtn">&#9613;&#9613;</button>
 </div>
 
 <div class="air" id="air">
@@ -29,7 +29,7 @@
 
 <div class="strip">
   <svg width="104" height="104" viewBox="0 0 104 104" shape-rendering="crispEdges"
-       id="diamond" role="img" aria-label="Corredores en base"></svg>
+       id="diamond" role="img"></svg>
   <div class="legend" id="legend"></div>
 </div>
 
@@ -37,13 +37,10 @@
 <div class="veil" id="startVeil">
   <div class="card">
     <h1>OUTFIELDER</h1>
-    <p>Cae una frase con huecos. Cuatro pelotas en el aire, cada una con una
-       palabra. <b>Toca la que llena el hueco.</b> Se llenan de izquierda a
-       derecha.</p>
-    <p>Falla dos veces en un hueco y el bateador conecta un hit. Tres frases
-       completas terminan la entrada.</p>
+    <p data-t="howPlay"></p>
+    <p data-t="howScore"></p>
     <div class="levels" id="levels" role="group" aria-label="Nivel"></div>
-    <button class="go" id="goBtn">&iexcl;Juguemos!</button>
+    <button class="go" id="goBtn" data-t="play"></button>
     <div class="caveat" id="startCaveat"></div>
   </div>
 </div>
@@ -51,24 +48,24 @@
 <!-- pause ------------------------------------------------------------- -->
 <div class="veil" id="pauseVeil" hidden>
   <div class="card">
-    <h2>PAUSA</h2>
-    <p>El nivel cambia en la próxima frase.</p>
+    <h2 data-t="paused"></h2>
+    <p data-t="levelNote"></p>
     <div class="levels" id="pauseLevels" role="group" aria-label="Nivel"></div>
     <div class="row">
-      <button class="chip" id="pauseMute" aria-pressed="false">Sonido</button>
-      <button class="chip" id="quitBtn">Salir</button>
+      <button class="chip" id="pauseMute" aria-pressed="false"></button>
+      <button class="chip" id="quitBtn" data-t="quit"></button>
     </div>
-    <button class="go" id="resumeBtn" style="margin-top:10px">Seguir</button>
+    <button class="go" id="resumeBtn" data-t="resume" style="margin-top:10px"></button>
   </div>
 </div>
 
 <!-- end --------------------------------------------------------------- -->
 <div class="veil" id="endVeil" hidden>
   <div class="card">
-    <h2 id="endTitle">FIN DE LA ENTRADA</h2>
+    <h2 id="endTitle"></h2>
     <div class="tally" id="tally"></div>
-    <button class="go" id="againBtn">Otra entrada</button>
-    <div class="row"><button class="chip" id="backBtn">Cambiar nivel</button></div>
+    <button class="go" id="againBtn" data-t="again"></button>
+    <div class="row"><button class="chip" id="backBtn" data-t="changeLevel"></button></div>
     <div class="caveat" id="endCaveat"></div>
   </div>
 </div>

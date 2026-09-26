@@ -95,6 +95,9 @@ button.chip:focus-visible{outline:3px solid var(--gold-2); outline-offset:2px}
 .sentence{font-size:17px; line-height:2.2; letter-spacing:.02em;
           display:flex; flex-wrap:wrap; align-items:center; gap:6px}
 .w{color:#9fb3b8}
+/* The sentence is a flex row with a 6px gap, so a full stop of its own
+   floats away from the word it belongs to. Pull it back by the gap. */
+.w.stop{margin-left:-6px}
 /* 72px, not 92px: seven slots wrap to five rows at 320px and overflow the
    page at 92px. 72 saves a row. Below 72 nothing further happens, because
    the cost is row COUNT. It is a min-width, so a long word still expands. */
