@@ -84,6 +84,32 @@ if (tooBig >= 0) {
   assert(!r.ok, `a rung needing ${R.SLOTS_BY_LEVEL[tooBig]} slots is refused (${r.reason})`);
 }
 
+section('The flight is a ladder, derived rather than guessed');
+
+// The first human calibration said 4000ms flat was too fast at Rookie.
+// The replacement is read off the answer clock in timed.js — the only
+// reading budget in this project that has ever met a player — so this
+// asserts the DERIVATION, not the numbers it currently produces.
+assert(R.FLIGHT_BY_LEVEL.length === R.LEVELS.length,
+       'every rung has a flight');
+assert(R.FLIGHT_BY_LEVEL.every((f, i) => f === R.LEVELS[i].clock.hard),
+       'and each one is that rung\'s hard answer clock, not a second set of numbers');
+assert(R.FLIGHT_BY_LEVEL.every((f, i) => i === 0 || f < R.FLIGHT_BY_LEVEL[i - 1]),
+       `the look shortens as the rung rises (${R.FLIGHT_BY_LEVEL.join(' > ')}ms)`);
+assert(R.FLIGHT_BY_LEVEL[0] === Math.max(...R.FLIGHT_BY_LEVEL),
+       'Rookie gets the longest look on the ladder — the thing the tester asked for');
+assert(R.FLIGHT_MS === R.FLIGHT_BY_LEVEL[R.DEFAULT_LEVEL],
+       'the single-number alias the sims use is read from the ladder, not typed');
+assert(R.flightFor(0) === R.FLIGHT_BY_LEVEL[0] &&
+       R.flightFor(R.LEVELS.length - 1) === R.FLIGHT_BY_LEVEL[R.LEVELS.length - 1],
+       'flightFor indexes the same ladder');
+
+// Sentence length is the difficulty lever; the flight is pacing. If the
+// flight ever starts carrying difficulty there will be two ladders.
+assert(R.SLOTS_BY_LEVEL.every((n, i) => i === 0 || n > R.SLOTS_BY_LEVEL[i - 1]) &&
+       R.FLIGHT_BY_LEVEL.every((f, i) => i === 0 || f < R.FLIGHT_BY_LEVEL[i - 1]),
+       'both move with the rung and in opposite directions: more to read, less time');
+
 /* ===================================================================
    C. THE PACE BAND
    Edges derived from PACE_BANDS, never typed.

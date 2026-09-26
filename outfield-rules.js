@@ -23,8 +23,41 @@ if (typeof require !== 'undefined' && typeof module !== 'undefined') {
   Object.assign(globalThis, require('./timed.js'));
 }
 
-/* ---- the clock. All proposed; none has met a human yet. ------------- */
-const FLIGHT_MS   = 4000;   // one shared window; all four re-pitch together
+/* ---- the clock ------------------------------------------------------
+
+   FIRST HUMAN CALIBRATION, 26 Sep. A tester at ROOKIE — the slowest rung
+   — reported the flight as too fast to read all four candidates. That is
+   the one data point no sweep could produce, and it says 4000ms flat was
+   wrong at the bottom of the ladder.
+
+   The flight is now per-rung, and DERIVED rather than guessed again. The
+   answer clock in timed.js is the only reading budget in this project
+   that has ever met a human, so the fielding flight is read off it:
+   FLIGHT_BY_LEVEL[i] is that rung's HARD answer clock.
+
+   The mapping onto `hard` is a judgement and worth stating. The answer
+   clock budgets reading ONE word and picking between four English
+   glosses. A fielding slot is strictly more work — a part-built sentence
+   to re-read, plus four morphological near-misses of a single lemma that
+   have to be told apart rather than recognised. So the fielding read gets
+   the most generous budget its rung offers, not the middle one.
+
+   What it buys, against the player model: every rung's flight now clears
+   the p98 read time of the fielder that rung is for. A first-encounter
+   player dropped 16.9% of volleys at 4000ms and drops 0.6% at 8000ms.
+   And because a dropped volley costs a whole re-pitch, a LONGER flight
+   makes a beginner's half-inning shorter, not longer — measured, not
+   assumed; see the commit.
+
+   Still proposed above Rookie: only the bottom rung has been played. */
+const FLIGHT_BY_LEVEL = LEVELS.map(lv => lv.clock.hard);
+
+/* The sims take the flight as a parameter and sweep it. This is the base
+   rung's value, for callers that want one number rather than a ladder —
+   read from the ladder, never typed. */
+const FLIGHT_MS   = FLIGHT_BY_LEVEL[DEFAULT_LEVEL];
+const flightFor   = rungIndex => FLIGHT_BY_LEVEL[rungIndex];
+
 const SETTLE_MS   = 600;    // the caught word travelling into the blank
 const HIT_BEAT_MS = 1500;   // a conceded hit playing out
 const REVEAL_MS   = 1800;   // the correct word, shown plainly, after grace
@@ -295,7 +328,8 @@ function createInning({ entry, rungIndex, pace, stored = null, shuffle }) {
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
   FLIGHT_MS, SETTLE_MS, HIT_BEAT_MS, REVEAL_MS, OUTS_PER_HALF, GRACE,
-  SLOTS_BY_LEVEL, PACE_BANDS, PACE_WINDOW, PACE_MIN, PACE_FROM, WARMUP,
+  SLOTS_BY_LEVEL, FLIGHT_BY_LEVEL, flightFor, PACE_BANDS, PACE_WINDOW,
+  PACE_MIN, PACE_FROM, WARMUP, DEFAULT_LEVEL,
   COLD_CAP, RANK, LEVELS,
   makePace, hitForPace, verdictFor, capTo,
   NEVER_BLANK, contentTokens, answerable, validSet, slotCeiling, exclusions,
