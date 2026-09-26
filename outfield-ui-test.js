@@ -284,6 +284,52 @@ const tap = (p, pick) => p.evaluate(pick => {
   }
 
   /* ---------------------------------------------------------------- */
+  section('The sentence sits above the balls, and nothing crowds it');
+  for (const [w, h] of [[320, 640], [390, 844]]) {
+    const page = await browser.newPage({ viewport: { width: w, height: h } });
+    await page.goto(URL);
+    await page.locator('#levels button', { hasText: 'Double-A' }).click();
+    await page.click('#goBtn');
+    await page.waitForTimeout(500);
+    const r = await page.evaluate(() => {
+      const box = s => document.querySelector(s).getBoundingClientRect();
+      const hud = box('.hud'), deck = box('.deck'), air = box('.air'), strip = box('.strip');
+      const live = document.querySelector('.slot.live');
+      const g = document.getElementById('gloss');
+      return {
+        order: [['hud', hud.top], ['deck', deck.top], ['air', air.top], ['strip', strip.top]]
+          .sort((a, b) => a[1] - b[1]).map(x => x[0]).join('>'),
+        total: Math.round(hud.height + deck.height + air.height + strip.height),
+        viewport: innerHeight,
+        yOver: document.documentElement.scrollHeight - innerHeight,
+        /* The live slot is marked by colour rather than a caret, so what
+           matters is that it is TELLABLE APART from the slots that are
+           not live — measured, not eyeballed. */
+        liveDistinct: (() => {
+          const cs = getComputedStyle(live);
+          const other = [...document.querySelectorAll('.slot')]
+            .find(n => n !== live && !n.classList.contains('done') &&
+                                     !n.classList.contains('revealed'));
+          if (!other) return true;
+          const os = getComputedStyle(other);
+          return cs.borderTopColor !== os.borderTopColor &&
+                 cs.backgroundColor !== os.backgroundColor;
+        })(),
+        /* And that nothing it draws spills outside the deck it lives in. */
+        withinDeck: live.getBoundingClientRect().top >= deck.top &&
+                    live.getBoundingClientRect().bottom <= deck.bottom
+      };
+    });
+    assert(r.order === 'hud>deck>air>strip',
+           `${w}px: the sentence is read before the balls (${r.order})`);
+    assert(r.total === r.viewport && r.yOver === 0,
+           `${w}px: the four bands still account for exactly the viewport (${r.total}/${r.viewport})`);
+    assert(r.liveDistinct, `${w}px: the live slot differs from an empty one in both border and fill`);
+    assert(r.withinDeck, `${w}px: and draws nothing outside the sentence band`);
+    await page.close();
+  }
+
+  /* ---------------------------------------------------------------- */
   section('A finished sentence shows its whole translation');
   for (const [rung, label] of [['Rookie', 'In English'], ['Double-A', 'En inglés']]) {
     const page = await browser.newPage({ viewport: { width: 390, height: 844 } });

@@ -89,7 +89,16 @@ button.chip:focus-visible{outline:3px solid var(--gold-2); outline-offset:2px}
 .callout[hidden]{display:none}
 
 /* ---- the sentence --------------------------------------------------- */
-.deck{flex:0 0 auto; background:#071a22; border-top:3px solid var(--wall-2); padding:12px 10px}
+/* The sentence sits ABOVE the ball area, so a player parses the line
+   while the balls are still falling instead of after them. The flight
+   clock is unchanged; what changes is how much of it is usable.
+
+   Reading order follows, which it should have anyway: the question
+   before the four answers.
+
+   Its rule was border-top when it sat under the field. Up here that
+   would double the HUD's border-bottom, so it separates downward. */
+.deck{flex:0 0 auto; background:#071a22; border-bottom:3px solid var(--wall-2); padding:12px 10px}
 .gloss{font-size:13px; letter-spacing:.03em; color:#7f9aa2; margin-bottom:8px; font-style:italic}
 .gloss[hidden]{display:none}
 /* The whole-sentence translation, shown once the line is complete. It is
@@ -109,9 +118,22 @@ button.chip:focus-visible{outline:3px solid var(--gold-2); outline-offset:2px}
       padding:3px 8px; border:2px solid #24454f; background:#0b2530; color:#3f6572}
 .slot.done{background:var(--gold); border-color:var(--gold-2); color:var(--ink); font-weight:700}
 .slot.revealed{background:#4a3a1a; border-color:var(--gold); color:var(--gold-2); font-weight:700}
-.slot.live{border-color:var(--gold-2); background:#123443; color:var(--gold-2); position:relative}
-.slot.live::before{content:'\25B2'; position:absolute; left:50%; top:-16px;
-                   transform:translateX(-50%); font-size:11px; color:var(--gold-2)}
+/* The live slot is marked by colour, not by a caret above it.
+
+   There was a caret. It wanted 16px of clear space above the slot, and
+   there is nowhere on this screen that reliably has it: on the first row
+   it landed inside the gloss line, and on a WRAPPED row it only ever had
+   the line's leading — about 4px — so it overlapped the row above. That
+   is not a gloss-spacing problem, which is what it looked like at first;
+   it is a caret that needs headroom the layout does not have on any row
+   but by accident.
+
+   Growing line-height to 2.95 would have bought the room and cost the
+   deck a third of its height on a phone. The colour treatment already
+   distinguishes the live slot unambiguously — gold border, gold fill,
+   gold text against grey — so the caret was buying nothing. */
+.slot.live{border-color:var(--gold-2); background:#123443; color:var(--gold-2);
+           box-shadow:0 0 0 2px rgba(246,196,69,.30)}
 
 /* ---- basepaths ------------------------------------------------------ */
 .strip{flex:0 0 auto; display:flex; gap:12px; align-items:center; padding:10px;
