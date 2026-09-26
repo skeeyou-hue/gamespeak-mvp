@@ -52,12 +52,46 @@
    but every one of its verbs is a given, which costs it a slot and
    usually a rung. Commission sentences with explicit subjects. */
 const REJECTED = [
+  { es: 'El bateador terminó 1-de-4.',
+    origin: 'SABR Spanish style guide',
+    why: 'ceiling 1, Rookie needs 3. TWO tokens cannot be slots at all rather ' +
+         'than merely conflicting: `terminó` is the only finite verb, so ' +
+         'blanking it leaves nothing on screen saying the tense — "El bateador ' +
+         '___ 1-de-4" is equally termina, terminó and terminará; and `1-de-4` ' +
+         'is a fact rather than a form, since 2-de-4 and 1-de-3 are equally ' +
+         'grammatical and a gloss would BE the answer. That leaves El and ' +
+         'bateador, which are a right-leaning pair, so one of the two.' },
   { es: 'Bateé un doble y un sencillo.',
     origin: 'mission-spec seed, offered as shape only',
     why: 'null subject — the verb\'s person is undeterminable; ceiling 2, Rookie needs 3' },
   { es: 'Ponché a siete bateadores.',
     origin: 'mission-spec seed, offered as shape only',
     why: 'null subject — same cause; ceiling 2, Rookie needs 3' }
+];
+
+/* ANALYSED, PASSES, NOT YET AUTHORED. Kept here so the provenance is not
+   lost between the analysis and the authoring. It is not an entry and the
+   game cannot see it. */
+const PENDING = [
+  { es: 'La bateadora golpeó la pelota con tanta fuerza que se salió del campo.',
+    origin: 'ingles.com, bilingual dictionary example',
+    ceiling: 6, rungs: 'Rookie through Triple-A',
+    structure: '10 content tokens, 4 right-leaning pairs — La/bateadora, ' +
+               'la/pelota, tanta/fuerza, and the two finite verbs anchoring ' +
+               "each other's tense.",
+    adviserFlags: [
+      'SENSE, not grammar. Nothing in this sentence is baseball-specific: ' +
+      'bateadora, pelota, fuerza and campo all read as cricket just as well. ' +
+      'The caution about lanzador/bowler generalises — a bilingual dictionary ' +
+      'example carries no sport marker at all, so the sense has to be assigned ' +
+      'rather than assumed.',
+      'REGISTER. "se salió del campo" is a literal rendering; Spanish baseball ' +
+      'coverage is likelier to say "salió del parque" or "se fue de jonrón". ' +
+      'Flagged, not corrected — changing it would stop it being attested.',
+      'The clitic `se` is a defensible slot (person, from la pelota) but ' +
+      '"le salió" is also grammatical and means something else, so whether it ' +
+      'is separable by grammar alone is an adviser call.'
+    ] }
 ];
 
 const ENTRIES = [
@@ -245,6 +279,6 @@ function validate(entry) {
 const validateAll = () => ENTRIES.map(e => ({ id: e.id, ...validate(e) }));
 
 if (typeof module !== 'undefined' && module.exports) {
-  module.exports = { ENTRIES, REJECTED, validate, validateAll };
+  module.exports = { ENTRIES, REJECTED, PENDING, validate, validateAll };
   Object.assign(globalThis, module.exports);
 }

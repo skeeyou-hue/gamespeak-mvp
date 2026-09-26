@@ -1,0 +1,34 @@
+
+========================================================================
+CAND-1  La bateadora golpeó la pelota con tanta fuerza que se salió del campo.
+========================================================================
+  tokens 13  |  content tokens 10 (La bateadora golpeó la pelota tanta fuerza se salió campo)
+  cannot be a slot at all:
+    [con] PREP, never blanked
+    [que] CONJ, never blanked
+    [del] PREP, never blanked
+  right-leaning pairs — a slot whose decider is a LATER blank:
+    [La] needs [bateadora] given — article agrees with a noun to its RIGHT
+    [golpeó] needs [salió] given — TENSE anchor — the other finite verb
+    [la] needs [pelota] given — article agrees with a noun to its RIGHT
+    [tanta] needs [fuerza] given — quantifier agrees with a noun to its RIGHT
+  heuristic  content - pairs = 6
+  slotCeiling (exhaustive, the authority) = 6
+  one maximal set: La, golpeó, la, tanta, se, campo
+  rungs it could carry if every slot were authored:
+    Rookie 3: yes  |  Single-A 4: yes  |  Double-A 5: yes  |  Triple-A 6: yes  |  Major League 7: NO
+
+========================================================================
+CAND-2  El bateador terminó 1-de-4.
+========================================================================
+  tokens 4  |  content tokens 2 (El bateador)
+  cannot be a slot at all:
+    [terminó] the only finite verb in the sentence — blank it and nothing on screen says the tense. "El bateador ___ 1-de-4" is equally termina, terminó and terminará.
+    [1-de-4] a scoreline is a fact, not a form. 2-de-4 and 1-de-3 are equally grammatical and nothing on screen decides; a gloss would BE the answer.
+  right-leaning pairs — a slot whose decider is a LATER blank:
+    [El] needs [bateador] given — article agrees with a noun to its RIGHT
+  heuristic  content - pairs = 1
+  slotCeiling (exhaustive, the authority) = 1
+  one maximal set: El
+  rungs it could carry if every slot were authored:
+    Rookie 3: NO  |  Single-A 4: NO  |  Double-A 5: NO  |  Triple-A 6: NO  |  Major League 7: NO

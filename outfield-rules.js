@@ -145,13 +145,51 @@ function verdictFor(elapsedMs, pace, stored) {
    ------------------------------------------------------------------- */
 const NEVER_BLANK = ['CONJ', 'PREP'];
 
+/* A token can fail to be a slot in TWO different ways, and this function
+   only ever knew about one of them.
+
+   DIRECTIONALITY is the one below: the decider exists but is a later
+   blank. That is a property of the chosen SET, so it belongs in the
+   search.
+
+   UNDETERMINABLE IN ITSELF is the other: nothing on screen could ever
+   settle this token, whatever else is blanked. A finite verb in a
+   sentence with no second verb has no tense anchor. A scoreline is a
+   fact, not a form. A subjectless verb has no person. These are
+   properties of the TOKEN, so they belong here, and `blankable: false`
+   with a reason is how a sentence says so.
+
+   The gap was found by encoding a candidate's missing tense anchor as a
+   requirement pointing at a token that does not exist. `answerable` only
+   fails on a requirement that is blanked and to the right, so a phantom
+   index is never blanked and the requirement was trivially satisfied —
+   the function reported a ceiling of 3 for a sentence that can carry
+   one. It is the same failure class as the null-subject seeds, which the
+   bank validator caught only because they had been authored as slots
+   first. Anything that reaches slotCeiling has not been authored yet. */
 const contentTokens = entry =>
-  entry.tokens.filter(t => !NEVER_BLANK.includes(t.pos)).map(t => t.i);
+  entry.tokens
+    .filter(t => !NEVER_BLANK.includes(t.pos))
+    .filter(t => t.blankable !== false)
+    .map(t => t.i);
+
+/* Why each excluded token cannot be a slot — so the ceiling is a
+   diagnosis rather than a number. */
+const unblankable = entry => entry.tokens
+  .filter(t => NEVER_BLANK.includes(t.pos) || t.blankable === false)
+  .map(t => ({ i: t.i, form: t.form,
+               why: t.blankable === false ? (t.why || 'marked unblankable')
+                                          : `${t.pos}, never blanked` }));
 
 const requiresOf = (entry, i) => (entry.tokens[i] && entry.tokens[i].requires) || [];
 
 function answerable(entry, blanked, i) {
-  return requiresOf(entry, i).every(r => !(blanked.includes(r.token) && r.token > i));
+  return requiresOf(entry, i).every(r => {
+    // A requirement pointing at a token that is not in the sentence can
+    // never be met. Treating it as satisfied is what hid the bug above.
+    if (!entry.tokens.some(t => t.i === r.token)) return false;
+    return !(blanked.includes(r.token) && r.token > i);
+  });
 }
 
 const validSet = (entry, blanked) => blanked.every(i => answerable(entry, blanked, i));
@@ -339,7 +377,7 @@ if (typeof module !== 'undefined' && module.exports) {
   PACE_MIN, PACE_FROM, WARMUP, DEFAULT_LEVEL,
   COLD_CAP, RANK, LEVELS,
   makePace, hitForPace, verdictFor, capTo,
-  NEVER_BLANK, contentTokens, answerable, validSet, slotCeiling, exclusions,
+  NEVER_BLANK, contentTokens, unblankable, answerable, validSet, slotCeiling, exclusions,
   morphDensity, slotsForRung, rungsFor, createInning
   };
   Object.assign(globalThis, module.exports);

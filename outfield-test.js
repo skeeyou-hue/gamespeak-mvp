@@ -84,6 +84,45 @@ if (tooBig >= 0) {
   assert(!r.ok, `a rung needing ${R.SLOTS_BY_LEVEL[tooBig]} slots is refused (${r.reason})`);
 }
 
+section('A token can be undeterminable in itself, not just in conflict');
+
+/* Directionality is one way a slot fails. The other is a token nothing on
+   screen could ever settle, whatever else is blanked — a lone finite verb
+   with no tense anchor, a scoreline, a subjectless verb. slotCeiling knew
+   only the first, and reported a ceiling of 3 for a candidate that carries
+   one. These guard the second. */
+{
+  const base = {
+    tokens: [
+      { i: 0, form: 'El', pos: 'DET', requires: [{ token: 1, why: 'leans right' }] },
+      { i: 1, form: 'bateador', pos: 'NOUN', requires: [{ token: 0, why: 'from the article' }] },
+      { i: 2, form: 'terminó', pos: 'VERB' },
+      { i: 3, form: '1-de-4', pos: 'NUM' }
+    ], slots: []
+  };
+  assert(R.slotCeiling(base).max === 3,
+         'with nothing marked, four content tokens and one pair give 3');
+
+  const marked = JSON.parse(JSON.stringify(base));
+  marked.tokens[2].blankable = false; marked.tokens[2].why = 'no tense anchor';
+  marked.tokens[3].blankable = false; marked.tokens[3].why = 'a fact, not a form';
+  assert(R.slotCeiling(marked).max === 1,
+         'marking the two undeterminable tokens drops the ceiling to 1');
+  assert(!R.contentTokens(marked).includes(2) && !R.contentTokens(marked).includes(3),
+         'and they are not content tokens at all');
+  assert(R.unblankable(marked).some(u => u.form === 'terminó' && /tense/.test(u.why)),
+         'the ceiling comes with a diagnosis, not just a number');
+
+  // A requirement naming a token that is not in the sentence can never be
+  // met. Treating it as satisfied is exactly what hid the bug.
+  const phantom = JSON.parse(JSON.stringify(base));
+  phantom.tokens[2].requires = [{ token: 99, why: 'a verb that is not there' }];
+  assert(!R.answerable(phantom, [2], 2),
+         'a requirement pointing at a missing token fails rather than passing silently');
+  assert(!R.slotCeiling(phantom).example.includes(2),
+         'so a token depending on one never enters a maximal set');
+}
+
 section('The flight is a ladder, derived rather than guessed');
 
 // The first human calibration said 4000ms flat was too fast at Rookie.
