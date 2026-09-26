@@ -92,6 +92,10 @@ button.chip:focus-visible{outline:3px solid var(--gold-2); outline-offset:2px}
 .deck{flex:0 0 auto; background:#071a22; border-top:3px solid var(--wall-2); padding:12px 10px}
 .gloss{font-size:13px; letter-spacing:.03em; color:#7f9aa2; margin-bottom:8px; font-style:italic}
 .gloss[hidden]{display:none}
+/* The whole-sentence translation, shown once the line is complete. It is
+   the payoff for finishing rather than a hint, so it reads brighter than
+   the per-slot gloss and is not italic. */
+.gloss.full{color:var(--bone); font-style:normal}
 .sentence{font-size:17px; line-height:2.2; letter-spacing:.02em;
           display:flex; flex-wrap:wrap; align-items:center; gap:6px}
 .w{color:#9fb3b8}

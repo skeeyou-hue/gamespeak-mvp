@@ -5,19 +5,19 @@ PACE BAND — what the rolling median needs before it can be trusted
 1. HOW WRONG IS A MEDIAN OF n SAMPLES
    lognormal, sigma 0.45. |sample median / true median - 1|, over 20000 trials.
    n samples         p50 err     p90 err  within 20%
-   3                   20.1%       50.5%         50%
-   4                   16.4%       42.1%         59%
-   5                   16.1%       39.6%         60%
-   6                   13.8%       35.0%         67%
-   8                   12.5%       30.6%         72%
-   12                  10.4%       25.5%         81%
-   20                   8.1%       19.8%         90%
-   30                   6.7%       16.5%         95%
+   3                   20.0%       50.9%         50%
+   4                   16.5%       41.9%         59%
+   5                   16.0%       39.4%         60%
+   6                   13.9%       34.1%         67%
+   8                   12.5%       30.9%         72%
+   12                  10.3%       25.6%         81%
+   20                   8.2%       19.9%         90%
+   30                   6.8%       16.6%         95%
 
 2. SLOTS UNTIL THE MEDIAN HAS 8 CORRECT CATCHES
    and how many sentences that is at the rung the fielder plays
    fielder             med slots   p90 slots  rung slots   sentences
-   first encounter            21          29           3         7.0
+   first encounter            20          29           3         6.7
    shaky                      15          20           4         3.8
    competent                  12          15           5         2.4
    sharp                      10          13           6         1.7
@@ -30,31 +30,31 @@ PACE BAND — what the rolling median needs before it can be trusted
    harsh matters more than disagreement — punishing a player for a call
    the system cannot yet make is the failure worth avoiding.
    fielder / rung                 FLIGHT        SINGLE         PRIOR      prior ms
-   first encounter / Rookie      21% / 7%      65% / 0%     90% / 90%          6500
-   shaky / Single-A            35% / 33%      64% / 0%     90% / 90%          5000
-   competent / Double-A        66% / 66%      67% / 0%     88% / 88%          4000
-   sharp / Triple-A            81% / 81%      78% / 0%     82% / 82%          3500
-   fluent / Major League       77% / 77%      91% / 0%     77% / 77%          2500
+   first encounter / Rookie     38% / 36%      59% / 0%     91% / 91%          6500
+   shaky / Single-A            64% / 64%      61% / 0%     90% / 90%          5000
+   competent / Double-A        85% / 85%      67% / 0%     86% / 86%          4000
+   sharp / Triple-A            83% / 83%      78% / 0%     83% / 83%          3500
+   fluent / Major League       78% / 78%      91% / 0%     78% / 78%          2500
 
 4. ROLLING WINDOW SIZE  median error against the player's true pace
    competent fielder, steady state (well past warm-up)
    window                  p50 err           p90 err  verdict disagree
-   5                         14.9%             40.8%             32.6%
-   8                         12.0%             32.7%             28.0%
-   12                        10.0%             26.9%             22.8%
-   20                         8.6%             22.4%             19.6%
-   40                         7.3%             17.8%             16.6%
+   5                         15.2%             43.6%             33.4%
+   8                         12.8%             34.5%             28.5%
+   12                        10.5%             28.7%             23.8%
+   20                         9.3%             23.6%             20.9%
+   40                         8.2%             19.1%             16.6%
 
 5. IS THE RESIDUAL GRADIENT REAL RUSHING OR AN ARTIFACT
    ratio = catch time / the player's TRUE pace. If wrong catches sit below
    all catches, the fielder really did grab, and the band is reporting it.
    fielder            all: med ratio      wrong: med     wrong <0.5x   correct-catch
                                                                          median bias
-   first encounter             0.91x           0.86x             10%            +-1%
-   shaky                       0.96x           0.86x             10%             +4%
-   competent                   0.99x           0.80x             13%             +7%
-   sharp                       1.00x           0.71x             17%             +8%
-   fluent                      1.00x           0.64x             23%             +8%
+   first encounter             0.96x           0.91x              9%             +4%
+   shaky                       0.98x           0.88x             10%             +6%
+   competent                   0.99x           0.81x             13%             +8%
+   sharp                       1.00x           0.72x             17%             +8%
+   fluent                      1.00x           0.65x             22%             +8%
    "correct-catch median bias" is how much slower the median of CORRECT
    catches runs than the player's true median — the cost of building the
    pace from correct catches only, which inflates every ratio downward.
@@ -62,44 +62,44 @@ PACE BAND — what the rolling median needs before it can be trusted
 6. BAND THRESHOLDS  conceded mix at each candidate set
    proposed  .50/.75/1.00
                           SINGLE    DOUBLE    TRIPLE   HOMERUN
-     first encounter         35%       28%       27%       10%
-     shaky                   37%       25%       28%       10%
-     competent               33%       24%       31%       13%
-     sharp                   22%       22%       38%       17%
-     fluent                   9%       22%       46%       23%
+     first encounter         41%       26%       25%        8%
+     shaky                   40%       24%       26%       10%
+     competent               33%       23%       31%       13%
+     sharp                   22%       23%       38%       18%
+     fluent                   9%       22%       46%       24%
    tighter   .40/.65/0.90
                           SINGLE    DOUBLE    TRIPLE   HOMERUN
-     first encounter         45%       30%       22%        3%
-     shaky                   46%       28%       22%        4%
-     competent               40%       29%       27%        5%
-     sharp                   28%       32%       34%        6%
-     fluent                  13%       35%       43%        9%
+     first encounter         50%       27%       20%        3%
+     shaky                   48%       27%       21%        3%
+     competent               40%       29%       26%        5%
+     sharp                   28%       32%       33%        7%
+     fluent                  13%       36%       43%        8%
    tightest  .35/.55/0.80
                           SINGLE    DOUBLE    TRIPLE   HOMERUN
-     first encounter         57%       29%       13%        2%
-     shaky                   56%       29%       13%        2%
-     competent               50%       32%       16%        2%
-     sharp                   39%       38%       21%        3%
-     fluent                  23%       45%       28%        4%
+     first encounter         61%       26%       11%        2%
+     shaky                   57%       28%       13%        2%
+     competent               49%       32%       17%        2%
+     sharp                   38%       37%       22%        3%
+     fluent                  24%       45%       28%        4%
 
 7. WHAT THE ROLLING MEDIAN IS BUILT FROM
    home-run share of conceded hits, 5-slot sentence, grace 2
    fielder             FLIGHT band  CORRECT only   ALL catches        oracle
-   first encounter              3%            3%            5%            9%
-   shaky                        9%            5%            6%           11%
-   competent                   27%            8%            8%           13%
-   sharp                       66%           12%            9%           17%
-   fluent                      91%           13%            9%           22%
-   SPREAD fluent/beginner         31.2x          4.3x          1.9x          2.4x
+   first encounter              8%            3%            6%            9%
+   shaky                       19%            6%            7%           10%
+   competent                   45%            8%            7%           13%
+   sharp                       81%            9%           10%           17%
+   fluent                      96%           12%            9%           22%
+   SPREAD fluent/beginner         12.7x          3.4x          1.6x          2.5x
    Flat is the goal. CORRECT-only lands halfway between the band it
    replaced and the oracle; ALL-catches lands on the oracle.
 
 8. DOES WARM-UP FIT INSIDE A HALF-INNING
    rung / fielder            slots needed  slots in half          fits?      cold hits
-   Rookie / first encounter             21             9+             NO           0.70
+   Rookie / first encounter             20             9+             NO           0.66
    Single-A / shaky                    15            12+             NO           0.34
-   Double-A / competent                12            15+            yes           0.12
-   Triple-A / sharp                    10            18+            yes           0.04
+   Double-A / competent                12            15+            yes           0.14
+   Triple-A / sharp                    10            18+            yes           0.05
    Major League / fluent                9            21+            yes           0.02
    "slots in half" is the floor — three sentences with no wrong catches.
    Where warm-up does not fit, the band never engages inside one inning
@@ -110,14 +110,14 @@ PACE BAND — what the rolling median needs before it can be trusted
    of it is HARSHER than the truth. competent fielder.
    stored median        disagree     harsher      kinder
    0.60x                     66%          0%         66%
-   0.70x                     63%          0%         63%
-   0.80x                     45%          0%         45%
-   0.90x                     22%          0%         22%
+   0.70x                     62%          0%         62%
+   0.80x                     44%          0%         44%
+   0.90x                     21%          0%         21%
    1.00x (correct)            0%          0%          0%
    1.10x                     20%         20%          0%
    1.25x                     46%         46%          0%
-   1.50x                     76%         76%          0%
-   2.00x                     85%         85%          0%
+   1.50x                     75%         75%          0%
+   2.00x                     84%         84%          0%
    The error is one-directional, which decides the policy. A median
    stored too FAST (below 1.00x) makes every catch look slow against the
    norm: kinder, never harsh. Too SLOW makes ordinary catches look like
@@ -127,9 +127,9 @@ PACE BAND — what the rolling median needs before it can be trusted
    median error vs truth after k real catches. competent, window 20.
    stored value is 1.5x the truth — the harsh direction.
    seed depth            k=0         k=2         k=5        k=10        k=20
-   1                     50%         31%         17%         12%          8%
-   2                     50%         38%         24%         14%          8%
-   4                     50%         50%         50%         24%          8%
+   1                     50%         32%         17%         13%          8%
+   2                     50%         38%         26%         14%          8%
+   4                     50%         50%         50%         26%          8%
    8                     50%         50%         50%         50%          8%
    20                    50%         50%         50%         50%          8%
    the floor is ~8%: a median of 20 real samples is that far off anyway.
@@ -137,9 +137,9 @@ PACE BAND — what the rolling median needs before it can be trusted
    POLICY COMPARISON  verdicts scored against a 1.5x-stale stored median
    before the window has 8 real catches of its own
    policy                               harsh verdicts     scored cold
-   seed 8 copies of it                             58%              0%
-   seed 1 copy of it                               24%             35%
-   use it, then drop it                            37%             40%
+   seed 8 copies of it                             59%              0%
+   seed 1 copy of it                               26%             35%
+   use it, then drop it                            38%             40%
    SINGLE while cold, no store                      7%             40%
    use it, capped at DOUBLE while cold             15%             40%
-   seed 1, capped at DOUBLE while cold             14%             35%
+   seed 1, capped at DOUBLE while cold             15%             35%

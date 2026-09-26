@@ -22,6 +22,7 @@ const section = t => console.log('\n# ' + t);
 
 const URL = 'file://' + path.resolve(__dirname, 'outfield.html');
 const entry = B.ENTRIES[0];
+const ENTRIES_EN = entry.en;
 
 /* Helpers that run in the page. The suite never decides an outcome — it
    asks the running game what happened. */
@@ -279,6 +280,52 @@ const tap = (p, pick) => p.evaluate(pick => {
            'at a Spanish rung the English author note is NOT shown');
     assert(/equivocad|forma personal/.test(es.text),
            `and a terse Spanish tag names the axis instead (${es.axis})`);
+    await page.close();
+  }
+
+  /* ---------------------------------------------------------------- */
+  section('A finished sentence shows its whole translation');
+  for (const [rung, label] of [['Rookie', 'In English'], ['Double-A', 'En inglés']]) {
+    const page = await browser.newPage({ viewport: { width: 390, height: 844 } });
+    await page.goto(URL);
+    await page.locator('#levels button', { hasText: rung }).click();
+    await page.click('#goBtn');
+    await page.waitForTimeout(300);
+
+    // Mid-sentence it must NOT be there, or it would hand over every
+    // remaining answer.
+    const mid = await page.evaluate(() => document.getElementById('gloss').textContent);
+    assert(!mid.includes(entry.en),
+           `${rung}: the translation is absent while the sentence is still being built`);
+
+    for (let i = 0; i < 12; i++) {
+      const done = await page.evaluate(() => {
+        const st = window.__outfield.state();
+        if (st.completed || st.liveToken == null) return true;
+        const slot = ENTRIES[0].slots.find(s => s.token === st.liveToken);
+        const t = [...document.querySelectorAll('.ball:not(.gone)')]
+          .find(x => x.querySelector('.word').textContent === slot.answer);
+        if (t) t.click();
+        return false;
+      });
+      if (done) break;
+      await page.waitForTimeout(R.SETTLE_MS + 300);
+    }
+    await page.waitForTimeout(350);
+
+    const done = await page.evaluate(() => {
+      const g = document.getElementById('gloss');
+      return { text: g.textContent, hidden: g.hidden, full: g.classList.contains('full'),
+               filled: document.querySelectorAll('.slot.done,.slot.revealed').length,
+               blanks: document.querySelectorAll('.slot:not(.done):not(.revealed)').length };
+    });
+    assert(!done.hidden && done.text.includes(entry.en),
+           `${rung}: the whole English sentence is shown, read off the entry`);
+    assert(done.text.includes(label), `${rung}: labelled in the rung's own language (“${label}”)`);
+    assert(done.full, `${rung}: and styled as the payoff rather than a per-slot hint`);
+    assert(done.blanks === 0 && done.filled === R.SLOTS_BY_LEVEL[
+             R.LEVELS.findIndex(l => l.name === rung)],
+           `${rung}: every slot is filled by the time it appears, so it can leak nothing`);
     await page.close();
   }
 

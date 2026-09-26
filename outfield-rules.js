@@ -62,6 +62,13 @@ const SETTLE_MS   = 600;    // the caught word travelling into the blank
 const HIT_BEAT_MS = 1500;   // a conceded hit playing out
 const REVEAL_MS   = 1800;   // the correct word, shown plainly, after grace
 
+/* The beat a finished sentence holds before the next one, which is now
+   long enough to read a full English translation rather than just a
+   score line. Proposed: nobody has been timed reading one. It is here
+   rather than in the UI because it is three of these a half-inning and
+   the simulation's duration is wrong without it. */
+const SENTENCE_MS = 3500;
+
 const OUTS_PER_HALF = 3;    // three completed sentences
 const GRACE = 1;            // wrong catches a slot absorbs before one concedes
 
@@ -327,7 +334,7 @@ function createInning({ entry, rungIndex, pace, stored = null, shuffle }) {
 
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
-  FLIGHT_MS, SETTLE_MS, HIT_BEAT_MS, REVEAL_MS, OUTS_PER_HALF, GRACE,
+  FLIGHT_MS, SETTLE_MS, HIT_BEAT_MS, REVEAL_MS, SENTENCE_MS, OUTS_PER_HALF, GRACE,
   SLOTS_BY_LEVEL, FLIGHT_BY_LEVEL, flightFor, PACE_BANDS, PACE_WINDOW,
   PACE_MIN, PACE_FROM, WARMUP, DEFAULT_LEVEL,
   COLD_CAP, RANK, LEVELS,

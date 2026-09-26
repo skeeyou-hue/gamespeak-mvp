@@ -92,6 +92,10 @@ section('The flight is a ladder, derived rather than guessed');
 // asserts the DERIVATION, not the numbers it currently produces.
 assert(R.FLIGHT_BY_LEVEL.length === R.LEVELS.length,
        'every rung has a flight');
+// The finished-sentence beat is a READ, not a transition: it has to hold
+// a whole translation, so it must outlast the beats that only move a word.
+assert(R.SENTENCE_MS > R.SETTLE_MS && R.SENTENCE_MS > R.HIT_BEAT_MS,
+       `the completed-sentence beat (${R.SENTENCE_MS}ms) outlasts the settle and hit beats`);
 assert(R.FLIGHT_BY_LEVEL.every((f, i) => f === R.LEVELS[i].clock.hard),
        'and each one is that rung\'s hard answer clock, not a second set of numbers');
 assert(R.FLIGHT_BY_LEVEL.every((f, i) => i === 0 || f < R.FLIGHT_BY_LEVEL[i - 1]),

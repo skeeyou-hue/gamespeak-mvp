@@ -15,108 +15,102 @@ ROOKIE  ·  3 slots  ·  fielder: first encounter
     El [>______<] conectó un [______] y tuvo dos [______] impulsadas.
     gloss for this slot: "batter"
       in the air:  bateo   bateadora   bateador   bateadores
-      1 volley dropped — they come round again
-      caught "bateadores" at 3130ms  [pace still cold: 1/8 catches]
+      caught "bateadores" at 4762ms  [pace still cold: 1/8 catches]
       -> wrong: number — El is singular; "El bateadores" does not agree
       -> foul. grace 1/1. slot stays live.
-      in the air:  bateadores   bateador   bateadora   bateo
-      caught "bateadora" at 735ms  [pace still cold: 2/8 catches]
-      -> wrong: gender — El is masculine; the feminine takes La
-      -> grace gone. SINGLE  (cold — mildest verdict, not a judgement). runners 1st.
-      -> REVEAL: the word was "bateador". slot resolves.
+      in the air:  bateo   bateadores   bateador   bateadora
+      caught "bateador" at 2327ms  [pace still cold: 2/8 catches]
+      -> CAUGHT IT. strike sting. slot fills.
 
     El [bateador] conectó un [>______<] y tuvo dos [______] impulsadas.
     gloss for this slot: "double"
-      in the air:  sencillo   doble   dobles   triple
-      caught "sencillo" at 1152ms  [pace still cold: 3/8 catches]
-      -> wrong: lexical — a single, not a double — same field, wrong fact
-      -> foul. grace 1/1. slot stays live.
-      in the air:  dobles   triple   sencillo   doble
-      caught "dobles" at 1407ms  [pace still cold: 4/8 catches]
-      -> wrong: number — un is singular
-      -> grace gone. SINGLE  (cold — mildest verdict, not a judgement). runners 1st + 2nd.
-      -> REVEAL: the word was "doble". slot resolves.
+      in the air:  doble   triple   dobles   sencillo
+      caught "doble" at 2325ms  [pace still cold: 3/8 catches]
+      -> CAUGHT IT. strike sting. slot fills.
 
     El [bateador] conectó un [doble] y tuvo dos [>______<] impulsadas.
     gloss for this slot: "run"
-      in the air:  carrera   bases   entradas   carreras
-      caught "carreras" at 1557ms  [pace still cold: 5/8 catches]
-      -> CAUGHT IT. strike sting. slot fills.
+      in the air:  bases   entradas   carrera   carreras
+      caught "entradas" at 4963ms  [pace still cold: 4/8 catches]
+      -> wrong: lexical — innings, not runs
+      -> foul. grace 1/1. slot stays live.
+      in the air:  carreras   entradas   bases   carrera
+      caught "carrera" at 3401ms  [pace still cold: 5/8 catches]
+      -> wrong: number — dos requires the plural
+      -> grace gone. SINGLE  (cold — mildest verdict, not a judgement). runners 1st.
+      -> REVEAL: the word was "carreras". slot resolves.
 
     El [bateador] conectó un [doble] y tuvo dos [carreras] impulsadas.
     SENTENCE COMPLETE — that is out 1.
 
   ----------------------------------------------------------------------
-  SENTENCE 2 of 3   ·   outs 1  ·  runners 1st + 2nd  ·  runs 0
+  SENTENCE 2 of 3   ·   outs 1  ·  runners 1st  ·  runs 0
   (the same sentence again — there is one authored entry, not a bank. In play these are three different sentences.)
 
     El [>______<] conectó un [______] y tuvo dos [______] impulsadas.
     gloss for this slot: "batter"
-      in the air:  bateador   bateadores   bateo   bateadora
-      caught "bateador" at 1123ms  [pace still cold: 6/8 catches]
-      -> CAUGHT IT. strike sting. slot fills.
+      in the air:  bateadora   bateador   bateo   bateadores
+      caught "bateadores" at 3771ms  [pace still cold: 6/8 catches]
+      -> wrong: number — El is singular; "El bateadores" does not agree
+      -> foul. grace 1/1. slot stays live.
+      in the air:  bateo   bateadora   bateador   bateadores
+      caught "bateadores" at 3397ms  [pace still cold: 7/8 catches]
+      -> wrong: number — El is singular; "El bateadores" does not agree
+      -> grace gone. SINGLE  (cold — mildest verdict, not a judgement). runners 1st + 2nd.
+      -> REVEAL: the word was "bateador". slot resolves.
 
     El [bateador] conectó un [>______<] y tuvo dos [______] impulsadas.
     gloss for this slot: "double"
-      in the air:  triple   doble   sencillo   dobles
-      1 volley dropped — they come round again
-      caught "doble" at 3301ms  [pace still cold: 7/8 catches]
+      in the air:  dobles   sencillo   doble   triple
+      caught "doble" at 4325ms  [pace still cold: 8/8 catches]
       -> CAUGHT IT. strike sting. slot fills.
 
     El [bateador] conectó un [doble] y tuvo dos [>______<] impulsadas.
     gloss for this slot: "run"
-      in the air:  bases   entradas   carreras   carrera
-      caught "entradas" at 2717ms  [pace still cold: 8/8 catches]
-      -> wrong: lexical — innings, not runs
-      -> foul. grace 1/1. slot stays live.
-      in the air:  bases   entradas   carreras   carrera
-      caught "carrera" at 2079ms (1.40x their own pace of 1482ms)
-      -> wrong: number — dos requires the plural
-      -> grace gone. SINGLE. runners 1st + 2nd + 3rd.
-      -> REVEAL: the word was "carreras". slot resolves.
+      in the air:  carreras   carrera   entradas   bases
+      caught "carreras" at 2318ms (0.65x their own pace of 3586ms)
+      -> CAUGHT IT. strike sting. slot fills.
 
     El [bateador] conectó un [doble] y tuvo dos [carreras] impulsadas.
     SENTENCE COMPLETE — that is out 2.
 
   ----------------------------------------------------------------------
-  SENTENCE 3 of 3   ·   outs 2  ·  runners 1st + 2nd + 3rd  ·  runs 0
+  SENTENCE 3 of 3   ·   outs 2  ·  runners 1st + 2nd  ·  runs 0
   (the same sentence again — there is one authored entry, not a bank. In play these are three different sentences.)
 
     El [>______<] conectó un [______] y tuvo dos [______] impulsadas.
     gloss for this slot: "batter"
-      in the air:  bateadora   bateadores   bateador   bateo
-      caught "bateador" at 2757ms (1.77x their own pace of 1557ms)
+      in the air:  bateadora   bateo   bateador   bateadores
+      caught "bateadores" at 2617ms (0.77x their own pace of 3401ms)
+      -> wrong: number — El is singular; "El bateadores" does not agree
+      -> foul. grace 1/1. slot stays live.
+      in the air:  bateadora   bateador   bateadores   bateo
+      caught "bateador" at 1750ms (0.51x their own pace of 3399ms)
       -> CAUGHT IT. strike sting. slot fills.
 
     El [bateador] conectó un [>______<] y tuvo dos [______] impulsadas.
     gloss for this slot: "double"
-      in the air:  triple   sencillo   doble   dobles
-      caught "sencillo" at 2222ms (1.22x their own pace of 1818ms)
-      -> wrong: lexical — a single, not a double — same field, wrong fact
+      in the air:  triple   sencillo   dobles   doble
+      caught "dobles" at 2211ms (0.65x their own pace of 3397ms)
+      -> wrong: number — un is singular
       -> foul. grace 1/1. slot stays live.
-      in the air:  sencillo   dobles   doble   triple
-      caught "triple" at 953ms (0.46x their own pace of 2079ms)
-      -> wrong: lexical — a triple, not a double — same field, wrong fact
-      -> grace gone. HOMERUN. 4 runs in. runners empty.
+      in the air:  triple   dobles   doble   sencillo
+      caught "triple" at 2244ms (0.75x their own pace of 3007ms)
+      -> wrong: lexical — a triple, not a double
+      -> grace gone. TRIPLE. 2 runs in. runners 3rd.
       -> REVEAL: the word was "doble". slot resolves.
 
     El [bateador] conectó un [doble] y tuvo dos [>______<] impulsadas.
     gloss for this slot: "run"
-      in the air:  carrera   carreras   bases   entradas
-      caught "carrera" at 1649ms (0.91x their own pace of 1818ms)
-      -> wrong: number — dos requires the plural
-      -> foul. grace 1/1. slot stays live.
-      in the air:  carreras   entradas   bases   carrera
-      caught "entradas" at 2377ms (1.44x their own pace of 1649ms)
-      -> wrong: lexical — innings, not runs
-      -> grace gone. SINGLE. runners 1st.
-      -> REVEAL: the word was "carreras". slot resolves.
+      in the air:  bases   entradas   carreras   carrera
+      caught "carreras" at 2628ms (1.00x their own pace of 2617ms)
+      -> CAUGHT IT. strike sting. slot fills.
 
     El [bateador] conectó un [doble] y tuvo dos [carreras] impulsadas.
     SENTENCE COMPLETE — that is out 3.
 
   ----------------------------------------------------------------------
-  HALF-INNING OVER.  4 runs in, 1 left on, 1.1 minutes.
+  HALF-INNING OVER.  2 runs in, 1 left on, 1.1 minutes.
 
 ==========================================================================
 SINGLE-A  ·  4 slots  ·  fielder: shaky
@@ -132,127 +126,123 @@ SINGLE-A  ·  4 slots  ·  fielder: shaky
     El [>______<] [______] un [______] y tuvo dos [______] impulsadas.
     gloss for this slot: "batter"
       in the air:  bateadores   bateador   bateo   bateadora
-      caught "bateador" at 2904ms  [pace still cold: 1/8 catches]
+      caught "bateador" at 3037ms  [pace still cold: 1/8 catches]
       -> CAUGHT IT. strike sting. slot fills.
 
     El [bateador] [>______<] un [______] y tuvo dos [______] impulsadas.
     no gloss — grammar separates these four
-      in the air:  conecta   conectó   conecté   conectaron
-      caught "conectó" at 1570ms  [pace still cold: 2/8 catches]
+      in the air:  conecta   conectó   conectaron   conecté
+      caught "conectó" at 2904ms  [pace still cold: 2/8 catches]
       -> CAUGHT IT. strike sting. slot fills.
 
     El [bateador] [conectó] un [>______<] y tuvo dos [______] impulsadas.
     gloss for this slot: "double"
-      in the air:  sencillo   doble   triple   dobles
-      caught "doble" at 1967ms  [pace still cold: 3/8 catches]
+      in the air:  dobles   doble   sencillo   triple
+      caught "doble" at 1570ms  [pace still cold: 3/8 catches]
       -> CAUGHT IT. strike sting. slot fills.
 
     El [bateador] [conectó] un [doble] y tuvo dos [>______<] impulsadas.
     gloss for this slot: "run"
-      in the air:  carrera   bases   carreras   entradas
-      caught "bases" at 2500ms  [pace still cold: 4/8 catches]
-      -> wrong: lexical — bases, not runs
-      -> foul. grace 1/1. slot stays live.
-      in the air:  bases   carrera   entradas   carreras
-      caught "entradas" at 2771ms  [pace still cold: 5/8 catches]
-      -> wrong: lexical — innings, not runs
-      -> grace gone. SINGLE  (cold — mildest verdict, not a judgement). runners 1st.
-      -> REVEAL: the word was "carreras". slot resolves.
+      in the air:  entradas   carreras   bases   carrera
+      caught "carreras" at 1967ms  [pace still cold: 4/8 catches]
+      -> CAUGHT IT. strike sting. slot fills.
 
     El [bateador] [conectó] un [doble] y tuvo dos [carreras] impulsadas.
     SENTENCE COMPLETE — that is out 1.
 
   ----------------------------------------------------------------------
-  SENTENCE 2 of 3   ·   outs 1  ·  runners 1st  ·  runs 0
+  SENTENCE 2 of 3   ·   outs 1  ·  runners empty  ·  runs 0
   (the same sentence again — there is one authored entry, not a bank. In play these are three different sentences.)
 
     El [>______<] [______] un [______] y tuvo dos [______] impulsadas.
     gloss for this slot: "batter"
-      in the air:  bateadora   bateadores   bateador   bateo
-      caught "bateo" at 1493ms  [pace still cold: 6/8 catches]
+      in the air:  bateadores   bateo   bateador   bateadora
+      caught "bateo" at 2500ms  [pace still cold: 5/8 catches]
       -> wrong: lexical — same field, wrong word — the act, not the person
       -> foul. grace 1/1. slot stays live.
-      in the air:  bateo   bateador   bateadores   bateadora
-      caught "bateadora" at 3968ms  [pace still cold: 7/8 catches]
+      in the air:  bateo   bateadores   bateadora   bateador
+      caught "bateadora" at 2771ms  [pace still cold: 6/8 catches]
       -> wrong: gender — El is masculine; the feminine takes La
-      -> grace gone. SINGLE  (cold — mildest verdict, not a judgement). runners 1st + 2nd.
+      -> grace gone. SINGLE  (cold — mildest verdict, not a judgement). runners 1st.
       -> REVEAL: the word was "bateador". slot resolves.
 
     El [bateador] [>______<] un [______] y tuvo dos [______] impulsadas.
     no gloss — grammar separates these four
-      in the air:  conecta   conectó   conectaron   conecté
-      1 volley dropped — they come round again
-      caught "conectaron" at 1834ms  [pace still cold: 8/8 catches]
+      in the air:  conecté   conecta   conectó   conectaron
+      caught "conectaron" at 1493ms  [pace still cold: 7/8 catches]
       -> wrong: number — third plural; the subject is singular
       -> foul. grace 1/1. slot stays live.
-      in the air:  conecté   conectaron   conectó   conecta
-      caught "conectó" at 1766ms (0.79x their own pace of 2233ms)
-      -> CAUGHT IT. strike sting. slot fills.
+      in the air:  conectaron   conectó   conecta   conecté
+      caught "conecté" at 3968ms  [pace still cold: 8/8 catches]
+      -> wrong: person — first person; the subject is el bateador
+      -> grace gone. SINGLE  (cold — mildest verdict, not a judgement). runners 1st + 2nd.
+      -> REVEAL: the word was "conectó". slot resolves.
 
     El [bateador] [conectó] un [>______<] y tuvo dos [______] impulsadas.
     gloss for this slot: "double"
+      in the air:  dobles   doble   triple   sencillo
+      1 volley dropped — they come round again
+      caught "triple" at 1834ms (0.70x their own pace of 2636ms)
+      -> wrong: lexical — a triple, not a double
+      -> foul. grace 1/1. slot stays live.
       in the air:  sencillo   triple   doble   dobles
-      caught "doble" at 1812ms (0.92x their own pace of 1967ms)
+      caught "doble" at 1766ms (0.71x their own pace of 2500ms)
       -> CAUGHT IT. strike sting. slot fills.
 
     El [bateador] [conectó] un [doble] y tuvo dos [>______<] impulsadas.
     gloss for this slot: "run"
-      in the air:  carreras   bases   entradas   carrera
-      caught "entradas" at 2293ms (1.21x their own pace of 1900ms)
-      -> wrong: lexical — innings, not runs
-      -> foul. grace 1/1. slot stays live.
-      in the air:  bases   carrera   carreras   entradas
-      caught "carrera" at 2426ms (1.23x their own pace of 1967ms)
-      -> wrong: number — dos requires the plural
-      -> grace gone. SINGLE. runners 1st + 2nd + 3rd.
-      -> REVEAL: the word was "carreras". slot resolves.
+      in the air:  entradas   bases   carreras   carrera
+      caught "carreras" at 1812ms (0.81x their own pace of 2233ms)
+      -> CAUGHT IT. strike sting. slot fills.
 
     El [bateador] [conectó] un [doble] y tuvo dos [carreras] impulsadas.
     SENTENCE COMPLETE — that is out 2.
 
   ----------------------------------------------------------------------
-  SENTENCE 3 of 3   ·   outs 2  ·  runners 1st + 2nd + 3rd  ·  runs 0
+  SENTENCE 3 of 3   ·   outs 2  ·  runners 1st + 2nd  ·  runs 0
   (the same sentence again — there is one authored entry, not a bank. In play these are three different sentences.)
 
     El [>______<] [______] un [______] y tuvo dos [______] impulsadas.
     gloss for this slot: "batter"
-      in the air:  bateo   bateadores   bateadora   bateador
-      caught "bateo" at 799ms (0.38x their own pace of 2130ms)
-      -> wrong: lexical — same field, wrong word — the act, not the person
+      in the air:  bateador   bateo   bateadora   bateadores
+      caught "bateadora" at 2293ms (1.17x their own pace of 1967ms)
+      -> wrong: gender — El is masculine; the feminine takes La
       -> foul. grace 1/1. slot stays live.
-      in the air:  bateo   bateador   bateadores   bateadora
-      caught "bateadores" at 3855ms (1.96x their own pace of 1967ms)
+      in the air:  bateo   bateadores   bateador   bateadora
+      caught "bateadores" at 2426ms (1.14x their own pace of 2130ms)
       -> wrong: number — El is singular; "El bateadores" does not agree
-      -> grace gone. SINGLE. 1 run in. runners 1st + 2nd + 3rd.
+      -> grace gone. SINGLE. runners 1st + 2nd + 3rd.
       -> REVEAL: the word was "bateador". slot resolves.
 
     El [bateador] [>______<] un [______] y tuvo dos [______] impulsadas.
     no gloss — grammar separates these four
-      in the air:  conecta   conecté   conectaron   conectó
-      caught "conecté" at 1431ms (0.67x their own pace of 2130ms)
-      -> wrong: person — first person; the subject is el bateador
-      -> foul. grace 1/1. slot stays live.
-      in the air:  conectó   conectaron   conecta   conecté
-      2 volley dropped — they come round again
-      caught "conectaron" at 1183ms (0.60x their own pace of 1967ms)
+      in the air:  conectaron   conecta   conecté   conectó
+      caught "conectaron" at 799ms (0.35x their own pace of 2293ms)
       -> wrong: number — third plural; the subject is singular
-      -> grace gone. TRIPLE. 3 runs in. runners 3rd.
+      -> foul. grace 1/1. slot stays live.
+      in the air:  conectaron   conectó   conecta   conecté
+      caught "conecta" at 3855ms (1.81x their own pace of 2130ms)
+      -> wrong: tense — present; the narration is preterite throughout
+      -> grace gone. SINGLE. 1 run in. runners 1st + 2nd + 3rd.
       -> REVEAL: the word was "conectó". slot resolves.
 
     El [bateador] [conectó] un [>______<] y tuvo dos [______] impulsadas.
     gloss for this slot: "double"
-      in the air:  sencillo   dobles   triple   doble
-      caught "doble" at 3735ms (1.97x their own pace of 1900ms)
-      -> CAUGHT IT. strike sting. slot fills.
+      in the air:  dobles   sencillo   triple   doble
+      caught "sencillo" at 1431ms (0.62x their own pace of 2293ms)
+      -> wrong: lexical — a single, not a double
+      -> foul. grace 1/1. slot stays live.
+      in the air:  doble   triple   dobles   sencillo
+      2 volley dropped — they come round again
+      caught "triple" at 1183ms (0.56x their own pace of 2130ms)
+      -> wrong: lexical — a triple, not a double
+      -> grace gone. TRIPLE. 3 runs in. runners 3rd.
+      -> REVEAL: the word was "doble". slot resolves.
 
     El [bateador] [conectó] un [doble] y tuvo dos [>______<] impulsadas.
     gloss for this slot: "run"
-      in the air:  bases   carrera   carreras   entradas
-      caught "bases" at 3179ms (1.62x their own pace of 1967ms)
-      -> wrong: lexical — bases, not runs
-      -> foul. grace 1/1. slot stays live.
-      in the air:  bases   carrera   entradas   carreras
-      caught "carreras" at 1466ms (0.69x their own pace of 2130ms)
+      in the air:  entradas   carrera   bases   carreras
+      caught "carreras" at 3735ms (1.90x their own pace of 1967ms)
       -> CAUGHT IT. strike sting. slot fills.
 
     El [bateador] [conectó] un [doble] y tuvo dos [carreras] impulsadas.
@@ -274,41 +264,36 @@ DOUBLE-A  ·  5 slots  ·  fielder: competent
 
     El [>______<] [______] un [______] y tuvo dos [______] [______].
     gloss for this slot: "batter"
-      in the air:  bateo   bateadora   bateador   bateadores
-      caught "bateador" at 2069ms  [pace still cold: 1/8 catches]
+      in the air:  bateo   bateadores   bateador   bateadora
+      caught "bateador" at 2422ms  [pace still cold: 1/8 catches]
       -> CAUGHT IT. strike sting. slot fills.
 
     El [bateador] [>______<] un [______] y tuvo dos [______] [______].
     no gloss — grammar separates these four
-      in the air:  conecté   conectó   conectaron   conecta
-      caught "conectó" at 1519ms  [pace still cold: 2/8 catches]
+      in the air:  conecté   conecta   conectó   conectaron
+      caught "conectó" at 1491ms  [pace still cold: 2/8 catches]
       -> CAUGHT IT. strike sting. slot fills.
 
     El [bateador] [conectó] un [>______<] y tuvo dos [______] [______].
     gloss for this slot: "double"
-      in the air:  dobles   sencillo   triple   doble
-      caught "doble" at 805ms  [pace still cold: 3/8 catches]
+      in the air:  sencillo   triple   dobles   doble
+      caught "dobles" at 2296ms  [pace still cold: 3/8 catches]
+      -> wrong: number — un is singular
+      -> foul. grace 1/1. slot stays live.
+      in the air:  sencillo   doble   triple   dobles
+      caught "doble" at 1519ms  [pace still cold: 4/8 catches]
       -> CAUGHT IT. strike sting. slot fills.
 
     El [bateador] [conectó] un [doble] y tuvo dos [>______<] [______].
     gloss for this slot: "run"
-      in the air:  carrera   carreras   bases   entradas
-      1 volley dropped — they come round again
-      caught "carrera" at 976ms  [pace still cold: 4/8 catches]
-      -> wrong: number — dos requires the plural
-      -> foul. grace 1/1. slot stays live.
-      in the air:  entradas   bases   carreras   carrera
-      caught "carreras" at 2120ms  [pace still cold: 5/8 catches]
+      in the air:  carrera   entradas   bases   carreras
+      caught "carreras" at 805ms  [pace still cold: 5/8 catches]
       -> CAUGHT IT. strike sting. slot fills.
 
     El [bateador] [conectó] un [doble] y tuvo dos [carreras] [>______<].
     no gloss — grammar separates these four
-      in the air:  impulsadas   impulsados   impulsar   impulsada
-      caught "impulsar" at 1286ms  [pace still cold: 6/8 catches]
-      -> wrong: finiteness — infinitive cannot agree with anything
-      -> foul. grace 1/1. slot stays live.
       in the air:  impulsados   impulsadas   impulsar   impulsada
-      caught "impulsadas" at 1114ms  [pace still cold: 7/8 catches]
+      caught "impulsadas" at 4260ms  [pace still cold: 6/8 catches]
       -> CAUGHT IT. strike sting. slot fills.
 
     El [bateador] [conectó] un [doble] y tuvo dos [carreras] [impulsadas].
@@ -320,44 +305,36 @@ DOUBLE-A  ·  5 slots  ·  fielder: competent
 
     El [>______<] [______] un [______] y tuvo dos [______] [______].
     gloss for this slot: "batter"
-      in the air:  bateadores   bateador   bateo   bateadora
-      caught "bateador" at 1454ms  [pace still cold: 8/8 catches]
+      in the air:  bateo   bateador   bateadora   bateadores
+      caught "bateo" at 2358ms  [pace still cold: 7/8 catches]
+      -> wrong: lexical — same field, wrong word — the act, not the person
+      -> foul. grace 1/1. slot stays live.
+      in the air:  bateo   bateadora   bateadores   bateador
+      caught "bateador" at 1597ms  [pace still cold: 8/8 catches]
       -> CAUGHT IT. strike sting. slot fills.
 
     El [bateador] [>______<] un [______] y tuvo dos [______] [______].
     no gloss — grammar separates these four
-      in the air:  conecté   conectó   conecta   conectaron
-      caught "conecta" at 2369ms (1.73x their own pace of 1370ms)
-      -> wrong: tense — present; the narration is preterite throughout
-      -> foul. grace 1/1. slot stays live.
-      in the air:  conectaron   conecté   conectó   conecta
-      caught "conectó" at 3094ms (2.13x their own pace of 1454ms)
+      in the air:  conectó   conecta   conectaron   conecté
+      caught "conectó" at 1769ms (0.91x their own pace of 1947ms)
       -> CAUGHT IT. strike sting. slot fills.
 
     El [bateador] [conectó] un [>______<] y tuvo dos [______] [______].
     gloss for this slot: "double"
-      in the air:  dobles   triple   doble   sencillo
-      caught "doble" at 2801ms (1.88x their own pace of 1487ms)
+      in the air:  triple   doble   dobles   sencillo
+      caught "doble" at 1963ms (1.11x their own pace of 1769ms)
       -> CAUGHT IT. strike sting. slot fills.
 
     El [bateador] [conectó] un [doble] y tuvo dos [>______<] [______].
     gloss for this slot: "run"
-      in the air:  entradas   carrera   carreras   bases
-      caught "entradas" at 2315ms (1.52x their own pace of 1519ms)
-      -> wrong: lexical — innings, not runs
-      -> foul. grace 1/1. slot stays live.
-      in the air:  carreras   carrera   bases   entradas
-      caught "carreras" at 1801ms (1.00x their own pace of 1794ms)
+      in the air:  carrera   carreras   entradas   bases
+      caught "carreras" at 1320ms (0.71x their own pace of 1866ms)
       -> CAUGHT IT. strike sting. slot fills.
 
     El [bateador] [conectó] un [doble] y tuvo dos [carreras] [>______<].
     no gloss — grammar separates these four
-      in the air:  impulsar   impulsadas   impulsados   impulsada
-      caught "impulsar" at 2517ms (1.40x their own pace of 1801ms)
-      -> wrong: finiteness — infinitive cannot agree with anything
-      -> foul. grace 1/1. slot stays live.
-      in the air:  impulsados   impulsar   impulsadas   impulsada
-      caught "impulsadas" at 1802ms (0.93x their own pace of 1935ms)
+      in the air:  impulsadas   impulsar   impulsada   impulsados
+      caught "impulsadas" at 1004ms (0.57x their own pace of 1769ms)
       -> CAUGHT IT. strike sting. slot fills.
 
     El [bateador] [conectó] un [doble] y tuvo dos [carreras] [impulsadas].
@@ -369,39 +346,43 @@ DOUBLE-A  ·  5 slots  ·  fielder: competent
 
     El [>______<] [______] un [______] y tuvo dos [______] [______].
     gloss for this slot: "batter"
-      in the air:  bateo   bateador   bateadora   bateadores
-      caught "bateador" at 2514ms (1.40x their own pace of 1802ms)
+      in the air:  bateo   bateadora   bateador   bateadores
+      caught "bateador" at 1457ms (0.87x their own pace of 1683ms)
       -> CAUGHT IT. strike sting. slot fills.
 
     El [bateador] [>______<] un [______] y tuvo dos [______] [______].
     no gloss — grammar separates these four
-      in the air:  conecta   conecté   conectaron   conectó
-      caught "conectó" at 2650ms (1.37x their own pace of 1935ms)
+      in the air:  conecté   conectó   conectaron   conecta
+      caught "conectó" at 2523ms (1.58x their own pace of 1597ms)
       -> CAUGHT IT. strike sting. slot fills.
 
     El [bateador] [conectó] un [>______<] y tuvo dos [______] [______].
     gloss for this slot: "double"
-      in the air:  sencillo   doble   triple   dobles
-      caught "doble" at 2532ms (1.22x their own pace of 2069ms)
+      in the air:  doble   triple   dobles   sencillo
+      caught "doble" at 1486ms (0.88x their own pace of 1683ms)
       -> CAUGHT IT. strike sting. slot fills.
 
     El [bateador] [conectó] un [doble] y tuvo dos [>______<] [______].
     gloss for this slot: "run"
-      in the air:  bases   carreras   carrera   entradas
-      caught "carreras" at 2741ms (1.31x their own pace of 2095ms)
+      in the air:  carrera   carreras   entradas   bases
+      caught "carreras" at 1208ms (0.76x their own pace of 1597ms)
       -> CAUGHT IT. strike sting. slot fills.
 
     El [bateador] [conectó] un [doble] y tuvo dos [carreras] [>______<].
     no gloss — grammar separates these four
-      in the air:  impulsadas   impulsados   impulsada   impulsar
-      caught "impulsadas" at 938ms (0.44x their own pace of 2120ms)
+      in the air:  impulsada   impulsar   impulsadas   impulsados
+      caught "impulsada" at 1683ms (1.08x their own pace of 1558ms)
+      -> wrong: number — carreras is plural
+      -> foul. grace 1/1. slot stays live.
+      in the air:  impulsada   impulsados   impulsar   impulsadas
+      caught "impulsadas" at 1739ms (1.09x their own pace of 1597ms)
       -> CAUGHT IT. strike sting. slot fills.
 
     El [bateador] [conectó] un [doble] y tuvo dos [carreras] [impulsadas].
     SENTENCE COMPLETE — that is out 3.
 
   ----------------------------------------------------------------------
-  HALF-INNING OVER.  0 runs in, 0 left on, 1.0 minutes.
+  HALF-INNING OVER.  0 runs in, 0 left on, 0.8 minutes.
 
 ==========================================================================
 TRIPLE-A  ·  6 slots  ·  fielder: sharp

@@ -94,7 +94,7 @@ const { LEVELS, hitForResponse, advanceOnHit, HIT_ADVANCE, SPEED_BANDS } = T;
    The reasoning behind each constant is in outfield-rules.js; the
    findings that set them are in the commits and in Addenda 15-17. */
 const R = require('./outfield-rules.js');
-const { FLIGHT_MS, SETTLE_MS, HIT_BEAT_MS, REVEAL_MS, OUTS_PER_HALF, GRACE,
+const { FLIGHT_MS, SETTLE_MS, HIT_BEAT_MS, REVEAL_MS, SENTENCE_MS, OUTS_PER_HALF, GRACE,
         PACE_BANDS, PACE_WINDOW, PACE_MIN, PACE_FROM, WARMUP, SLOTS_BY_LEVEL,
         makePace, hitForPace } = R;
 
@@ -228,6 +228,7 @@ function halfInning(p, slots, flight, onExhaust = 'RESOLVE', grace = GRACE, opt 
       }
     }
     outs++;                                            // sentence completed
+    ms += SENTENCE_MS;        // the finished line, held with its translation
   }
   return { runs, ms, hits, wrongs, drops, fouls, reveals, cold, slotsPlayed, bases, mix };
 }
@@ -258,7 +259,7 @@ function cell(p, slots, flight = FLIGHT_MS, onExhaust = 'RESOLVE', n = 4000, gra
   };
 }
 
-module.exports = { FLIGHT_MS, SETTLE_MS, HIT_BEAT_MS, REVEAL_MS, OUTS_PER_HALF,
+module.exports = { FLIGHT_MS, SETTLE_MS, HIT_BEAT_MS, REVEAL_MS, SENTENCE_MS, OUTS_PER_HALF,
                    GRACE, PACE_BANDS, PACE_WINDOW, PACE_MIN, PACE_FROM, WARMUP,
                    SLOTS_BY_LEVEL, FIELDERS, RUSH_FLOOR, SIGMA, lognormal,
                    cell, halfInning, fieldSlot, rushFactor, makePace, hitForPace,

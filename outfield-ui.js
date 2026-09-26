@@ -76,6 +76,7 @@
       dropped: 'They dropped. Again — <b>costs time, not outs</b>.',
       foul: n => `Foul. ${n} left.`,
       thisGap: g => `this gap: “${g}”`,
+      inEnglish: en => `In English: <b>${en}</b>`,
       hit: { SINGLE: 'single', DOUBLE: 'double', TRIPLE: 'triple', HOMERUN: 'home run' },
       conceded: (h, runs) => `The batter gets a <b>${h}</b>.` +
         (runs ? ` ${runs} run${runs > 1 ? 's' : ''} in.` : ''),
@@ -118,6 +119,7 @@
       dropped: 'Se cayeron. Otra vez — <b>cuesta tiempo, no outs</b>.',
       foul: n => `Foul. Te queda ${n}.`,
       thisGap: g => `este hueco: “${g}”`,
+      inEnglish: en => `En inglés: <b>${en}</b>`,
       hit: { SINGLE: 'sencillo', DOUBLE: 'doble', TRIPLE: 'triple', HOMERUN: 'jonrón' },
       conceded: (h, runs) => `El bateador conecta un <b>${h}</b>.` +
         (runs ? ` ${runs} carrera${runs > 1 ? 's' : ''}.` : ''),
@@ -297,12 +299,30 @@
       return `<span class="slot${t.i === st.liveToken ? ' live' : ''}">&nbsp;</span>`;
     }).join('') + '<span class="w stop">.</span>';
 
-    /* The gloss appears only where Spanish grammar cannot separate the four
-       balls — the noun slots, whose distractors are lexical. A gloss on a
-       slot the morphology already settles would replace retrieval with
-       translation. It is the English LEMMA, never the inflected form. */
+    /* Two different things use this line.
+
+       While a sentence is being built it carries the per-slot gloss, and
+       only where Spanish grammar cannot separate the four balls — the
+       noun slots, whose distractors are lexical. A gloss on a slot the
+       morphology already settles would replace retrieval with
+       translation. It is the English LEMMA, never the inflected form.
+
+       Once the sentence is COMPLETE it carries the whole English
+       translation, read off the entry rather than assembled from the
+       glosses. That cannot leak an answer, because by then every slot is
+       filled — it is the payoff for finishing, not a hint. It shows at
+       every rung, including the Spanish ones: the scaffolding that fades
+       as you climb is the help you get while deciding, and this is not
+       that. */
+    if (st.completed) {
+      el.gloss.innerHTML = t().inEnglish(entry.en);
+      el.gloss.classList.add('full');
+      el.gloss.hidden = false;
+      return;
+    }
+    el.gloss.classList.remove('full');
     const g = inning.gloss();
-    if (g && !st.completed) { el.gloss.textContent = t().thisGap(g); el.gloss.hidden = false; }
+    if (g) { el.gloss.textContent = t().thisGap(g); el.gloss.hidden = false; }
     else el.gloss.hidden = true;
   }
 
@@ -520,13 +540,12 @@
     if (inning.over()) return showEnd();
     const st = inning.state();
     if (st.completed) {
-      renderSentence();
-      el.gloss.hidden = true;
+      renderSentence();                 // now showing the full translation
       say(t().sentenceDone(st.outs), 'good');
       /* applyPendingLevel restarts the inning, which pitches for itself.
          Calling pitchVolley() after it as well threw a second volley on
          top of the first and reset the flight clock under it. */
-      later(() => { if (!applyPendingLevel()) pitchVolley(); }, 1400);
+      later(() => { if (!applyPendingLevel()) pitchVolley(); }, SENTENCE_MS);
       return;
     }
     pitchVolley();
